@@ -50,7 +50,7 @@ GoDaddy CNAMEs `play` and `admin` → `cname.vercel-dns.com`, and add both domai
 | 3 | Hub **integration** (tiles registered in live repo `af62a52`, internal until launch; portal chrome links to hub) | ✅ |
 | 4 | Stripe rails (vaulting, PAD mandates, charges, webhooks) | ✅ |
 | 5 | Brand theming (shared Vanguard system + multi-brand `--accent` layer; DB table + editor deferred to portal-Supabase) | ✅ |
-| 6 | `notify()` (Resend / Twilio / web-push, brand-themed templates) | — |
+| 6 | `notify()` (Resend / Twilio / web-push, brand-themed templates) | ✅ |
 | 7 | Media storage (buckets, upload + signed-URL helpers) | — |
 | 8 | UI kit (incl. calendar/Gantt shells) + money/tax/dates/audit utilities | — |
 
