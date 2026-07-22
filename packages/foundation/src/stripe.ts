@@ -59,12 +59,13 @@ export async function findCustomerByClerkId(clerkUserId: string): Promise<Stripe
 /**
  * PAD mandate terms captured with every acss_debit SetupIntent. `sporadic`
  * (amounts vary, no fixed schedule) fits registrations/rentals/payment plans.
+ * Note: Stripe rejects `interval_description` for a sporadic schedule — it's
+ * only valid with `interval`, so it's deliberately omitted here.
  */
 export const PAD_MANDATE_OPTIONS: Stripe.SetupIntentCreateParams.PaymentMethodOptions.AcssDebit.MandateOptions =
   {
     payment_schedule: 'sporadic',
     transaction_type: 'personal',
-    interval_description: 'Payments as authorized for registrations, rentals and payment plans',
   };
 
 /** SetupIntent to vault a CARD for future off-session charges. */
