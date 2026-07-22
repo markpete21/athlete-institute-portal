@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import { headers } from 'next/headers';
+import { ClerkProvider } from '@clerk/nextjs';
 import './globals.css';
 
 export const metadata: Metadata = {
@@ -12,8 +13,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   const app = headers().get('x-portal-app') ?? 'play';
 
   return (
-    <html lang="en" data-portal-app={app}>
-      <body>{children}</body>
-    </html>
+    <ClerkProvider>
+      <html lang="en" data-portal-app={app}>
+        <body>{children}</body>
+      </html>
+    </ClerkProvider>
   );
 }
