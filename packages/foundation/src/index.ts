@@ -18,4 +18,7 @@ export * from './hosts';
 export * from './access';
 export * from './brands';
 export * from './billing-events';
-// Stripe client rails are server-only: import from '@ai/foundation/stripe'.
+export * from './notify-templates';
+// Server-only rails, imported from subpaths (keep this root edge-safe):
+//   '@ai/foundation/stripe'  — Stripe client rails
+//   '@ai/foundation/notify'  — notify() send layer (Resend/Twilio/web-push)

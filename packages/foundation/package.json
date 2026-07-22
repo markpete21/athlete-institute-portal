@@ -7,9 +7,13 @@
   "types": "src/index.ts",
   "exports": {
     ".": "./src/index.ts",
-    "./stripe": "./src/stripe.ts"
+    "./stripe": "./src/stripe.ts",
+    "./notify": "./src/notify.ts"
   },
   "dependencies": {
-    "stripe": "^22.3.2"
+    "resend": "^4.0.1",
+    "stripe": "^22.3.2",
+    "twilio": "^6.0.2",
+    "web-push": "^3.6.7"
   }
 }
