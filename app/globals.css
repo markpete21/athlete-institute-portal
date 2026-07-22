@@ -1,0 +1,9 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Stage-1 baseline: default Athlete Institute brand surface.
+   Stage 5 replaces literals with per-brand CSS variables. */
+body {
+  @apply bg-ink text-white antialiased;
+}

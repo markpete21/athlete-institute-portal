@@ -1,0 +1,8 @@
+{
+  "name": "@ai/foundation",
+  "version": "0.0.1",
+  "private": true,
+  "description": "Athlete Institute shared foundation: hosts, env, clients (Clerk/Supabase/Stripe), theming, notify(), UI kit, utilities. Consumed by the portal; documented for the other app repos.",
+  "main": "src/index.ts",
+  "types": "src/index.ts"
+}

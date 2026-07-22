@@ -1,0 +1,17 @@
+/**
+ * @ai/foundation — the shared foundation package (Module 0).
+ *
+ * Exports grow stage by stage:
+ *   Stage 1 (now):  hosts (subdomain resolution, ecosystem links)
+ *   Stage 2:        Clerk auth wiring + session→role exposure
+ *   Stage 4:        Stripe rails (customers, vaulting, PAD, charges, webhooks)
+ *   Stage 5:        brand theming (brands table + render-time resolution)
+ *   Stage 6:        notify() (Resend / Twilio / web-push)
+ *   Stage 7:        storage helpers (buckets, uploads, signed URLs)
+ *   Stage 8:        UI kit + money/tax/dates/audit utilities
+ *
+ * Everything exported from the package root must be edge-safe (importable
+ * from middleware). Node-only modules will export from subpaths.
+ */
+
+export * from './hosts';
