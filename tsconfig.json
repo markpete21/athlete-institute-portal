@@ -16,7 +16,8 @@
     "plugins": [{ "name": "next" }],
     "paths": {
       "@/*": ["./*"],
-      "@ai/foundation": ["./packages/foundation/src/index.ts"]
+      "@ai/foundation": ["./packages/foundation/src/index.ts"],
+      "@ai/foundation/stripe": ["./packages/foundation/src/stripe.ts"]
     }
   },
   "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts"],

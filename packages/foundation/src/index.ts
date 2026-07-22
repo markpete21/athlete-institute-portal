@@ -16,3 +16,5 @@
 
 export * from './hosts';
 export * from './access';
+export * from './billing-events';
+// Stripe client rails are server-only: import from '@ai/foundation/stripe'.
