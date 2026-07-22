@@ -1,9 +1,114 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;700&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-/* Stage-1 baseline: default Athlete Institute brand surface.
-   Stage 5 replaces literals with per-brand CSS variables. */
-body {
-  @apply bg-ink text-white antialiased;
+/* Orangeville Prep / Vanguard brand identity, shared with Goals + the Apps hub.
+   Ink #1E1E1E — never pure black. Trophy Gold #9E8959 — the one accent.
+   Silver #9EA1A1 — all labels. Structure from hairlines, not shadows.
+   Hard corners; the pill is the only rounded element.
+   The active sub-brand sets --accent on <body> (or a scoped wrapper). */
+
+:root {
+  --font-display: 'Inter', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, monospace;
+  --op-ink: #1e1e1e;
+  --op-gold: #9e8959;
+  --op-silver: #9ea1a1;
+  --op-hairline: rgba(30, 30, 30, 0.14);
+}
+
+@layer base {
+  html,
+  body {
+    @apply bg-paper-soft text-body;
+    font-family: var(--font-display);
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-weight: 800;
+    letter-spacing: -0.04em;
+    line-height: 0.98;
+    @apply text-ink;
+  }
+
+  ::selection {
+    background: var(--accent, var(--op-gold));
+    color: #fff;
+  }
+}
+
+@layer components {
+  /* Mono label: uppercase, wide tracking, Silver — every kicker/caption/index. */
+  .label {
+    font-family: var(--font-mono);
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.14em;
+    @apply text-silver;
+  }
+
+  .mono {
+    font-family: var(--font-mono);
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* Flat panels divided by hairlines — no shadow, no radius. */
+  .card {
+    @apply border border-hairline bg-paper;
+  }
+
+  /* Pill button — the only interactive control shape. Brand-accent driven. */
+  .btn-gold {
+    @apply inline-flex items-center justify-center gap-2 rounded-full px-5 py-2.5 text-xs font-bold uppercase tracking-[0.1em] text-white transition-opacity;
+    background-color: var(--accent, #9e8959);
+  }
+  .btn-gold:hover { opacity: 0.78; }
+  .btn-gold:active { opacity: 0.6; }
+
+  .btn-ghost {
+    @apply inline-flex items-center justify-center gap-2 rounded-full border border-hairline bg-transparent px-5 py-2.5 text-xs font-bold uppercase tracking-[0.1em] text-ink transition-colors;
+  }
+  .btn-ghost:hover {
+    border-color: var(--accent, #9e8959);
+    color: var(--accent, #9e8959);
+  }
+
+  .btn-sm { @apply px-3.5 py-1.5 text-[11px]; }
+
+  /* Pill tag (mono, silver hairline). */
+  .tag {
+    @apply inline-flex items-center gap-1.5 rounded-full border border-hairline px-3 py-0.5 font-mono text-[11px] font-medium uppercase tracking-[0.12em] text-silver;
+  }
+
+  /* Form primitives. */
+  .input,
+  select.input,
+  textarea.input {
+    @apply w-full border border-hairline bg-paper px-3 py-2 text-sm text-ink outline-none transition-colors;
+    font-family: var(--font-display);
+  }
+  .input:focus { border-color: var(--accent, #9e8959); }
+
+  .field-label {
+    @apply mb-1.5 block font-mono text-[11px] font-medium uppercase tracking-[0.14em] text-silver;
+  }
+
+  /* Signature dot-field texture for dark hero moments. */
+  .dot-field {
+    background-image: radial-gradient(rgba(255, 255, 255, 0.15) 1px, transparent 1px);
+    background-size: 20px 20px;
+  }
+
+  /* Data table. */
+  .data-table { @apply w-full border-collapse text-sm; }
+  .data-table th {
+    @apply border-b border-hairline px-4 py-3 text-left font-mono text-[11px] font-medium uppercase tracking-[0.12em] text-silver;
+  }
+  .data-table td { @apply border-b border-hairline px-4 py-3 align-middle; }
+  .data-table tbody tr { @apply transition-colors; }
+  .data-table tbody tr.clickable:hover { @apply cursor-pointer bg-paper-panel; }
 }
