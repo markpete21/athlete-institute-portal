@@ -28,6 +28,20 @@ export async function getOrCreateProfile(): Promise<Profile> {
   const user = await currentUser();
   if (!user) throw new Error('getOrCreateProfile(): no signed-in user');
 
+  // Claim flow (Module 1 Stage 5): a first sign-in whose email matches an
+  // imported-but-unclaimed profile ADOPTS it (keeps family links) instead of
+  // creating a duplicate.
+  const email = user.primaryEmailAddress?.emailAddress;
+  const { data: known } = await supabaseAdmin()
+    .from('profiles')
+    .select('id')
+    .eq('clerk_user_id', user.id)
+    .maybeSingle();
+  if (!known && email) {
+    const { adoptUnclaimedProfile } = await import('@/lib/import/playbook');
+    await adoptUnclaimedProfile(user.id, email);
+  }
+
   const { data, error } = await supabaseAdmin()
     .from('profiles')
     .upsert(

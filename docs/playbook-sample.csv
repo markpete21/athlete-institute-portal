@@ -1,0 +1,11 @@
+First Name,Last Name,Email,Phone,Address,City,Postal,DOB,Household Key
+Sarah,Chen,sarah.chen@example.com,519-555-0101,12 Maple St,Orangeville,L9W 1A1,,CHEN12MAPLE
+Wei,Chen,,,12 Maple St,Orangeville,L9W 1A1,2012-04-09,CHEN12MAPLE
+Lily,Chen,,,12 Maple St,Orangeville,L9W 1A1,2015-11-30,CHEN12MAPLE
+David,Osei,d.osei@example.com,519-555-0102,88 King Ave,Orangeville,L9W 2B2,,
+Jordan,Osei,,,88 King Ave,Orangeville,L9W 2B2,2010-02-14,
+SARAH,CHEN,sarah.chen@example.com,519-555-0101,12 Maple Street,Orangeville,L9W1A1,,
+Maria,Santos,m.santos@example.com,519-555-0103,5 Oak Ct,Mono,L9V 3C3,,SANTOS5OAK
+Mario,Santos,m.santos2@example.com,519-555-0104,5 Oak Ct,Mono,L9V 3C3,,SANTOS5OAK
+Marla,Santos,,,5 Oak Ct,Mono,L9V 3C3,2016-07-01,SANTOS5OAK
+Alex,Tremblay,alex.t@example.com,519-555-0105,301 Broadway,Orangeville,L9W 4D4,,
