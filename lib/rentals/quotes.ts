@@ -222,8 +222,11 @@ export async function addRentalLine(input: {
   const facility = tree.find((f) => f.id === input.facilityId);
   if (!facility) throw new Error('Facility not found.');
 
+  // Internal bookings are $0 (scheduling only) - no rate required.
   const chain = [input.facilityId, ...ancestorIds(tree, input.facilityId)];
-  const rate = input.rateCentsOverride ?? resolveRate(rates, chain, input.rateMode);
+  const rate = rental.is_internal
+    ? 0
+    : input.rateCentsOverride ?? resolveRate(rates, chain, input.rateMode);
   if (rate == null) throw new Error(`No ${input.rateMode} rate configured for "${facility.name}" (set one in Rental settings or override).`);
 
   // The quote HOLDS the slot: tentative booking through the Module 2 contract.
