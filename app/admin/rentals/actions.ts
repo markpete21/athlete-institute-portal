@@ -90,3 +90,35 @@ export async function emailQuoteAction(formData: FormData): Promise<void> {
   await emailQuoteLink(rentalId, session.userId!);
   revalidatePath(`/rentals/${rentalId}`);
 }
+
+export async function markBookedAction(formData: FormData): Promise<void> {
+  const session = await requireStaff();
+  const rentalId = Number(formData.get('rentalId'));
+  const { markRentalBooked } = await import('@/lib/rentals/payments');
+  await markRentalBooked(rentalId, session.userId!);
+  revalidatePath(`/rentals/${rentalId}`);
+}
+
+export async function recordPaymentAction(formData: FormData): Promise<void> {
+  const session = await requireStaff();
+  const rentalId = Number(formData.get('rentalId'));
+  const { recordManualPayment } = await import('@/lib/rentals/payments');
+  await recordManualPayment(Number(formData.get('installmentId')), session.userId!);
+  revalidatePath(`/rentals/${rentalId}`);
+}
+
+export async function chargeInstallmentAction(formData: FormData): Promise<void> {
+  const session = await requireStaff();
+  const rentalId = Number(formData.get('rentalId'));
+  const { processInstallment } = await import('@/lib/rentals/payments');
+  await processInstallment(Number(formData.get('installmentId')), session.userId!);
+  revalidatePath(`/rentals/${rentalId}`);
+}
+
+export async function cancelRentalAction(formData: FormData): Promise<void> {
+  const session = await requireStaff();
+  const rentalId = Number(formData.get('rentalId'));
+  const { cancelRental } = await import('@/lib/rentals/payments');
+  await cancelRental(rentalId, session.userId!, String(formData.get('reason') ?? '') || undefined);
+  revalidatePath(`/rentals/${rentalId}`);
+}

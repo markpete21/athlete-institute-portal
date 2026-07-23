@@ -13,7 +13,8 @@
     "typecheck": "tsc --noEmit",
     "test:pricing": "tsc packages/foundation/src/pricing.ts --module esnext --target es2022 --moduleResolution bundler --outDir packages/foundation/src/__compiled__ && node packages/foundation/src/pricing.test.mjs",
     "test:availability": "tsc packages/foundation/src/availability.ts --module esnext --target es2022 --moduleResolution bundler --outDir packages/foundation/src/__compiled__ && node scripts/fix-compiled-imports.mjs && node packages/foundation/src/availability.test.mjs",
-    "test:recurrence": "tsc packages/foundation/src/recurrence.ts --module esnext --target es2022 --moduleResolution bundler --outDir packages/foundation/src/__compiled__ && node scripts/fix-compiled-imports.mjs && node packages/foundation/src/recurrence.test.mjs"
+    "test:recurrence": "tsc packages/foundation/src/recurrence.ts --module esnext --target es2022 --moduleResolution bundler --outDir packages/foundation/src/__compiled__ && node scripts/fix-compiled-imports.mjs && node packages/foundation/src/recurrence.test.mjs",
+    "test:rentals": "tsc packages/foundation/src/rentals-core.ts --module esnext --target es2022 --moduleResolution bundler --outDir packages/foundation/src/__compiled__ && node scripts/fix-compiled-imports.mjs && node packages/foundation/src/rentals-core.test.mjs"
   },
   "dependencies": {
     "@ai/foundation": "file:packages/foundation",

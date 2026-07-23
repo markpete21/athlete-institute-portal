@@ -38,13 +38,26 @@ export interface BillingEvent {
 
 export type BillingEventHandler = (event: BillingEvent) => void | Promise<void>;
 
-const handlers = new Map<BillingEventType | '*', Set<BillingEventHandler>>();
+/**
+ * The handler registry lives on globalThis: instrumentation.ts (where handlers
+ * subscribe at boot) and the webhook route (which dispatches) compile in
+ * separate Next module graphs, so a module-level Map would be a different
+ * instance per graph and subscriptions wouldn't be seen. (Same reason the
+ * audit sink is on globalThis.)
+ */
+const REG_KEY = '__aiBillingHandlers';
+function registry(): Map<BillingEventType | '*', Set<BillingEventHandler>> {
+  const g = globalThis as Record<string, unknown>;
+  if (!g[REG_KEY]) g[REG_KEY] = new Map();
+  return g[REG_KEY] as Map<BillingEventType | '*', Set<BillingEventHandler>>;
+}
 
 /** Subscribe to a billing event ('*' for all). Returns an unsubscribe fn. */
 export function onBillingEvent(
   type: BillingEventType | '*',
   handler: BillingEventHandler,
 ): () => void {
+  const handlers = registry();
   const set = handlers.get(type) ?? new Set();
   set.add(handler);
   handlers.set(type, set);
@@ -53,6 +66,7 @@ export function onBillingEvent(
 
 /** Run every subscriber for the event; a throwing handler doesn't block others. */
 export async function dispatchBillingEvent(event: BillingEvent): Promise<void> {
+  const handlers = registry();
   const subs = [...(handlers.get(event.type) ?? []), ...(handlers.get('*') ?? [])];
   const results = await Promise.allSettled(subs.map((h) => h(event)));
   for (const r of results) {

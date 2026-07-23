@@ -3,9 +3,20 @@ import { notFound } from 'next/navigation';
 import { buildTree, flattenTree, formatCAD, type FacilityNode } from '@ai/foundation';
 import { supabaseAdmin } from '@ai/foundation/supabase';
 import { findConflictPairs } from '@/lib/conflicts';
+import { RENTAL_STATUS_COLOR, type RentalStatus } from '@ai/foundation';
 import { listAddons } from '@/lib/rentals/rates';
 import { getRental } from '@/lib/rentals/quotes';
-import { addAddonAction, addLineAction, emailQuoteAction, removeAddonAction, removeLineAction } from '../actions';
+import {
+  addAddonAction,
+  addLineAction,
+  cancelRentalAction,
+  chargeInstallmentAction,
+  emailQuoteAction,
+  markBookedAction,
+  recordPaymentAction,
+  removeAddonAction,
+  removeLineAction,
+} from '../actions';
 
 export const dynamic = 'force-dynamic';
 
@@ -21,10 +32,11 @@ export default async function RentalBuilderPage({ params }: { params: { id: stri
   const rental = await getRental(Number(params.id));
   if (!rental) notFound();
 
-  const [{ data: facRows }, addons, conflictPairs] = await Promise.all([
+  const [{ data: facRows }, addons, conflictPairs, { data: installments }] = await Promise.all([
     supabaseAdmin().from('facilities').select('id, parent_id, name, label, sort_order, bookable, deleted_at').is('deleted_at', null),
     listAddons(),
     findConflictPairs(new Date().toISOString(), new Date(Date.now() + 365 * 86400_000).toISOString()),
+    supabaseAdmin().from('rental_installments').select('id, seq, label, amount_cents, due_date, is_deposit, status').eq('rental_id', rental.id).order('seq'),
   ]);
   const ordered = flattenTree(buildTree((facRows ?? []) as FacilityNode[]));
   const conflictedBookingIds = new Set(conflictPairs.flatMap((p) => [p.a.id, p.b.id]));
@@ -40,7 +52,9 @@ export default async function RentalBuilderPage({ params }: { params: { id: stri
             {rental.title}<span style={{ color: 'var(--accent)' }}>.</span>
           </h1>
           <div className="mt-2 flex gap-2">
-            <span className="tag">{rental.status.replace('_', ' ')}</span>
+            <span className="tag" style={{ color: RENTAL_STATUS_COLOR[rental.status as RentalStatus], borderColor: RENTAL_STATUS_COLOR[rental.status as RentalStatus] }}>
+              {rental.status.replace('_', ' ')}
+            </span>
             {rental.is_internal && <span className="tag">internal $0</span>}
             {rental.contact_name && <span className="tag">{rental.contact_name}</span>}
           </div>
@@ -173,6 +187,66 @@ export default async function RentalBuilderPage({ params }: { params: { id: stri
         <Row label={`Deposit (${rental.deposit_pct}%)`} v={formatCAD(rental.deposit_cents)} accent />
         <Row label="Balance" v={formatCAD(rental.total_cents - rental.deposit_cents)} />
       </section>
+
+      {/* Payment schedule + status controls (Stage 4) */}
+      {!rental.is_internal && rental.status !== 'cancelled' && (
+        <section className="flex flex-col gap-3">
+          <h2 className="text-2xl">Payment</h2>
+
+          {rental.status === 'quote' && rental.lines.length > 0 && (
+            <div className="card flex items-center justify-between gap-4 p-5">
+              <p className="text-body">
+                Mark this quote booked to confirm the slots and issue the deposit
+                (due 5 business days out; auto-charged if PAD is set up).
+              </p>
+              <form action={markBookedAction}>
+                <input type="hidden" name="rentalId" value={rental.id} />
+                <button type="submit" className="btn-gold">Mark booked</button>
+              </form>
+            </div>
+          )}
+
+          {(installments ?? []).length > 0 && (
+            <table className="data-table">
+              <thead>
+                <tr><th>Installment</th><th>Due</th><th>Amount</th><th>Status</th><th /></tr>
+              </thead>
+              <tbody>
+                {(installments ?? []).map((inst) => (
+                  <tr key={inst.id}>
+                    <td className="text-ink">{inst.label}{inst.is_deposit && <span className="tag ml-2">deposit</span>}</td>
+                    <td className="mono">{inst.due_date}</td>
+                    <td className="mono">{formatCAD(inst.amount_cents)}</td>
+                    <td><span className="tag">{inst.status}</span></td>
+                    <td className="flex gap-2">
+                      {inst.status === 'pending' && (
+                        <>
+                          <form action={chargeInstallmentAction}>
+                            <input type="hidden" name="rentalId" value={rental.id} />
+                            <input type="hidden" name="installmentId" value={inst.id} />
+                            <button type="submit" className="btn-ghost btn-sm">Charge / invoice</button>
+                          </form>
+                          <form action={recordPaymentAction}>
+                            <input type="hidden" name="rentalId" value={rental.id} />
+                            <input type="hidden" name="installmentId" value={inst.id} />
+                            <button type="submit" className="btn-ghost btn-sm">Record paid</button>
+                          </form>
+                        </>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+
+          <form action={cancelRentalAction} className="flex items-center gap-2 self-start">
+            <input type="hidden" name="rentalId" value={rental.id} />
+            <input name="reason" placeholder="cancellation reason" className="input max-w-64 text-sm" />
+            <button type="submit" className="btn-ghost btn-sm text-neg">Cancel rental (deposit non-refundable)</button>
+          </form>
+        </section>
+      )}
     </main>
   );
 }

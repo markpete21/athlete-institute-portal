@@ -23,6 +23,7 @@ export * from './csv';
 export * from './facility-tree';
 export * from './availability';
 export * from './recurrence';
+export * from './rentals-core';
 export * from './billing-events';
 export * from './notify-templates';
 export * from './money';
