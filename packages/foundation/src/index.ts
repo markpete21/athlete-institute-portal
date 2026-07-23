@@ -19,6 +19,10 @@ export * from './access';
 export * from './brands';
 export * from './billing-events';
 export * from './notify-templates';
+export * from './money';
+export * from './tax';
+export * from './dates';
+export * from './audit';
 // Server-only rails, imported from subpaths (keep this root edge-safe):
 //   '@ai/foundation/stripe'  — Stripe client rails
 //   '@ai/foundation/notify'  — notify() send layer (Resend/Twilio/web-push)
