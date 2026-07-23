@@ -33,11 +33,21 @@ const consoleSink: AuditSink = (entry) => {
   );
 };
 
-let sink: AuditSink = consoleSink;
+/**
+ * The sink lives on globalThis, not module state: Next compiles
+ * instrumentation.ts (which registers the DB sink) in a separate module graph
+ * from routes, so a module-level variable would be a different instance per
+ * graph and the registration would silently not apply to callers.
+ */
+const SINK_KEY = '__aiAuditSink';
 
-/** Swap the persistence sink (Module 1 registers a Supabase-backed one). */
+/** Swap the persistence sink (instrumentation.ts registers the Supabase one). */
 export function setAuditSink(next: AuditSink): void {
-  sink = next;
+  (globalThis as Record<string, unknown>)[SINK_KEY] = next;
+}
+
+function currentSink(): AuditSink {
+  return ((globalThis as Record<string, unknown>)[SINK_KEY] as AuditSink | undefined) ?? consoleSink;
 }
 
 /**
@@ -48,7 +58,7 @@ export function setAuditSink(next: AuditSink): void {
 export async function audit(entry: AuditEntry): Promise<void> {
   const stamped = { ...entry, at: entry.at ?? new Date().toISOString() };
   try {
-    await sink(stamped);
+    await currentSink()(stamped);
   } catch (err) {
     console.error('[audit] sink failed (entry NOT persisted):', err, stamped);
   }
