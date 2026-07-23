@@ -115,6 +115,15 @@ export async function chargeInstallmentAction(formData: FormData): Promise<void>
   revalidatePath(`/rentals/${rentalId}`);
 }
 
+export async function attachWaiverAction(formData: FormData): Promise<void> {
+  const session = await requireStaff();
+  const rentalId = Number(formData.get('rentalId'));
+  const { attachWaiverToRental } = await import('@/lib/waivers');
+  const wid = formData.get('waiverId') ? Number(formData.get('waiverId')) : null;
+  await attachWaiverToRental(rentalId, wid, session.userId!);
+  revalidatePath(`/rentals/${rentalId}`);
+}
+
 export async function cancelRentalAction(formData: FormData): Promise<void> {
   const session = await requireStaff();
   const rentalId = Number(formData.get('rentalId'));

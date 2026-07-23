@@ -75,13 +75,19 @@ export async function markRentalBooked(
   const db = supabaseAdmin();
   const { data: rental, error } = await db
     .from('rentals')
-    .select('id, status, is_internal, total_cents, deposit_pct')
+    .select('id, status, is_internal, total_cents, deposit_pct, waiver_id')
     .eq('id', rentalId)
     .single();
   if (error) throw new Error(error.message);
   if (rental.status !== 'quote') throw new Error(`Rental is ${rental.status}, not a quote.`);
   if (rental.is_internal) throw new Error('Internal rentals have no payment schedule.');
   if (rental.total_cents <= 0) throw new Error('Add at least one line before booking.');
+
+  // Confirm-gate: an attached waiver must be signed at its current version.
+  const { isWaiverSatisfied } = await import('@/lib/waivers');
+  if (!(await isWaiverSatisfied('rental', rentalId, rental.waiver_id))) {
+    throw new Error('The attached waiver must be signed before this rental can be booked.');
+  }
 
   const today = torontoToday();
   const balanceDue = opts.balanceDueDate ?? addMonthsISO(today, 1);

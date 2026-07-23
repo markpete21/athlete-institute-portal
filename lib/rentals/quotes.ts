@@ -63,12 +63,13 @@ export interface Rental {
   total_cents: number;
   deposit_cents: number;
   quote_token: string;
+  waiver_id: number | null;
   lines: RentalLine[];
   addons: RentalAddonRow[];
 }
 
 const R_COLS =
-  'id, title, status, is_internal, business_unit_id, booking_type, booking_type_other, profile_id, organization_id, family_id, contact_name, contact_email, contact_phone, notes, deposit_pct, subtotal_cents, tax_cents, total_cents, deposit_cents, quote_token';
+  'id, title, status, is_internal, business_unit_id, booking_type, booking_type_other, profile_id, organization_id, family_id, contact_name, contact_email, contact_phone, notes, deposit_pct, subtotal_cents, tax_cents, total_cents, deposit_cents, quote_token, waiver_id';
 const L_COLS =
   'id, rental_id, facility_id, facility_name, rate_mode, unit_rate_cents, starts_at, ends_at, line_total_cents, booking_id, sort_order';
 const A_COLS = 'id, rental_id, line_id, addon_id, name, pricing_mode, unit_price_cents, qty, total_cents';

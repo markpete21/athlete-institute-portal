@@ -6,9 +6,11 @@ import { findConflictPairs } from '@/lib/conflicts';
 import { RENTAL_STATUS_COLOR, type RentalStatus } from '@ai/foundation';
 import { listAddons } from '@/lib/rentals/rates';
 import { getRental } from '@/lib/rentals/quotes';
+import { listWaivers, signatureFor } from '@/lib/waivers';
 import {
   addAddonAction,
   addLineAction,
+  attachWaiverAction,
   cancelRentalAction,
   chargeInstallmentAction,
   emailQuoteAction,
@@ -32,12 +34,17 @@ export default async function RentalBuilderPage({ params }: { params: { id: stri
   const rental = await getRental(Number(params.id));
   if (!rental) notFound();
 
-  const [{ data: facRows }, addons, conflictPairs, { data: installments }] = await Promise.all([
+  const [{ data: facRows }, addons, conflictPairs, { data: installments }, waivers, waiverSig] = await Promise.all([
     supabaseAdmin().from('facilities').select('id, parent_id, name, label, sort_order, bookable, deleted_at').is('deleted_at', null),
     listAddons(),
     findConflictPairs(new Date().toISOString(), new Date(Date.now() + 365 * 86400_000).toISOString()),
     supabaseAdmin().from('rental_installments').select('id, seq, label, amount_cents, due_date, is_deposit, status').eq('rental_id', rental.id).order('seq'),
+    listWaivers(),
+    (rental as { waiver_id?: number | null }).waiver_id
+      ? signatureFor('rental', rental.id, (rental as { waiver_id: number }).waiver_id)
+      : Promise.resolve(null),
   ]);
+  const attachedWaiverId = (rental as { waiver_id?: number | null }).waiver_id ?? null;
   const ordered = flattenTree(buildTree((facRows ?? []) as FacilityNode[]));
   const conflictedBookingIds = new Set(conflictPairs.flatMap((p) => [p.a.id, p.b.id]));
   const playBase = process.env.NEXT_PUBLIC_PLAY_URL ?? 'https://play.athleteinstitute.ca';
@@ -187,6 +194,39 @@ export default async function RentalBuilderPage({ params }: { params: { id: stri
         <Row label={`Deposit (${rental.deposit_pct}%)`} v={formatCAD(rental.deposit_cents)} accent />
         <Row label="Balance" v={formatCAD(rental.total_cents - rental.deposit_cents)} />
       </section>
+
+      {/* Waiver (Stage 5) */}
+      {!rental.is_internal && rental.status !== 'cancelled' && (
+        <section className="card flex flex-wrap items-end gap-3 p-5">
+          <div className="flex-1">
+            <h2 className="mb-2 text-2xl">Waiver</h2>
+            <form action={attachWaiverAction} className="flex items-end gap-2">
+              <input type="hidden" name="rentalId" value={rental.id} />
+              <select name="waiverId" defaultValue={attachedWaiverId ?? ''} className="input text-sm">
+                <option value="">No waiver</option>
+                {waivers.map((w) => <option key={w.id} value={w.id}>{w.name} (v{w.version})</option>)}
+              </select>
+              <button type="submit" className="btn-ghost btn-sm">Attach</button>
+            </form>
+          </div>
+          {attachedWaiverId && (
+            <div className="text-sm">
+              {waiverSig ? (
+                <span className="tag" style={{ color: '#3f7a5b', borderColor: '#3f7a5b' }}>
+                  signed by {waiverSig.signer_name}
+                </span>
+              ) : (
+                <span className="tag" style={{ color: '#b4483c', borderColor: '#b4483c' }}>
+                  unsigned — blocks booking
+                </span>
+              )}
+              <a href={`${playBase}/quote/${rental.quote_token}/sign`} target="_blank" className="btn-ghost btn-sm ml-2">
+                Signing page ↗
+              </a>
+            </div>
+          )}
+        </section>
+      )}
 
       {/* Payment schedule + status controls (Stage 4) */}
       {!rental.is_internal && rental.status !== 'cancelled' && (
