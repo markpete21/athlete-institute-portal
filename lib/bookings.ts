@@ -54,6 +54,8 @@ export interface CreateBookingInput {
   setupMinutes?: number;
   cleanupMinutes?: number;
   seriesId?: number | null;
+  /** Household this booking belongs to (family schedule on play). */
+  familyId?: number | null;
   actorClerkId: string;
 }
 
@@ -159,6 +161,7 @@ export async function createBooking(
       setup_minutes: input.setupMinutes ?? 0,
       cleanup_minutes: input.cleanupMinutes ?? 0,
       series_id: input.seriesId ?? null,
+      family_id: input.familyId ?? null,
       created_by: input.actorClerkId,
     })
     .select(COLS)
@@ -323,6 +326,7 @@ export interface ListBookingsFilter {
   sources?: BookingRecord['source'][];
   statuses?: BookingRecord['status'][];
   publicOnly?: boolean;
+  familyId?: number;
 }
 
 export async function listBookings(filter: ListBookingsFilter): Promise<BookingRecord[]> {
@@ -337,6 +341,7 @@ export async function listBookings(filter: ListBookingsFilter): Promise<BookingR
   if (filter.sources?.length) q = q.in('source', filter.sources);
   if (filter.statuses?.length) q = q.in('status', filter.statuses);
   if (filter.publicOnly) q = q.eq('show_on_public_schedule', true);
+  if (filter.familyId) q = q.eq('family_id', filter.familyId);
   const { data, error } = await q;
   if (error) throw new Error(`bookings list failed: ${error.message}`);
   return (data ?? []) as BookingRecord[];
