@@ -56,4 +56,16 @@ GoDaddy CNAMEs `play` and `admin` → `cname.vercel-dns.com`, and add both domai
 
 **Module 0 complete** — migration 0001 applied; audit trail + brands + storage verified against the live Supabase project.
 
+## Module 1 — Accounts ✅ (complete)
+
+| # | Stage | |
+|---|-------|---|
+| 1 | Schema + Clerk mirroring (migration 0002) | ✅ 11/11 |
+| 2 | DB-backed user types + subdomain/tenant guards | ✅ 7/7 |
+| 3 | Families + roles (HoH, 18+ conversion, role admin) | ✅ 8/8 |
+| 4 | **Canonical pricing function** + season credits + points (migration 0003) | ✅ 30/30 + 9/9 |
+| 5 | Playbook import + claim flow (migration 0004) | ✅ 10/10 |
+
+The pricing function (`packages/foundation/src/pricing.ts`, `npm run test:pricing`) is the single owner of money math platform-wide — extend it, never re-implement (see its header for the canonical order + redemption scopes). Playbook runbook: [docs/playbook-import.md](docs/playbook-import.md).
+
 Conventions docs (schema naming, RLS patterns, audit-log usage) land with the first schema work (Stage 4/5) as `docs/schema-conventions.md`.
