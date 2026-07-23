@@ -68,6 +68,20 @@ GoDaddy CNAMEs `play` and `admin` → `cname.vercel-dns.com`, and add both domai
 
 The pricing function (`packages/foundation/src/pricing.ts`, `npm run test:pricing`) is the single owner of money math platform-wide — extend it, never re-implement (see its header for the canonical order + redemption scopes). Playbook runbook: [docs/playbook-import.md](docs/playbook-import.md).
 
+## Module 2 — Facilities Schedule ✅ (complete — Phase 1 gate passed)
+
+| # | Stage | |
+|---|-------|---|
+| 1 | Facility tree + editor (migration 0005, real AI tree seeded) | ✅ 8/8 |
+| 2 | **Availability engine** + bookings API (migration 0006) | ✅ 23/23 unit + 11/11 live |
+| 3 | Conflict resolution: queue, keep-both + reminders (migration 0007) | ✅ 7/7 |
+| 4 | Recurrence engine, DST-correct (migration 0008) | ✅ 15/15 unit + 5/5 live |
+| 5 | Admin views: Day Gantt / Week / Month + saved views (migration 0009) | ✅ 8/8 |
+| 6 | TV displays: public token URLs + templates (migration 0010) | ✅ 6/6 |
+| 7 | Public + family schedule (migration 0011) | ✅ 4/4 |
+
+`lib/bookings.ts` is **the** integration contract — Rentals (M3), Programs (M4+) and events create every booking through it (`checkAvailability`, `createBooking`, `createRecurringBookings`, `cancelBooking`, `listBookings`). Conflicts are returned, never silently blocked — the operator resolves them in `/conflicts`.
+
 Conventions docs (schema naming, RLS patterns, audit-log usage) land with the first schema work (Stage 4/5) as `docs/schema-conventions.md`.
 
 ## TV displays — device setup
