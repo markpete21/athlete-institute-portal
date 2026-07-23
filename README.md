@@ -51,7 +51,9 @@ GoDaddy CNAMEs `play` and `admin` → `cname.vercel-dns.com`, and add both domai
 | 4 | Stripe rails (vaulting, PAD mandates, charges, webhooks) | ✅ |
 | 5 | Brand theming (shared Vanguard system + multi-brand `--accent` layer; DB table + editor deferred to portal-Supabase) | ✅ |
 | 6 | `notify()` (Resend / Twilio / web-push, brand-themed templates) | ✅ |
-| 7 | Media storage (buckets, upload + signed-URL helpers) | ⏸ needs the portal Supabase project |
-| 8 | UI kit (incl. calendar/Gantt shells) + money/tax/dates/audit utilities | ✅ (audit DB sink lands with Supabase) |
+| 7 | Media storage (buckets, upload + signed-URL helpers) | ✅ |
+| 8 | UI kit (incl. calendar/Gantt shells) + money/tax/dates/audit utilities | ✅ |
+
+**Module 0 complete** — migration 0001 applied; audit trail + brands + storage verified against the live Supabase project.
 
 Conventions docs (schema naming, RLS patterns, audit-log usage) land with the first schema work (Stage 4/5) as `docs/schema-conventions.md`.
