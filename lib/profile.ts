@@ -56,3 +56,32 @@ export async function getProfileByClerkId(clerkUserId: string): Promise<Profile 
   if (error) throw new Error(`profiles read failed: ${error.message}`);
   return (data as Profile) ?? null;
 }
+
+/** Role names assigned to a profile (empty array = no admin roles). */
+export async function getRoleNames(profileId: number): Promise<string[]> {
+  const { data, error } = await supabaseAdmin()
+    .from('role_assignments')
+    .select('roles(name)')
+    .eq('profile_id', profileId);
+  if (error) throw new Error(`role_assignments read failed: ${error.message}`);
+  return (data ?? [])
+    .map((r) => (r.roles as unknown as { name: string } | null)?.name)
+    .filter((n): n is string => !!n);
+}
+
+/**
+ * Bootstrap promotion: an allowlisted email signing in as a plain customer is
+ * converted to staff in the DB (audited). Makes the database converge to the
+ * truth the STAFF_ALLOWLIST_EMAILS bootstrap asserts, so the allowlist can be
+ * retired once Module 1's role UI manages staff directly.
+ */
+export async function promoteToStaff(profile: Profile): Promise<Profile> {
+  const { data, error } = await supabaseAdmin()
+    .from('profiles')
+    .update({ user_type: 'staff' })
+    .eq('id', profile.id)
+    .select(COLS)
+    .single();
+  if (error) throw new Error(`staff promotion failed: ${error.message}`);
+  return data as Profile;
+}

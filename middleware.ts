@@ -31,9 +31,12 @@ export default clerkMiddleware(async (auth, req) => {
   const app = resolvePortalApp(req.headers.get('host'));
   const { pathname } = req.nextUrl;
 
-  // Downstream (layouts, guards) read the resolved app from this header.
+  // Downstream (layouts, guards) read the resolved app + original path from
+  // these headers (layouts don't receive the pathname; the tenant gate in
+  // app/play/layout.tsx needs it).
   const requestHeaders = new Headers(req.headers);
   requestHeaders.set('x-portal-app', app);
+  requestHeaders.set('x-portal-path', pathname);
 
   if (isExempt(pathname)) {
     return NextResponse.next({ request: { headers: requestHeaders } });

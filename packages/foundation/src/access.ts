@@ -37,6 +37,20 @@ export function parseStaffAllowlist(raw: string | undefined | null): string[] {
     .filter(Boolean);
 }
 
+/**
+ * Paths a TENANT may reach on play.* — the read-only schedule and the auth
+ * pages middleware already exempts. Everything else redirects to /schedule
+ * (Module 1: "read-only access to the facility schedule and nothing else").
+ */
+export function tenantAllowedPath(pathname: string): boolean {
+  return (
+    pathname === '/schedule' ||
+    pathname.startsWith('/schedule/') ||
+    pathname.startsWith('/sign-in') ||
+    pathname.startsWith('/sign-up')
+  );
+}
+
 export function resolveAccess(input: {
   email?: string | null;
   metadata?: PublicMetadataShape | null;
