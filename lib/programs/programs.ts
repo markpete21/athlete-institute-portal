@@ -142,6 +142,11 @@ export async function createProgram(input: CreateProgramInput): Promise<Program>
     .single();
   if (error) throw new Error(`program create failed: ${error.message}`);
   await audit({ actorId: input.actorClerkId, action: 'program.created', target: `program:${data.id}`, meta: { name: input.name, type: input.programTypeId } });
+
+  // Seed the program's questions from its type defaults.
+  const { applyTypeDefaults } = await import('@/lib/programs/questions');
+  await applyTypeDefaults(data.id, input.programTypeId, input.actorClerkId).catch(() => {});
+
   return data as Program;
 }
 

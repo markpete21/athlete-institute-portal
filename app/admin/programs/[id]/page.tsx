@@ -3,8 +3,11 @@ import { notFound } from 'next/navigation';
 import { BRANDS, PROGRAM_CATEGORIES, buildTree, flattenTree, formatCAD, type FacilityNode } from '@ai/foundation';
 import { supabaseAdmin } from '@ai/foundation/supabase';
 import { getProgram } from '@/lib/programs/programs';
+import { listQuestions, programQuestions } from '@/lib/programs/questions';
 import {
   assignStaffAction,
+  attachQuestionAction,
+  detachQuestionAction,
   generateSessionsAction,
   setStatusAction,
   unassignStaffAction,
@@ -30,6 +33,8 @@ export default async function ProgramBuilderPage({ params }: { params: { id: str
   ]);
   const ordered = flattenTree(buildTree((facRows ?? []) as FacilityNode[]));
   const playBase = process.env.NEXT_PUBLIC_PLAY_URL ?? 'https://play.athleteinstitute.ca';
+  const [attachedQuestions, allQuestions] = await Promise.all([programQuestions(program.id), listQuestions()]);
+  const attachedIds = new Set(attachedQuestions.map((q) => q.id));
 
   return (
     <main className="mx-auto flex min-h-screen max-w-4xl flex-col gap-8 px-6 py-14">
@@ -166,8 +171,35 @@ export default async function ProgramBuilderPage({ params }: { params: { id: str
         </form>
       </section>
 
+      {/* Custom questions (Stage 2) */}
+      <section className="card flex flex-col gap-3 p-6">
+        <h2 className="text-2xl">Registration questions</h2>
+        {attachedQuestions.map((q) => (
+          <form key={q.id} action={detachQuestionAction} className="flex items-center gap-3 text-sm">
+            <input type="hidden" name="programId" value={program.id} />
+            <input type="hidden" name="questionId" value={q.id} />
+            <span className="text-ink">{q.label}</span>
+            <span className="tag">{q.qtype}</span>
+            {q.required_effective && <span className="tag" style={{ color: 'var(--accent)', borderColor: 'var(--accent)' }}>required</span>}
+            <button type="submit" className="btn-ghost btn-sm text-neg ml-auto">Remove</button>
+          </form>
+        ))}
+        {attachedQuestions.length === 0 && <p className="text-sm text-silver">No questions yet.</p>}
+        <form action={attachQuestionAction} className="flex items-end gap-2 border-t border-hairline pt-3">
+          <input type="hidden" name="programId" value={program.id} />
+          <div className="flex-1">
+            <label className="field-label">Add from library</label>
+            <select name="questionId" className="input text-sm">
+              {allQuestions.filter((q) => !attachedIds.has(q.id)).map((q) => <option key={q.id} value={q.id}>{q.label} ({q.qtype})</option>)}
+            </select>
+          </div>
+          <button type="submit" className="btn-ghost btn-sm">Attach</button>
+          <a href="/programs/questions" className="btn-ghost btn-sm">Manage library ↗</a>
+        </form>
+      </section>
+
       <p className="text-sm text-silver">
-        Custom questions (Stage 2), registration + cart (Stage 3), products/jerseys (Stage 5), waivers (Stage 6) and refunds (Stage 7) attach to this program as those stages land.
+        Registration + cart (Stage 3), products/jerseys (Stage 5), waivers (Stage 6) and refunds (Stage 7) attach as those stages land.
       </p>
     </main>
   );

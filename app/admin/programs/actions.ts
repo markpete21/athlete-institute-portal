@@ -109,6 +109,22 @@ export async function unassignStaffAction(formData: FormData): Promise<void> {
   revalidatePath(`/programs/${id}`);
 }
 
+export async function attachQuestionAction(formData: FormData): Promise<void> {
+  const session = await requireStaff();
+  const id = Number(formData.get('programId'));
+  const { attachQuestion } = await import('@/lib/programs/questions');
+  await attachQuestion(id, Number(formData.get('questionId')), session.userId!);
+  revalidatePath(`/programs/${id}`);
+}
+
+export async function detachQuestionAction(formData: FormData): Promise<void> {
+  const session = await requireStaff();
+  const id = Number(formData.get('programId'));
+  const { detachQuestion } = await import('@/lib/programs/questions');
+  await detachQuestion(id, Number(formData.get('questionId')), session.userId!);
+  revalidatePath(`/programs/${id}`);
+}
+
 export async function generateSessionsAction(formData: FormData): Promise<void> {
   const session = await requireStaff();
   const id = Number(formData.get('programId'));
