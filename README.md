@@ -69,3 +69,23 @@ GoDaddy CNAMEs `play` and `admin` → `cname.vercel-dns.com`, and add both domai
 The pricing function (`packages/foundation/src/pricing.ts`, `npm run test:pricing`) is the single owner of money math platform-wide — extend it, never re-implement (see its header for the canonical order + redemption scopes). Playbook runbook: [docs/playbook-import.md](docs/playbook-import.md).
 
 Conventions docs (schema naming, RLS patterns, audit-log usage) land with the first schema work (Stage 4/5) as `docs/schema-conventions.md`.
+
+## TV displays — device setup
+
+Each display configured at `admin.…/displays` gets a **public unguessable URL**
+(`play.athleteinstitute.ca/display/<token>`). The token is the access control —
+treat the URL like a password (regenerate by deleting/recreating the display).
+Pages auto-refresh every 3 minutes and need zero interaction after boot.
+
+Point any of these at the URL:
+
+- **Fire TV Stick** (cheapest): install *Fully Kiosk Browser* (or *Silk*), set
+  the display URL as the start page, enable kiosk/autostart.
+- **Chromecast / Google TV**: open the URL in Chrome and *Cast tab*, or use a
+  kiosk app on Google TV.
+- **Mini-PC / Raspberry Pi** (most reliable): boot Chromium in kiosk mode —
+  `chromium --kiosk --noerrdialogs --disable-session-crashed-bubble "<url>"`.
+
+Layout: left panel is 9:16 portrait media (single image, video, or a mixed
+slideshow — per template), schedule fills the rest. Only bookings flagged
+`show_on_public_schedule` ever appear.
