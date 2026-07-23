@@ -27,6 +27,7 @@ export interface RentalLine {
   ends_at: string;
   line_total_cents: number;
   booking_id: number | null;
+  series_id: number | null;
   sort_order: number;
 }
 
@@ -71,7 +72,7 @@ export interface Rental {
 const R_COLS =
   'id, title, status, is_internal, business_unit_id, booking_type, booking_type_other, profile_id, organization_id, family_id, contact_name, contact_email, contact_phone, notes, deposit_pct, subtotal_cents, tax_cents, total_cents, deposit_cents, quote_token, waiver_id';
 const L_COLS =
-  'id, rental_id, facility_id, facility_name, rate_mode, unit_rate_cents, starts_at, ends_at, line_total_cents, booking_id, sort_order';
+  'id, rental_id, facility_id, facility_name, rate_mode, unit_rate_cents, starts_at, ends_at, line_total_cents, booking_id, series_id, sort_order';
 const A_COLS = 'id, rental_id, line_id, addon_id, name, pricing_mode, unit_price_cents, qty, total_cents';
 
 // ---------------------------------------------------------------------------
@@ -209,6 +210,7 @@ export async function addRentalLine(input: {
   startsAt: string;
   endsAt: string;
   rateCentsOverride?: number;
+  seriesId?: number | null;
   actorClerkId: string;
 }): Promise<{ line: RentalLine } & AvailabilityReport> {
   const db = supabaseAdmin();
@@ -241,6 +243,7 @@ export async function addRentalLine(input: {
     isInternal: rental.is_internal,
     familyId: rental.family_id,
     sourceRef: `rental:${input.rentalId}`,
+    seriesId: input.seriesId ?? null,
     actorClerkId: input.actorClerkId,
   });
 
@@ -257,6 +260,7 @@ export async function addRentalLine(input: {
       ends_at: input.endsAt,
       line_total_cents: total,
       booking_id: created.booking.id,
+      series_id: input.seriesId ?? null,
     })
     .select(L_COLS)
     .single();
@@ -264,6 +268,75 @@ export async function addRentalLine(input: {
 
   await recomputeTotals(input.rentalId);
   return { line: line as RentalLine, available: created.available, conflicts: created.conflicts, warnings: created.warnings };
+}
+
+/**
+ * Recurring rental (Module 3 Stage 6): expand a weekly pattern (via the
+ * Module 2 recurrence engine) and add one line per date under THIS one rental
+ * agreement, all sharing a booking_series. Returns per-date conflicts so a
+ * single instance can be resolved without touching the rest of the series.
+ */
+export async function addRecurringRentalLines(input: {
+  rentalId: number;
+  facilityId: number;
+  rateMode: RateMode;
+  pattern: import('@ai/foundation').WeeklyPattern;
+  startDate: string;
+  startTime: string;
+  endTime: string;
+  until?: string;
+  count?: number;
+  rateCentsOverride?: number;
+  actorClerkId: string;
+}): Promise<{ lineCount: number; conflictedDates: string[] }> {
+  const { expandRecurrence } = await import('@ai/foundation');
+  const occurrences = expandRecurrence({
+    pattern: input.pattern,
+    startDate: input.startDate,
+    startTime: input.startTime,
+    endTime: input.endTime,
+    until: input.until,
+    count: input.count,
+  });
+  if (occurrences.length === 0) throw new Error('Pattern generates no dates.');
+
+  const db = supabaseAdmin();
+  const { data: rental } = await db.from('rentals').select('title').eq('id', input.rentalId).single();
+  const { data: facility } = await db.from('facilities').select('name').eq('id', input.facilityId).single();
+  const { data: series, error } = await db
+    .from('booking_series')
+    .insert({
+      pattern: input.pattern,
+      start_date: input.startDate,
+      start_time: input.startTime,
+      end_time: input.endTime,
+      until_date: input.until ?? null,
+      occurrence_count: input.count ?? null,
+      facility_id: input.facilityId,
+      title: rental!.title,
+      source: 'rental',
+      created_by: input.actorClerkId,
+    })
+    .select('id')
+    .single();
+  if (error) throw new Error(`series create failed: ${error.message}`);
+
+  const conflictedDates: string[] = [];
+  for (const occ of occurrences) {
+    const res = await addRentalLine({
+      rentalId: input.rentalId,
+      facilityId: input.facilityId,
+      rateMode: input.rateMode,
+      startsAt: occ.starts_at,
+      endsAt: occ.ends_at,
+      rateCentsOverride: input.rateCentsOverride,
+      seriesId: series.id,
+      actorClerkId: input.actorClerkId,
+    });
+    if (res.conflicts.length > 0) conflictedDates.push(occ.date);
+  }
+  void facility;
+  return { lineCount: occurrences.length, conflictedDates };
 }
 
 export async function removeRentalLine(lineId: number, actorClerkId: string): Promise<void> {
