@@ -10,7 +10,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test:pricing": "tsc packages/foundation/src/pricing.ts --module esnext --target es2022 --moduleResolution bundler --outDir packages/foundation/src/__compiled__ && node packages/foundation/src/pricing.test.mjs"
   },
   "dependencies": {
     "@ai/foundation": "file:packages/foundation",

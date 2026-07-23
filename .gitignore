@@ -20,3 +20,4 @@ build/
 
 # vercel
 .vercel
+__compiled__/
