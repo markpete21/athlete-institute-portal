@@ -109,6 +109,14 @@ export async function unassignStaffAction(formData: FormData): Promise<void> {
   revalidatePath(`/programs/${id}`);
 }
 
+export async function attachProgramWaiverAction(formData: FormData): Promise<void> {
+  const session = await requireStaff();
+  const id = Number(formData.get('programId'));
+  const { attachWaiverToProgram } = await import('@/lib/waivers');
+  await attachWaiverToProgram(id, formData.get('waiverId') ? Number(formData.get('waiverId')) : null, session.userId!);
+  revalidatePath(`/programs/${id}`);
+}
+
 export async function attachQuestionAction(formData: FormData): Promise<void> {
   const session = await requireStaff();
   const id = Number(formData.get('programId'));

@@ -161,3 +161,51 @@ export async function attachWaiverToRental(rentalId: number, waiverId: number | 
   if (error) throw new Error(`attach waiver failed: ${error.message}`);
   await audit({ actorId: actorClerkId, action: 'rental.waiver-attached', target: `rental:${rentalId}`, meta: { waiver_id: waiverId } });
 }
+
+// --- Program waivers (Module 4 Stage 6) -------------------------------------
+// Programs sign ONE waiver per FAMILY per program (not per participant), valid
+// for 1 year before a re-sign is required.
+
+export const WAIVER_VALIDITY_DAYS = 365;
+
+export async function attachWaiverToProgram(programId: number, waiverId: number | null, actorClerkId: string): Promise<void> {
+  const { error } = await supabaseAdmin().from('programs').update({ waiver_id: waiverId }).eq('id', programId);
+  if (error) throw new Error(`attach waiver failed: ${error.message}`);
+  await audit({ actorId: actorClerkId, action: 'program.waiver-attached', target: `program:${programId}`, meta: { waiver_id: waiverId } });
+}
+
+/** Family's signature for a program waiver (keyed by HoH signer), latest first. */
+export async function familyProgramSignature(programId: number, hohProfileId: number, waiverId: number): Promise<WaiverSignature | null> {
+  const { data, error } = await supabaseAdmin()
+    .from('waiver_signatures')
+    .select(S_COLS)
+    .eq('entity_type', 'program')
+    .eq('entity_id', programId)
+    .eq('waiver_id', waiverId)
+    .eq('signer_profile_id', hohProfileId)
+    .order('signed_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (error) throw new Error(error.message);
+  return (data as WaiverSignature) ?? null;
+}
+
+/**
+ * Is the program's attached waiver satisfied for a family? Requires a signature
+ * by the family's HoH at the current version AND within the 1-year validity.
+ */
+export async function isProgramWaiverSatisfied(programId: number, familyId: number | null): Promise<boolean> {
+  const db = supabaseAdmin();
+  const { data: program } = await db.from('programs').select('waiver_id').eq('id', programId).maybeSingle();
+  const waiverId = program?.waiver_id as number | null | undefined;
+  if (!waiverId) return true;           // no waiver attached
+  if (!familyId) return false;          // waiver required but no family to sign
+  const { data: fam } = await db.from('families').select('hoh_profile_id').eq('id', familyId).single();
+  if (!fam?.hoh_profile_id) return false;
+
+  const [waiver, sig] = await Promise.all([getWaiver(waiverId), familyProgramSignature(programId, fam.hoh_profile_id, waiverId)]);
+  if (!waiver || !sig) return false;
+  if (sig.waiver_version !== waiver.version) return false;
+  const ageDays = (Date.now() - Date.parse(sig.signed_at)) / 86400_000;
+  return ageDays <= WAIVER_VALIDITY_DAYS;
+}

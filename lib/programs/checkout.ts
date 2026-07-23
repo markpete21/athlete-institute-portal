@@ -154,6 +154,16 @@ export async function placeProgramOrder(input: PlaceOrderInput): Promise<{ order
   const regs = await loadRegs(input.registrationIds);
   if (regs.length === 0) throw new Error('No registrations to check out.');
   const familyId = regs.find((r) => r.family_id)?.family_id ?? null;
+
+  // Waiver gate (Stage 6): every distinct program's attached waiver must be
+  // signed by the family (one per family per program, 1-yr validity).
+  const { isProgramWaiverSatisfied } = await import('@/lib/waivers');
+  for (const pid of [...new Set(regs.map((r) => r.program_id))]) {
+    if (!(await isProgramWaiverSatisfied(pid, familyId))) {
+      throw new Error('A required waiver for this program has not been signed by your household.');
+    }
+  }
+
   const quote = await quoteCheckout(input.registrationIds, input);
 
   // Add-ons: fixed-price merch/gear, added after discounts (no points, per spec).

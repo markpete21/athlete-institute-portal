@@ -4,8 +4,10 @@ import { BRANDS, PROGRAM_CATEGORIES, buildTree, flattenTree, formatCAD, type Fac
 import { supabaseAdmin } from '@ai/foundation/supabase';
 import { getProgram } from '@/lib/programs/programs';
 import { listQuestions, programQuestions } from '@/lib/programs/questions';
+import { listWaivers } from '@/lib/waivers';
 import {
   assignStaffAction,
+  attachProgramWaiverAction,
   attachQuestionAction,
   detachQuestionAction,
   generateSessionsAction,
@@ -33,7 +35,7 @@ export default async function ProgramBuilderPage({ params }: { params: { id: str
   ]);
   const ordered = flattenTree(buildTree((facRows ?? []) as FacilityNode[]));
   const playBase = process.env.NEXT_PUBLIC_PLAY_URL ?? 'https://play.athleteinstitute.ca';
-  const [attachedQuestions, allQuestions] = await Promise.all([programQuestions(program.id), listQuestions()]);
+  const [attachedQuestions, allQuestions, waivers] = await Promise.all([programQuestions(program.id), listQuestions(), listWaivers()]);
   const attachedIds = new Set(attachedQuestions.map((q) => q.id));
 
   return (
@@ -198,8 +200,24 @@ export default async function ProgramBuilderPage({ params }: { params: { id: str
         </form>
       </section>
 
+      {/* Waiver (Stage 6) + gear link (Stage 5) */}
+      <section className="card flex flex-wrap items-end gap-4 p-6">
+        <form action={attachProgramWaiverAction} className="flex items-end gap-2">
+          <input type="hidden" name="programId" value={program.id} />
+          <div>
+            <label className="field-label">Waiver (one per family, 1-yr validity)</label>
+            <select name="waiverId" defaultValue={program.waiver_id ?? ''} className="input text-sm">
+              <option value="">No waiver</option>
+              {waivers.map((w) => <option key={w.id} value={w.id}>{w.name} (v{w.version})</option>)}
+            </select>
+          </div>
+          <button type="submit" className="btn-ghost btn-sm">Attach</button>
+        </form>
+        <a href={`/programs/${program.id}/gear`} className="btn-ghost btn-sm">Gear order sheet ↗</a>
+      </section>
+
       <p className="text-sm text-silver">
-        Registration + cart (Stage 3), products/jerseys (Stage 5), waivers (Stage 6) and refunds (Stage 7) attach as those stages land.
+        Refund/proration (Stage 7) and the public catalog (Stage 8) attach as those stages land.
       </p>
     </main>
   );
