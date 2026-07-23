@@ -76,6 +76,18 @@ export function ageEligible(
   return true;
 }
 
+/** Spots left given capacity, active registrations, and live holds. null = unlimited. */
+export function spotsRemaining(
+  capacity: number | null | undefined,
+  activeRegistrations: number,
+  activeHolds: number,
+): number | null {
+  if (capacity == null) return null;
+  return Math.max(0, capacity - activeRegistrations - activeHolds);
+}
+
+export const HOLD_MINUTES = 10;
+
 /**
  * Retention rate: of LAST season's participants in a program, the % who
  * returned THIS season. Returns 0 when there were none last season.
