@@ -125,8 +125,18 @@ export async function quoteCheckout(registrationIds: number[], ctx: CheckoutCont
   return { ...result, earnablePoints: Math.floor(eligibleSpend / 100) };
 }
 
+export interface OrderAddonInput {
+  registrationId?: number | null;
+  productId?: number | null;
+  variantId?: number | null;
+  label: string;
+  priceCents: number;
+  qty?: number;
+}
+
 export interface PlaceOrderInput extends CheckoutContext {
   registrationIds: number[];
+  addons?: OrderAddonInput[];  // purchased merch/gear add-ons (fixed price, no discounts/points)
   payInFull?: boolean;
   installmentCount?: number;   // when !payInFull
   firstDueDate?: string;       // YYYY-MM-DD
@@ -146,27 +156,38 @@ export async function placeProgramOrder(input: PlaceOrderInput): Promise<{ order
   const familyId = regs.find((r) => r.family_id)?.family_id ?? null;
   const quote = await quoteCheckout(input.registrationIds, input);
 
+  // Add-ons: fixed-price merch/gear, added after discounts (no points, per spec).
+  const addonsCents = (input.addons ?? []).reduce((a, x) => a + x.priceCents * (x.qty ?? 1), 0);
+  const orderTotal = quote.totalCents + addonsCents;
+
   const { data: order, error } = await db
     .from('program_orders')
     .insert({
       family_id: familyId,
       cart_id: null,
       promo_code: input.promoCents ? 'PROMO' : null,
-      subtotal_cents: quote.subtotalCents,
+      subtotal_cents: quote.subtotalCents + addonsCents,
       staff_credit_cents: quote.staffCreditUsedCents,
       promo_cents: quote.promoUsedCents,
       credit_on_account_cents: quote.creditOnAccountUsedCents,
       play_points_used: quote.playPointsUsed,
-      total_cents: quote.totalCents,
+      total_cents: orderTotal,
       points_earned: quote.earnablePoints,
       pay_in_full: input.payInFull ?? true,
-      status: quote.totalCents === 0 ? 'paid' : input.payInFull === false ? 'plan_active' : 'pending',
+      status: orderTotal === 0 ? 'paid' : input.payInFull === false ? 'plan_active' : 'pending',
       created_by: input.actorClerkId,
     })
     .select('id')
     .single();
   if (error) throw new Error(`order create failed: ${error.message}`);
   const orderId = order.id as number;
+
+  if ((input.addons ?? []).length) {
+    const { error: aErr } = await db.from('order_addons').insert(
+      input.addons!.map((x) => ({ order_id: orderId, registration_id: x.registrationId ?? null, product_id: x.productId ?? null, variant_id: x.variantId ?? null, label: x.label, price_cents: x.priceCents, qty: x.qty ?? 1 })),
+    );
+    if (aErr) throw new Error(`add-ons save failed: ${aErr.message}`);
+  }
 
   // Spend the household balances atomically (never overdraw - RPCs guard).
   if (familyId) {
@@ -187,14 +208,14 @@ export async function placeProgramOrder(input: PlaceOrderInput): Promise<{ order
     await db.from('registrations').update({ order_id: orderId, line_total_cents: l.totalCents }).eq('id', Number(l.id));
   }
 
-  // Installment schedule.
+  // Installment schedule (on the order total incl. add-ons).
   const today = torontoToday();
   const schedule =
-    quote.totalCents === 0
+    orderTotal === 0
       ? []
       : input.payInFull === false && (input.installmentCount ?? 1) > 1
-        ? equalInstallments(quote.totalCents, input.installmentCount!, input.firstDueDate ?? today, input.intervalDays ?? 30)
-        : [{ seq: 1, label: 'Payment', amount_cents: quote.totalCents, due_date: today, is_deposit: false }];
+        ? equalInstallments(orderTotal, input.installmentCount!, input.firstDueDate ?? today, input.intervalDays ?? 30)
+        : [{ seq: 1, label: 'Payment', amount_cents: orderTotal, due_date: today, is_deposit: false }];
   if (schedule.length) {
     const { error: iErr } = await db.from('program_installments').insert(
       schedule.map((s) => ({ order_id: orderId, seq: s.seq, label: s.label, amount_cents: s.amount_cents, due_date: s.due_date })),
