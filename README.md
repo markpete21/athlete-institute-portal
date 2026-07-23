@@ -82,6 +82,20 @@ The pricing function (`packages/foundation/src/pricing.ts`, `npm run test:pricin
 
 `lib/bookings.ts` is **the** integration contract — Rentals (M3), Programs (M4+) and events create every booking through it (`checkAvailability`, `createBooking`, `createRecurringBookings`, `cancelBooking`, `listBookings`). Conflicts are returned, never silently blocked — the operator resolves them in `/conflicts`.
 
+## Module 3 — Rentals ✅ (complete)
+
+| # | Stage | |
+|---|-------|---|
+| 1 | Rates + add-ons + public-open flags (migration 0012) | ✅ 6/6 |
+| 2 | Quote builder + online quote/PDF (migration 0013) | ✅ 11/11 |
+| 3 | Internal/external + business units | ✅ 4/4 |
+| 4 | Payment schedules + **status state machine** (migration 0014) | ✅ 24/24 + 7/7 |
+| 5 | Waiver editor + e-sign + confirm-gate (migration 0015) — **reused by M4** | ✅ 7/7 |
+| 6 | Recurring rentals (one agreement, M2 recurrence) | ✅ |
+| 7 | Org rental request flow | ✅ 5/5 |
+
+Rentals book through the M2 API, price through the M1 function, charge on the M0 Stripe rails. **Migrations now apply hands-free** via `node scripts/run-migration.mjs <file>` (bootstrap: `supabase/migrations/0000_exec_sql.sql`, pasted once).
+
 Conventions docs (schema naming, RLS patterns, audit-log usage) land with the first schema work (Stage 4/5) as `docs/schema-conventions.md`.
 
 ## TV displays — device setup
