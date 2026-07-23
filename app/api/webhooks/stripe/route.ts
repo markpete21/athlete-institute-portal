@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { verifyWebhook } from '@ai/foundation/stripe';
 import { dispatchBillingEvent, mapStripeEvent } from '@ai/foundation';
 
+export const dynamic = 'force-dynamic';
+
 /**
  * Stripe webhook sink (Module 0 §4). Verifies the signature against the RAW
  * body, normalizes the event, and fans it out to every onBillingEvent()

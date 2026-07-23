@@ -27,6 +27,8 @@ export * from './rentals-core';
 export * from './programs-core';
 export * from './programs-refunds';
 export * from './gear';
+export * from './staff-core';
+export * from './staff-pay';
 export * from './billing-events';
 export * from './notify-templates';
 export * from './money';

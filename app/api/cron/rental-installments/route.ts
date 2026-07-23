@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { processDueInstallments } from '@/lib/rentals/payments';
 
+export const dynamic = 'force-dynamic';
+
 /**
  * Cron: process due rental installments (PAD auto-charge or invoice+reminder)
  * and flip past-due rentals to overdue. Wire in vercel.json (e.g. daily 6am):

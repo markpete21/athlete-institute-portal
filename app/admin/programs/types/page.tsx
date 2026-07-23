@@ -15,7 +15,7 @@ export default async function ProgramTypesPage() {
       <header className="flex flex-col gap-2 border-b border-hairline pb-6">
         <p className="label text-[11px]">Admin · Programs</p>
         <h1 className="text-5xl">Program types<span style={{ color: 'var(--accent)' }}>.</span></h1>
-        <p className="text-body">Each type seeds a new program's category and proration method (both overridable per program).</p>
+        <p className="text-body">Each type seeds a new program&apos;s category and proration method (both overridable per program).</p>
       </header>
 
       {types.map((t) => (

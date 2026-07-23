@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { processConflictReminders } from '@/lib/conflicts';
 
+export const dynamic = 'force-dynamic';
+
 /**
  * Cron endpoint: sends due keep-both double-booking reminders (Module 2
  * Stage 3). Wire in Vercel as a scheduled job (e.g. hourly):

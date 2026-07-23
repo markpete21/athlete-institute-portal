@@ -1,8 +1,10 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { brandCssVars, formatCAD, resolveBrand } from '@ai/foundation';
+import { supabaseAdmin } from '@ai/foundation/supabase';
 import { getPortalSession } from '@/lib/auth';
 import { getProgramByToken, logFlowEvent } from '@/lib/programs/catalog';
+import { StaffGrid, type PublicStaff } from '@/components/StaffGrid';
 
 export const dynamic = 'force-dynamic';
 
@@ -20,6 +22,17 @@ export default async function ProgramDetailPage({ params }: { params: { token: s
 
   const brandVars = brandCssVars(resolveBrand(program.brand_key)) as React.CSSProperties;
   const full = program.status === 'full' || program.spots_left === 0;
+
+  // Assigned staff shown publicly (photo + role + bio popup).
+  const { data: assignRows } = await supabaseAdmin()
+    .from('staff_assignments')
+    .select('role_label, staff(id, first_name, last_name, bio, photo_url)')
+    .eq('program_id', program.id)
+    .eq('show_public', true);
+  const staff: PublicStaff[] = (assignRows ?? []).map((a) => {
+    const s = a.staff as unknown as { id: number; first_name: string; last_name: string; bio: string | null; photo_url: string | null };
+    return { id: s.id, name: `${s.first_name} ${s.last_name}`, role: a.role_label, photoUrl: s.photo_url, bio: s.bio };
+  });
 
   return (
     <main style={brandVars} className="mx-auto flex min-h-screen max-w-2xl flex-col gap-6 px-6 py-16">
@@ -45,6 +58,13 @@ export default async function ProgramDetailPage({ params }: { params: { token: s
           <Link href="/sign-in" className="btn-gold">Sign in to register</Link>
         )}
       </div>
+
+      {staff.length > 0 && (
+        <section className="flex flex-col gap-3 border-t border-hairline pt-6">
+          <h2 className="text-2xl">Coaches</h2>
+          <StaffGrid staff={staff} />
+        </section>
+      )}
 
       <Link href="/programs" className="label text-[11px] hover:text-ink">← All programs</Link>
     </main>

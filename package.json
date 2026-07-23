@@ -15,7 +15,8 @@
     "test:availability": "tsc packages/foundation/src/availability.ts --module esnext --target es2022 --moduleResolution bundler --outDir packages/foundation/src/__compiled__ && node scripts/fix-compiled-imports.mjs && node packages/foundation/src/availability.test.mjs",
     "test:recurrence": "tsc packages/foundation/src/recurrence.ts --module esnext --target es2022 --moduleResolution bundler --outDir packages/foundation/src/__compiled__ && node scripts/fix-compiled-imports.mjs && node packages/foundation/src/recurrence.test.mjs",
     "test:rentals": "tsc packages/foundation/src/rentals-core.ts --module esnext --target es2022 --moduleResolution bundler --outDir packages/foundation/src/__compiled__ && node scripts/fix-compiled-imports.mjs && node packages/foundation/src/rentals-core.test.mjs",
-    "test:refunds": "tsc packages/foundation/src/programs-refunds.ts packages/foundation/src/programs-core.ts packages/foundation/src/family-policy.ts --module esnext --target es2022 --moduleResolution bundler --outDir packages/foundation/src/__compiled__ && node scripts/fix-compiled-imports.mjs && node packages/foundation/src/programs-refunds.test.mjs"
+    "test:refunds": "tsc packages/foundation/src/programs-refunds.ts packages/foundation/src/programs-core.ts packages/foundation/src/family-policy.ts --module esnext --target es2022 --moduleResolution bundler --outDir packages/foundation/src/__compiled__ && node scripts/fix-compiled-imports.mjs && node packages/foundation/src/programs-refunds.test.mjs",
+    "test:staff": "tsc packages/foundation/src/staff-core.ts packages/foundation/src/staff-pay.ts packages/foundation/src/money.ts --module esnext --target es2022 --moduleResolution bundler --outDir packages/foundation/src/__compiled__ && node scripts/fix-compiled-imports.mjs && node packages/foundation/src/staff.test.mjs"
   },
   "dependencies": {
     "@ai/foundation": "file:packages/foundation",
