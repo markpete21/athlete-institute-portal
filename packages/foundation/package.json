@@ -8,9 +8,12 @@
   "exports": {
     ".": "./src/index.ts",
     "./stripe": "./src/stripe.ts",
-    "./notify": "./src/notify.ts"
+    "./notify": "./src/notify.ts",
+    "./supabase": "./src/supabase.ts",
+    "./storage": "./src/storage.ts"
   },
   "dependencies": {
+    "@supabase/supabase-js": "^2.109.0",
     "resend": "^4.0.1",
     "stripe": "^22.3.2",
     "twilio": "^6.0.2",
