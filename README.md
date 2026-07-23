@@ -96,6 +96,21 @@ The pricing function (`packages/foundation/src/pricing.ts`, `npm run test:pricin
 
 Rentals book through the M2 API, price through the M1 function, charge on the M0 Stripe rails. **Migrations now apply hands-free** via `node scripts/run-migration.mjs <file>` (bootstrap: `supabase/migrations/0000_exec_sql.sql`, pasted once).
 
+## Module 4 — Program Framework ✅ (complete — the spine every program type extends)
+
+| # | Stage | |
+|---|-------|---|
+| 1 | Program spine + type manager (0016) | ✅ 11/11 |
+| 2 | Custom question builder (0017) | ✅ 7/7 |
+| 3 | Registration cart + held spots + waitlist (0018) | ✅ 8/8 |
+| 4 | Pricing + payment-plan engine (0019) | ✅ 7/7 |
+| 5 | Products with variants + jersey/gear order (0020) | ✅ 8/8 |
+| 6 | Waivers (reuse M3, per-family, 1-yr) | ✅ 7/7 |
+| 7 | **Refund/proration engine** (0021 flow events) | ✅ 19/19 + 5/5 |
+| 8 | Abandoned-cart capture + public catalog | ✅ 7/7 |
+
+`lib/programs/*` is the contract the program-type modules (7 Leagues, 8 Camps, 9 Tournaments, 10 General, 11 Club, 12 Academy) extend. The three highest-risk engines flagged by the master doc — M1 pricing, M2 conflict, M4 refund/proration — are all built and worked-example-tested (`npm run test:pricing|availability|recurrence|rentals|refunds`).
+
 Conventions docs (schema naming, RLS patterns, audit-log usage) land with the first schema work (Stage 4/5) as `docs/schema-conventions.md`.
 
 ## TV displays — device setup
