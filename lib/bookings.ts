@@ -235,6 +235,87 @@ export async function cancelBooking(id: number, actorClerkId: string, reason?: s
   await audit({ actorId: actorClerkId, action: 'booking.canceled', target: `booking:${id}`, meta: { reason } });
 }
 
+// ---------------------------------------------------------------------------
+// Recurring bookings (Stage 4) - the API Module 4's program builder calls.
+// ---------------------------------------------------------------------------
+
+export interface CreateSeriesInput extends Omit<CreateBookingInput, 'startsAt' | 'endsAt' | 'seriesId'> {
+  pattern: import('@ai/foundation').WeeklyPattern;
+  startDate: string; // YYYY-MM-DD Toronto
+  startTime: string; // HH:MM Toronto wall time
+  endTime: string;
+  until?: string;
+  count?: number;
+}
+
+export interface SeriesResult {
+  seriesId: number;
+  occurrences: Array<{ date: string; booking: BookingRecord; conflicts: Conflict[]; warnings: HoursWarning[] }>;
+  /** Dates whose occurrence collided - resolve individually in the queue. */
+  conflictedDates: string[];
+}
+
+/**
+ * Create a recurring series: expands the pattern (DST-correct Toronto wall
+ * time), inserts each occurrence as its own booking (series_id set), and
+ * reports per-DATE conflicts so a collision on one instance is resolved for
+ * just that date - the rest of the series stands (spec).
+ */
+export async function createRecurringBookings(input: CreateSeriesInput): Promise<SeriesResult> {
+  const { expandRecurrence } = await import('@ai/foundation');
+  const occurrences = expandRecurrence({
+    pattern: input.pattern,
+    startDate: input.startDate,
+    startTime: input.startTime,
+    endTime: input.endTime,
+    until: input.until,
+    count: input.count,
+  });
+  if (occurrences.length === 0) throw new Error('Pattern generates no occurrences.');
+
+  const { data: series, error } = await supabaseAdmin()
+    .from('booking_series')
+    .insert({
+      pattern: input.pattern,
+      start_date: input.startDate,
+      start_time: input.startTime,
+      end_time: input.endTime,
+      until_date: input.until ?? null,
+      occurrence_count: input.count ?? null,
+      facility_id: input.facilityId,
+      title: input.title.trim(),
+      source: input.source,
+      created_by: input.actorClerkId,
+    })
+    .select('id')
+    .single();
+  if (error) throw new Error(`series create failed: ${error.message}`);
+
+  const results: SeriesResult['occurrences'] = [];
+  for (const occ of occurrences) {
+    const created = await createBooking({
+      ...input,
+      startsAt: occ.starts_at,
+      endsAt: occ.ends_at,
+      seriesId: series.id,
+    });
+    results.push({ date: occ.date, booking: created.booking, conflicts: created.conflicts, warnings: created.warnings });
+  }
+
+  await audit({
+    actorId: input.actorClerkId,
+    action: 'booking_series.created',
+    target: `booking_series:${series.id}`,
+    meta: { occurrences: results.length, conflicted: results.filter((r) => r.conflicts.length).length },
+  });
+
+  return {
+    seriesId: series.id,
+    occurrences: results,
+    conflictedDates: results.filter((r) => r.conflicts.length > 0).map((r) => r.date),
+  };
+}
+
 export interface ListBookingsFilter {
   from: string;
   to: string;
