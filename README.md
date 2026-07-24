@@ -513,6 +513,41 @@ and shown on the family profile.
 
 Verify: `/api/dev/promotions-verify` (12/12). Build green.
 
+## Module 21 — AI Assistant Platform ("Assist") ✅
+
+One shared core, three scoped surfaces, **read-only to start**. Code:
+`lib/assist/tools.ts` (grounded-retrieval registry) + `lib/assist/core.ts`
+(the loop), `/api/assist`, `app/play/assist` (public + concierge),
+`app/admin/assist` (copilot), migration 0039.
+
+**Grounded retrieval (non-negotiable):** Assist answers ONLY from read-only
+tool calls against live data — catalog (`list_programs` /
+`get_program_details` / `get_policies`), the caller's own household
+(`my_registrations` / `my_balance` / `my_schedule`), and staff org reads
+(`unpaid_balances` / `program_stats` / `navigate`). Empty retrieval → an
+honest "I don't have that" + **human handoff (text/call/email**, editable in
+`assist_config`). The system prompt forbids invented programs/prices/dates.
+
+**Scope is enforced server-side by construction:** the public registry simply
+contains no personal-data tools; customer tools throw without the caller's
+`familyId`; admin tools throw without staff. `/api/assist` resolves the surface
+from the session — a client can never escalate.
+
+**Guardrails:** brand voice ("Assist", warm, community-first — Play. Compete.
+Grow.), clarify-then-handoff, off-topic deflection, **hourly rate limits**
+(public 20 / authed 60, log-backed per ip/family/profile, configurable), every
+query logged (`assist_logs`). **Model: `claude-sonnet-5`** (spec pinned
+`claude-sonnet-4-6`, superseded per project decision). Without
+`ANTHROPIC_API_KEY` every request degrades to the human handoff.
+
+**Admin copilot extras:** `navigate` resolves "take me to conflicts" to the
+exact admin route and the UI opens it. **Actions framework** (guided
+registration, pay, drafts) is the spec's later phase — the tool interface is
+ready for permission + confirmation gating.
+
+Verify: `/api/dev/assist-verify` (11/11 — scope, grounding, loop plumbing via
+injected mock model, handoff, rate limit). Build green.
+
 ## TV displays — device setup
 
 Each display configured at `admin.…/displays` gets a **public unguessable URL**
