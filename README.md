@@ -357,6 +357,41 @@ round and surfaced on the admin page (falls back to a stats line without
 `ANTHROPIC_API_KEY`). Seeded per-type forms (camp / league / quick review) in
 `feedback_forms`. Verify: `/api/dev/feedback-verify` (12/12). Build green.
 
+## Module 16 — Predictive Retention ✅
+
+**Rule-based and transparent — never a black box.** Code:
+`packages/foundation/src/retention-core.ts` (pure, `npm run test:retention`
+18/18), `lib/retention/retention.ts`, `app/admin/retention`,
+`/api/cron/retention`, migration 0034.
+
+**Signals** (all reused from existing module data — no new tracking):
+1. **Re-enroll timing vs their OWN history** (highest weight, scales with
+   lateness) — last year they'd registered by date X; that date passed with no
+   registration.
+2. Low feedback rating-of-record (M15).
+3. Abandoned re-registration (M4 cart capture).
+4. Payment friction — failed installments (M4 plans).
+5. Email disengagement — M13 opens trend.
+6. **Sibling gap** — one child re-enrolled, this one didn't.
+7. **Cross-app engagement trend** — audit-log activity across the shared
+   ecosystem; `engagementDrop()` weights **was-high-now-dark** far above
+   consistently-low-touch.
+
+**Output is always person + reason(s) + suggested action** — red (≥50) / amber
+(≥25) / green. Weights live in `retention_weights` and are editable on the
+dashboard (`updateWeights`). The daily cron recomputes all flags; Mondays send
+the **weekly digest** ("N families at risk") to `OPERATIONS_EMAIL` via the M13
+`retention.weekly_digest` trigger.
+
+**Dashboard** (`admin.…/retention`): sortable at-risk list with per-family
+reasons and **one-click actions** (send offer / assign call task / apply
+discount → `retention_tasks` + flag marked actioned).
+
+⚠️ **PIPEDA:** cross-app aggregation builds a behavioral profile — legitimate
+for the retention purpose, but **internal-only, purpose-limited, never exposed
+to families**. There is no public surface for any of this data. Verify:
+`/api/dev/retention-verify` (11/11). Build green.
+
 ## TV displays — device setup
 
 Each display configured at `admin.…/displays` gets a **public unguessable URL**
