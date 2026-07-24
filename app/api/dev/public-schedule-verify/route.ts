@@ -1,4 +1,4 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@ai/foundation/supabase';
 import { createBooking } from '@/lib/bookings';
 import { listBookings } from '@/lib/bookings';
@@ -8,7 +8,8 @@ import { listBookings } from '@/lib/bookings';
  * rentals/internal (HTTP fetch of /schedule), family_id linkage queryable,
  * defaults per source. Cleaned up.
  */
-export async function GET() {
+export async function GET(req: NextRequest) {
+  const base = `http://localhost:${req.nextUrl.port || 3000}`;
   if (process.env.NODE_ENV === 'production') {
     return NextResponse.json({ error: 'Not found' }, { status: 404 });
   }
@@ -47,7 +48,7 @@ export async function GET() {
     );
 
     // 2. the public page (unauthenticated HTTP) shows the program, hides the rest
-    const res = await fetch('http://localhost:3101/schedule', { headers: { Host: 'play.athleteinstitute.ca' }, cache: 'no-store' });
+    const res = await fetch(`${base}/schedule`, { headers: { Host: 'play.athleteinstitute.ca' }, cache: 'no-store' });
     const html = await res.text();
     record(
       'public page curated',

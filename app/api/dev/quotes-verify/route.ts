@@ -1,4 +1,4 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@ai/foundation/supabase';
 import { checkAvailability } from '@/lib/bookings';
 import { upsertRate } from '@/lib/rentals/rates';
@@ -19,7 +19,8 @@ import {
  * bookings, facility-attached per-hour addon uses line hours), public token
  * page over HTTP, line removal cancels its booking. Cleaned up.
  */
-export async function GET() {
+export async function GET(req: NextRequest) {
+  const base = `http://localhost:${req.nextUrl.port || 3000}`;
   if (process.env.NODE_ENV === 'production') {
     return NextResponse.json({ error: 'Not found' }, { status: 404 });
   }
@@ -107,7 +108,7 @@ export async function GET() {
     );
 
     // 4. public quote page over HTTP (unauthenticated)
-    const res = await fetch(`http://localhost:3101/quote/${rental.quote_token}`, { headers: { Host: 'play.athleteinstitute.ca' }, cache: 'no-store' });
+    const res = await fetch(`${base}/quote/${rental.quote_token}`, { headers: { Host: 'play.athleteinstitute.ca' }, cache: 'no-store' });
     const html = await res.text();
     record(
       'online quote link renders',

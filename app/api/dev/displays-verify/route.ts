@@ -1,4 +1,4 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@ai/foundation/supabase';
 import { createBooking } from '@/lib/bookings';
 import { createDisplay, getDisplayContent, upsertTemplate } from '@/lib/displays';
@@ -8,7 +8,8 @@ import { createDisplay, getDisplayContent, upsertTemplate } from '@/lib/displays
  * unauthenticated token-URL fetch (200 + only public bookings), facility
  * scoping, unknown token, today/upcoming split. Cleaned up.
  */
-export async function GET() {
+export async function GET(req: NextRequest) {
+  const base = `http://localhost:${req.nextUrl.port || 3000}`;
   if (process.env.NODE_ENV === 'production') {
     return NextResponse.json({ error: 'Not found' }, { status: 404 });
   }
@@ -28,7 +29,10 @@ export async function GET() {
     const today = new Date();
     const at = (h: number, plusDays = 0) => {
       const d = new Date(today.getTime() + plusDays * 86400_000);
-      return `${d.toISOString().slice(0, 10)}T${String(h).padStart(2, '0')}:00:00-04:00`;
+      // Toronto-local date (a UTC date rolls over at 8pm EDT and lands the
+      // booking on the wrong display day).
+      const iso = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Toronto', year: 'numeric', month: '2-digit', day: '2-digit' }).format(d);
+      return `${iso}T${String(h).padStart(2, '0')}:00:00-04:00`;
     };
 
     // Bookings: public event today on Dome; PRIVATE rental today on Dome;
@@ -66,7 +70,7 @@ export async function GET() {
     );
 
     // 3. UNAUTHENTICATED HTTP fetch of the token URL (the actual TV path)
-    const res = await fetch(`http://localhost:3101/display/${display.token}`, { cache: 'no-store' });
+    const res = await fetch(`${base}/display/${display.token}`, { cache: 'no-store' });
     const html = await res.text();
     record(
       'token URL public + renders public booking only',
@@ -75,7 +79,7 @@ export async function GET() {
     );
 
     // 4. unknown token -> configured-not-found page, still 200 (no auth leak)
-    const bad = await fetch('http://localhost:3101/display/not-a-real-token', { cache: 'no-store' });
+    const bad = await fetch(`${base}/display/not-a-real-token`, { cache: 'no-store' });
     const badHtml = await bad.text();
     record('unknown token shows not-configured', bad.status === 200 && badHtml.includes('not configured'), `HTTP ${bad.status}`);
   } catch (err) {

@@ -473,6 +473,16 @@ blocked; one referral per referred household. **Flag-not-block** fraud posture:
 staff flag suspicious referrals and can **claw back** (reason logged, both
 sides reversed).
 
+**Cross-app (ecosystem):** Play Points apply and are redeemable **across all
+Athlete Institute apps** (portal, tickets, live stream, future team app). The
+portal owns the household ledger; other apps earn/redeem through
+`/api/ecosystem/points` — server-to-server, gated by a shared
+`ECOSYSTEM_API_KEY` header (set the same value in every app's env), household
+resolved from the shared-Clerk user id. `GET ?clerkUserId=` → balance;
+`POST {clerkUserId, action: earn|redeem, points, reason}` → new balance
+(insufficient balance → 409, ledger reasons carry the source app for audit).
+Verify: `/api/dev/ecosystem-points-verify` (6/6).
+
 **Customer surface** (`play.…/points`): balance + ledger, referral link +
 season count, ladder progress, and the **disclaimer** (`POINTS_DISCLAIMER`)
 everywhere points appear. Earning notifies via the M13 `points.earned`

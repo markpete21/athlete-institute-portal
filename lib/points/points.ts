@@ -16,7 +16,7 @@ import { fireTrigger } from '@/lib/comms/notifications';
  */
 
 export const POINTS_DISCLAIMER =
-  'Play Points are earned on program registrations only and are not earned or redeemable on Academy, Club, or facility rentals. 100 points = $1. Points never expire.';
+  'Play Points work across all Athlete Institute apps - earn and redeem them here, on tickets, and on the live stream. Within the portal, points are earned on program registrations only and are not earned or redeemable on Academy, Club, or facility rentals. 100 points = $1. Points never expire.';
 
 export const REFERRAL_SEASON_CAP = 3;
 export const LOYALTY_LADDER: Array<{ seasons: number; points: number }> = [
