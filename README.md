@@ -181,6 +181,46 @@ does NOT use standard M4 proration. **Scholarships** apply (M1 pricing).
 `confirmedRosterHandoff(teamId)` hook lives here. Verify: `/api/dev/club-verify`
 (11/11). Build green.
 
+## Module 12 — Academy ✅ (final program-type module)
+
+Pure enrollment + billing over Module 4 — **no tryouts, no Competitive Play**
+(Academy teams never appear on the M6 public portal). Code:
+`packages/foundation/src/academy-core.ts` (pure, `npm run test:academy` 16/16),
+`lib/academy/academy.ts`, `app/admin/academy/*`, `app/play/academy/*`,
+migration 0030 (seeds Orangeville Prep Academy + the six OP teams).
+
+**Structure:** Academy → named Team (staff-managed). Each team defines **three
+tuition tiers** — Room & Board / Commuter / International — selected at
+enrollment.
+
+**Recruitment offer pipeline (no tryouts):** place an existing/new account on a
+team → **Selected** → send offer (single/bulk) → **Offered** → digital
+accept/decline at `play.…/academy/offer/[token]` → **Accepted / Declined**.
+Deposit required on acceptance, **applied toward tuition**.
+
+**Tuition & billing:**
+- **Scholarships** — flat-rate per-player (partial allowed), **applied BEFORE
+  the payment plan is split** (`tuitionAfterScholarship`); tracked on the
+  dashboard.
+- **Staff-dictated payment plans** — `academyPlanSchedule()` front-loads
+  installments to **complete by Feb 1** (tuition covers Sept–June). Deposit up
+  front, balance split evenly across the monthly due dates. `recalculateOwed()`
+  re-splits the unpaid balance across remaining months after a missed
+  installment (the "recalculate total owed" button).
+- **Processing fee** — a visible line item on card payments, **waived on PAD**
+  (`processingFeeCents`; PAD's lower cost is the incentive). ⚠️ Canadian card-
+  surcharge rules apply — **confirm the implementation with AI's payment
+  advisor** before go-live.
+- **Refunds** — full-year tuition commitment; staff adjust the plan case-by-case
+  (no auto-acceleration).
+
+**Dashboard:** scholarships awarded (total + per player), pipeline counts,
+accepted count, plan-completion date. **Re-enrollment** re-offers returning
+accepted players without the full pipeline (returning flag). Retention via
+`academyRetention()`. `rosterHandoff()` hands the accepted roster to the
+separate academy-management app (messaging is built there). Verify:
+`/api/dev/academy-verify` (12/12). Build green.
+
 ## TV displays — device setup
 
 Each display configured at `admin.…/displays` gets a **public unguessable URL**

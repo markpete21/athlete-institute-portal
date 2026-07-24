@@ -18,7 +18,8 @@
     "test:refunds": "tsc packages/foundation/src/programs-refunds.ts packages/foundation/src/programs-core.ts packages/foundation/src/family-policy.ts --module esnext --target es2022 --moduleResolution bundler --outDir packages/foundation/src/__compiled__ && node scripts/fix-compiled-imports.mjs && node packages/foundation/src/programs-refunds.test.mjs",
     "test:staff": "tsc packages/foundation/src/staff-core.ts packages/foundation/src/staff-pay.ts packages/foundation/src/money.ts --module esnext --target es2022 --moduleResolution bundler --outDir packages/foundation/src/__compiled__ && node scripts/fix-compiled-imports.mjs && node packages/foundation/src/staff.test.mjs",
     "test:competitive": "tsc packages/foundation/src/competitive.ts --module esnext --target es2022 --moduleResolution bundler --outDir packages/foundation/src/__compiled__ && node scripts/fix-compiled-imports.mjs && node packages/foundation/src/competitive.test.mjs",
-    "test:leagues": "tsc packages/foundation/src/leagues-core.ts --module esnext --target es2022 --moduleResolution bundler --outDir packages/foundation/src/__compiled__ && node scripts/fix-compiled-imports.mjs && node packages/foundation/src/leagues-core.test.mjs"
+    "test:leagues": "tsc packages/foundation/src/leagues-core.ts --module esnext --target es2022 --moduleResolution bundler --outDir packages/foundation/src/__compiled__ && node scripts/fix-compiled-imports.mjs && node packages/foundation/src/leagues-core.test.mjs",
+    "test:academy": "tsc packages/foundation/src/academy-core.ts packages/foundation/src/money.ts --module esnext --target es2022 --moduleResolution bundler --outDir packages/foundation/src/__compiled__ && node scripts/fix-compiled-imports.mjs && node packages/foundation/src/academy-core.test.mjs"
   },
   "dependencies": {
     "@ai/foundation": "file:packages/foundation",

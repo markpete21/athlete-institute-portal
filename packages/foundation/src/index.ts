@@ -36,6 +36,7 @@ export * from './notify-templates';
 export * from './money';
 export * from './tax';
 export * from './dates';
+export * from './academy-core';
 export * from './audit';
 // Server-only rails, imported from subpaths (keep this root edge-safe):
 //   '@ai/foundation/stripe'  — Stripe client rails
