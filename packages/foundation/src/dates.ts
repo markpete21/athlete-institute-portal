@@ -62,6 +62,18 @@ export function torontoToday(now: Date = new Date()): string {
   }).format(now);
 }
 
+/** Human-friendly Toronto label for a timestamp, e.g. "Tue, Jul 28, 6:00 PM". */
+export function torontoLabel(iso: string, now: Date = new Date(iso)): string {
+  return new Intl.DateTimeFormat('en-CA', {
+    timeZone: TIMEZONE,
+    weekday: 'short',
+    month: 'short',
+    day: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+  }).format(now);
+}
+
 // --- business-day math ------------------------------------------------------
 
 /** Parse an ISO date-only string to its UTC-noon Date (avoids DST edges). */

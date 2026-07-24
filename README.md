@@ -113,6 +113,37 @@ Rentals book through the M2 API, price through the M1 function, charge on the M0
 
 Conventions docs (schema naming, RLS patterns, audit-log usage) land with the first schema work (Stage 4/5) as `docs/schema-conventions.md`.
 
+## Module 10 — General Programs (Clinics / Pickup / Drop-In) ✅
+
+Clinics and Pickup are plain Module 4 framework programs sold as a weekly-session
+block (pickup = free-play labelling only). **Drop-In** is the one distinct flow
+(`lib/programs/dropin.ts` + migration 0028):
+
+- Registrants **multi-select specific dated sessions** (`listSessions`) and **pay
+  per session** (Module 1 pricing). Each session has its own capacity; a full or
+  postponed date is greyed out / unselectable.
+- **Buy-more-later keeps ONE registration** — `purchaseSessions` re-uses the
+  member's existing registration and accumulates `dropin_purchases` under it
+  rather than creating a new registration each time.
+- Public picker: `play.…/programs/general/[id]` (mobile-first). Admin session
+  manager: `admin.…/programs/general/[id]`.
+- **Player ID** / **Coaching Clinic** are `programs.tags` (naming/reporting only,
+  no distinct behaviour).
+
+### Shared Reschedule Workflow (Module 4 capability, `lib/programs/reschedule.ts`)
+
+Callable for **any** program type (clinics, pickup, drop-in, leagues, camps,
+academy). Pick a session, then either:
+
+1. **With a new date** — the Module 2 booking **moves** (conflict-checked; a
+   conflict aborts with no change).
+2. **Without a new date** — the session is set to **TBD** (`postponed`), its
+   booking released; staff set the real date later.
+
+No money impact (any credit is manual via the refund engine). All registrants
+are notified via Module 0 `notify()` across **email / text / push, all ON by
+default**, each toggleable per reschedule. Verify: `/api/dev/general-verify` (9/9).
+
 ## TV displays — device setup
 
 Each display configured at `admin.…/displays` gets a **public unguessable URL**

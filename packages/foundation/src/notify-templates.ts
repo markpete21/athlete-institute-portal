@@ -57,6 +57,7 @@ export interface NotifyTemplates {
   generic: { heading: string; body: string; ctaLabel?: string; ctaUrl?: string };
   'payment.reminder': { amountLabel: string; dueLabel: string; payUrl: string };
   'waitlist.opening': { programName: string; claimUrl: string; expiresLabel: string };
+  'session.rescheduled': { programName: string; oldLabel: string; newLabel: string | null; detailsUrl: string };
 }
 
 export type TemplateKey = keyof NotifyTemplates;
@@ -108,6 +109,22 @@ const TEMPLATES: { [K in TemplateKey]: TemplateDef<K> } = {
       bodyHtml: `A spot opened in <strong>${escapeHtml(d.programName)}</strong>. Claim it before <strong>${escapeHtml(d.expiresLabel)}</strong> — spots are offered first-come.`,
       ctaLabel: 'Claim your spot',
       ctaUrl: d.claimUrl,
+    }),
+  },
+  'session.rescheduled': {
+    subject: (d) => (d.newLabel ? `Session moved — ${d.programName}` : `Session postponed — ${d.programName}`),
+    pushTitle: (d) => (d.newLabel ? 'A session was moved' : 'A session was postponed'),
+    text: (d) =>
+      d.newLabel
+        ? `Your ${d.programName} session on ${d.oldLabel} has moved to ${d.newLabel}. Details: ${d.detailsUrl}`
+        : `Your ${d.programName} session on ${d.oldLabel} is being rescheduled to a new time — we'll confirm the date soon. Details: ${d.detailsUrl}`,
+    emailBody: (d) => ({
+      heading: d.newLabel ? 'A session was moved' : 'A session is being rescheduled',
+      bodyHtml: d.newLabel
+        ? `Your <strong>${escapeHtml(d.programName)}</strong> session on <strong>${escapeHtml(d.oldLabel)}</strong> has moved to <strong>${escapeHtml(d.newLabel)}</strong>.`
+        : `Your <strong>${escapeHtml(d.programName)}</strong> session on <strong>${escapeHtml(d.oldLabel)}</strong> is being rescheduled. We&apos;ll confirm the new date soon.`,
+      ctaLabel: 'View schedule',
+      ctaUrl: d.detailsUrl,
     }),
   },
 };
