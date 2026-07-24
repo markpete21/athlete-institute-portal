@@ -392,6 +392,34 @@ for the retention purpose, but **internal-only, purpose-limited, never exposed
 to families**. There is no public surface for any of this data. Verify:
 `/api/dev/retention-verify` (11/11). Build green.
 
+## Module 17 — Photo & Video Gallery ✅
+
+Code: `lib/gallery/gallery.ts` + `lib/gallery/zip.ts` (dependency-free STORE
+zip), `app/play/gallery/*`, `app/admin/gallery`, `/api/gallery/zip`,
+migration 0035, new private `gallery-media` bucket.
+
+**Enrollment-driven visibility** — staff upload to a program/session; galleries
+**auto-populate** in each enrolled family's portal (`galleriesForFamily`, gate
+`familyCanSee`). No manual sharing. New uploads optionally notify enrolled
+families via the M13 `gallery.new_media` trigger.
+
+**Cost control (baked in):**
+- Browse serves **resized thumbnails / poster frames only**
+  (`getSignedThumbUrl` → Supabase image-transform `render/image` CDN path) —
+  never full-res originals.
+- **Full-res originals only on explicit download** — single or multi-select →
+  one **zip** (`/api/gallery/zip`, enrollment-gated, streams originals
+  server-side).
+- **Video never leaves Storage as a file** — media rows carry a
+  `video_stream_ref` into the existing live-stream HLS pipeline; playback URL
+  is `STREAM_PLAYBACK_BASE` (default `live.athleteinstitute.ca/watch/<ref>`).
+  Poster frames only in browse.
+- **Lifecycle archiving** — `archiveOldGalleries(6)` (admin button; add to cron
+  if desired).
+
+Verify: `/api/dev/gallery-verify` (8/8, incl. real Storage upload + transform
+URL check + zip assembly). Build green.
+
 ## TV displays — device setup
 
 Each display configured at `admin.…/displays` gets a **public unguessable URL**

@@ -20,12 +20,14 @@ export const BUCKETS = {
   productImages: 'product-images',
   /** Documents: quotes, jersey orders, waiver PDFs (Modules 3/4). */
   documents: 'documents',
+  /** Program/session photo galleries (Module 17). Video streams via the live pipeline. */
+  galleryMedia: 'gallery-media',
 } as const;
 
 export type BucketKey = keyof typeof BUCKETS;
 export type BucketName = (typeof BUCKETS)[BucketKey];
 
-const IMAGE_BUCKETS: BucketName[] = ['staff-photos', 'event-logos', 'display-media', 'product-images'];
+const IMAGE_BUCKETS: BucketName[] = ['staff-photos', 'event-logos', 'display-media', 'product-images', 'gallery-media'];
 
 /**
  * Idempotently create every bucket (private). Call from a setup script or the
@@ -82,6 +84,24 @@ export async function getSignedUrl(
     .storage.from(bucket)
     .createSignedUrl(path, expiresInSeconds);
   if (error) throw new Error(`signedUrl(${bucket}/${path}) failed: ${error.message}`);
+  return data.signedUrl;
+}
+
+/**
+ * Signed URL for a RESIZED rendition (Supabase image transform / CDN). Browse
+ * views must use this - full-res originals are served only on explicit
+ * download (Module 17 cost control).
+ */
+export async function getSignedThumbUrl(
+  bucket: BucketName,
+  path: string,
+  width = 480,
+  expiresInSeconds = 3600,
+): Promise<string> {
+  const { data, error } = await supabaseAdmin()
+    .storage.from(bucket)
+    .createSignedUrl(path, expiresInSeconds, { transform: { width, resize: 'contain' } });
+  if (error) throw new Error(`signedThumbUrl(${bucket}/${path}) failed: ${error.message}`);
   return data.signedUrl;
 }
 
