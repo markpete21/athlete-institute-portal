@@ -594,6 +594,37 @@ narrative/polish).
 
 Verify: `/api/dev/ai-verify` (12/12). Build green.
 
+## Deploying to Vercel
+
+One Vercel project serves both subdomains (middleware routes by host).
+
+1. **Import** `markpete21/athlete-institute-portal` at vercel.com/new (framework
+   auto-detects Next.js; no build overrides needed).
+2. **Environment variables** — paste the production block (Clerk **pk_live /
+   sk_live** from the prod Clerk instance; Supabase project
+   rrgjqsprafblrmjsaikh; Stripe **test** key until PAD is confirmed on live;
+   `CRON_SECRET`, `ECOSYSTEM_API_KEY`, `OPERATIONS_EMAIL`, play/admin URLs).
+   Optional keys (Anthropic/Resend/Twilio/VAPID/QBO) can land later — every
+   feature degrades gracefully without them.
+3. **Domains** — add `play.athleteinstitute.ca` AND `admin.athleteinstitute.ca`
+   to the project; create the two CNAME records Vercel shows (usually
+   `cname.vercel-dns.com`).
+4. **Crons** — `vercel.json` registers all 7 daily jobs (12:00–13:00 UTC ≈
+   8am Toronto). Vercel sends `Authorization: Bearer $CRON_SECRET`
+   automatically; the routes verify it.
+5. **Clerk** — in the prod Clerk instance, add both domains under
+   *Domains/paths* so sign-in works on play/admin.
+6. **Stripe webhook** — dashboard → Webhooks → add endpoint
+   `https://play.athleteinstitute.ca/api/webhooks/stripe` (events:
+   payment_intent.*, invoice.*, setup_intent.*); paste the signing secret as
+   `STRIPE_WEBHOOK_SECRET` and redeploy.
+7. **Post-deploy checks** — `/api/dev/*` verify routes 404 in production (by
+   design); confirm sign-in on admin., the public catalog on play., and one
+   cron run in the Vercel cron logs the next morning.
+
+Cross-app: set the same `ECOSYSTEM_API_KEY` in the live-stream and tickets
+apps' envs so they can call `/api/ecosystem/points`.
+
 ## TV displays — device setup
 
 Each display configured at `admin.…/displays` gets a **public unguessable URL**
