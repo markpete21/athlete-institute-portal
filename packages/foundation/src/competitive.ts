@@ -252,6 +252,45 @@ export function assignSlots(
 }
 
 // ---------------------------------------------------------------------------
+// Single-elimination bracket (Tournament championship mode)
+// ---------------------------------------------------------------------------
+
+export interface BracketMatch {
+  round: number;      // 1 = first round
+  slot: number;       // position within the round
+  seedA: number | null; // team seed (1-based) or null = TBD/from prior round
+  seedB: number | null; // null with a non-null seedA in round 1 = BYE
+}
+
+/**
+ * Standard-seeded single-elimination bracket. Pads to the next power of two
+ * with byes given to the top seeds. Returns round-1 matchups plus the total
+ * round count (later rounds fill from winners).
+ */
+export function singleElimination(numTeams: number): { rounds: number; firstRound: BracketMatch[] } {
+  if (numTeams < 2) return { rounds: 0, firstRound: [] };
+  const size = 2 ** Math.ceil(Math.log2(numTeams));
+  const rounds = Math.log2(size);
+
+  // Standard bracket seeding order for `size` slots (1-indexed seeds).
+  let order = [1, 2];
+  while (order.length < size) {
+    const n = order.length * 2;
+    const next: number[] = [];
+    for (const s of order) { next.push(s); next.push(n + 1 - s); }
+    order = next;
+  }
+
+  const firstRound: BracketMatch[] = [];
+  for (let i = 0; i < size; i += 2) {
+    const a = order[i] <= numTeams ? order[i] : null;      // real seed or null
+    const b = order[i + 1] <= numTeams ? order[i + 1] : null;
+    firstRound.push({ round: 1, slot: i / 2, seedA: a, seedB: b }); // b===null => A gets a bye
+  }
+  return { rounds, firstRound };
+}
+
+// ---------------------------------------------------------------------------
 // Standings (sport-aware)
 // ---------------------------------------------------------------------------
 

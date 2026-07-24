@@ -1,7 +1,7 @@
 /**
  * Competitive engine tests (Module 6). Run: npm run test:competitive
  */
-import { balanceDraft, suggestReplacements, roundRobin, assignSlots, computeStandings } from './__compiled__/competitive.js';
+import { balanceDraft, suggestReplacements, roundRobin, assignSlots, computeStandings, singleElimination } from './__compiled__/competitive.js';
 
 let pass = 0, fail = 0;
 const ok = (n, c, d = '') => { console.log(`${c ? '✓' : '✗'} ${n}${c ? '' : ` - ${d}`}`); c ? pass++ : fail++; };
@@ -91,6 +91,16 @@ const ok = (n, c, d = '') => { console.log(`${c ? '✓' : '✗'} ${n}${c ? '' : 
   const s = computeStandings(results, [1, 2, 3], ['wins', 'head_to_head', 'differential']);
   ok('all teams 1-1', s.every((r) => r.w === 1 && r.l === 1));
   ok('tie-break produces a deterministic order', s.length === 3);
+}
+
+// --- single-elimination bracket --------------------------------------------
+{
+  const b8 = singleElimination(8);
+  ok('8 teams -> 3 rounds, 4 first-round games', b8.rounds === 3 && b8.firstRound.length === 4, `${b8.rounds}r ${b8.firstRound.length}g`);
+  ok('top seed faces lowest (1 vs 8)', b8.firstRound[0].seedA === 1 && b8.firstRound[0].seedB === 8);
+  const b6 = singleElimination(6);
+  const byes = b6.firstRound.filter((m) => m.seedB === null);
+  ok('6 teams -> 3 rounds, top 2 seeds get byes', b6.rounds === 3 && byes.length === 2 && byes.every((m) => m.seedA && m.seedA <= 2), `${byes.length} byes`);
 }
 
 console.log(`\n${pass} passed, ${fail} failed`);
