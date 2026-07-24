@@ -144,6 +144,43 @@ No money impact (any credit is manual via the refund engine). All registrants
 are notified via Module 0 `notify()` across **email / text / push, all ON by
 default**, each toggleable per reschedule. Verify: `/api/dev/general-verify` (9/9).
 
+## Module 11 — Club ✅
+
+A program-type front-end over Module 4 (billing/waivers/jerseys) + Module 6
+(manual rostering/schedule/standings — the auto-balancing draft is NOT used).
+Code: `lib/club/club.ts`, `app/admin/club/*`, `app/play/club/*`, migration 0029.
+
+**Structure:** Club → Team (two levels, no sub-type). Each team carries a
+**free-text level label** (`15U` vs `U15` differ per club) and its **own DOB
+eligibility window** (`dobEligible()` — the label is display, the DOB range is
+the rule) and its own season fee.
+
+**Tryout → offer → confirm pipeline (centerpiece):**
+1. Tryout sessions are M4 programs with a **separate, non-refundable fee** (not
+   applied toward the season fee), linked to a club level+gender group.
+2. `syncTryoutRoster(club, level, gender)` **consolidates every tryout
+   registration across all that group's sessions into ONE roster** (a player in
+   two sessions = one row).
+3. **Evaluation sheet** — printable numbered PDF (1–5 + notes) at
+   `admin.…/club/eval/[clubId]/[level]/[gender]` (print-and-fill).
+4. **Flags** — Selected / Considering / Out; Selected moves the player onto a
+   team roster.
+5. **Offers** — single or bulk; **verbal** (accept, no payment) or **deposit**
+   (set amount OR % of season fee, **applied toward** the fee). No expiry —
+   staff cancel manually. Flag → Offered–Pending.
+6. **Digital acceptance** — `play.…/club/offer/[token]` confirm/deny. Confirm →
+   creates the M4 season registration, applies the deposit, leaves the balance
+   for the M4 payment plan; flag → Confirmed. Deny → Declined.
+
+Full ladder: unrated → selected/considering/out → offered_pending →
+confirmed/declined.
+
+**Refunds:** custom, case-by-case (staff override via the refund engine) — Club
+does NOT use standard M4 proration. **Scholarships** apply (M1 pricing).
+**Messaging is a separate club-management app** — only the
+`confirmedRosterHandoff(teamId)` hook lives here. Verify: `/api/dev/club-verify`
+(11/11). Build green.
+
 ## TV displays — device setup
 
 Each display configured at `admin.…/displays` gets a **public unguessable URL**
