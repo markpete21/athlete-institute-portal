@@ -109,6 +109,15 @@ export async function unassignStaffAction(formData: FormData): Promise<void> {
   revalidatePath(`/programs/${id}`);
 }
 
+export async function configureLeagueAction(formData: FormData): Promise<void> {
+  const session = await requireStaff();
+  const id = Number(formData.get('programId'));
+  const { configureLeague } = await import('@/lib/leagues/leagues');
+  const paths = ['captain', 'member', 'small_group', 'free_agent'].filter((p) => formData.get(`path_${p}`) === 'on') as ('captain' | 'member' | 'small_group' | 'free_agent')[];
+  await configureLeague({ programId: id, pricing: String(formData.get('pricing') ?? 'player') as 'player' | 'team' | 'both', teamRateCents: Math.round(Number(formData.get('teamRate') ?? 0) * 100) || 0, paths: paths.length ? paths : undefined }, session.userId!);
+  revalidatePath(`/programs/${id}`);
+}
+
 export async function attachProgramWaiverAction(formData: FormData): Promise<void> {
   const session = await requireStaff();
   const id = Number(formData.get('programId'));
