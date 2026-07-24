@@ -321,6 +321,42 @@ Remaining polish (non-blocking): custom pivot report builder UI, registrant
 postal-code map (needs Module 1 address capture), scheduled custom-report
 emails, full PDF engine. Verify: `/api/dev/reports-verify` (13/13). Build green.
 
+## Module 15 — Feedback & Ratings ✅ (Phase 4 complete)
+
+Code: `lib/feedback/feedback.ts`, `app/play/feedback/[token]`,
+`app/admin/feedback`, `/api/cron/feedback`, migration 0033.
+
+**Rating model:** one designated **rating-of-record** star question feeds the
+headline out-of-5 (`programRating`); other questions add detail.
+**Rollups** at every level (`rollupRating`, `ratingForType`, `ratingForBrand`).
+**Private by default** — `programs.rating_public` toggles catalog display.
+
+**Auto-prompting:** `configureRounds()` derives the schedule from the program
+type — every program gets an **end** round 1–2 days after the last session
+(configurable delay); **Club/Academy also get a mid-season round**. The daily
+cron (`/api/cron/feedback` → `processDuePrompts`) fans out **pre-identified
+deep links** (one per active registration, HoH email) via the editable M13
+triggers `feedback.prompt` / `feedback.reminder` — **one reminder** to
+non-responders 3 days later, then drop.
+
+**Submission** (`play.…/feedback/[token]`, mobile-first): star rating is screen
+one; a star-only submission is a **quick review (+50 Play Points)**; answering
+the optional detail questions upgrades to the **full form (+250 Play Points)**.
+Points auto-credit the household ledger **once** (resubmission blocked;
+one response per registration per round enforced by unique constraint).
+
+**Attribution:** staff views are **attributed** (`attributedResponses` — ties
+feedback to retention/follow-up); any surfaced or public view is **anonymous**
+(`anonymousReviews` strips identity). **Low scores (1–2★) alert staff
+immediately** via the `feedback.low_score` trigger (to `OPERATIONS_EMAIL`),
+attributed, with the comment.
+
+**AI summaries:** `summarizeFeedback()` sends **anonymized** reviews to
+`claude-sonnet-4-6` → themes / praise / fixes / quotes, stored per program per
+round and surfaced on the admin page (falls back to a stats line without
+`ANTHROPIC_API_KEY`). Seeded per-type forms (camp / league / quick review) in
+`feedback_forms`. Verify: `/api/dev/feedback-verify` (12/12). Build green.
+
 ## TV displays — device setup
 
 Each display configured at `admin.…/displays` gets a **public unguessable URL**
