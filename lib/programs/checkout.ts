@@ -234,6 +234,16 @@ export async function placeProgramOrder(input: PlaceOrderInput): Promise<{ order
   }
 
   await audit({ actorId: input.actorClerkId, action: 'program_order.placed', target: `program_order:${orderId}`, meta: { total: quote.totalCents, installments: schedule.length, pointsEarned: quote.earnablePoints } });
+
+  // Module 19 hooks: a placed (paid) order is the referral-reward trigger and
+  // may unlock loyalty milestones. Best-effort - never blocks checkout.
+  if (familyId) {
+    try {
+      const { awardLoyaltyMilestones, onFirstPaidRegistration } = await import('@/lib/points/points');
+      await onFirstPaidRegistration(familyId);
+      await awardLoyaltyMilestones(familyId);
+    } catch { /* points hooks are non-critical */ }
+  }
   return { orderId, quote };
 }
 

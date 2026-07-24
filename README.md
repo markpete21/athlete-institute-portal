@@ -444,6 +444,42 @@ placement. Falls back to a data-driven summary without `ANTHROPIC_API_KEY`.
 
 Verify: `/api/dev/dunning-verify` (8/8). Build green.
 
+## Module 19 — Play Points & Referrals ✅
+
+Code: `lib/points/points.ts`, `app/play/points`, `app/admin/points`, migration
+0037. The ledger, household tracking, and the **100 pts = $1** redemption slot
+(50% per-registration cap, programs-only, after Credit on Account) already live
+in Module 1's pricing function — this module adds earning, referrals, and
+reporting.
+
+**Earn-rule engine** — every rule in `points_earn_rules` is admin-configurable
+(toggle + value): household creation 100 (once), quick review 50 / full form
+250 (wired in M15), early-bird 500, complete profile 100 (once), connect PAD
+200 (once), first login 100 (once), birthday 150, referral 1000/500. Spend
+earning (1 pt/$1, **programs only — never Academy/Club/rentals**) already flows
+through checkout. `awardRule()` enforces per-household one-time credits against
+the ledger. **Manual grants require a reason** and are audit-logged.
+
+**Loyalty ladder** — distinct seasons (Club + Academy **count**, rentals never
+do): 3→500, 5→1000, 7→1500, 10→2500, each once
+(`awardLoyaltyMilestones`, hooked into checkout).
+
+**Referrals** — every family gets a shareable code
+(`play.…/sign-up?ref=<code>`). **Both rewards fire on the referred household's
+FIRST PAID registration** (checkout hook `onFirstPaidRegistration`), not on
+account creation: referrer +1000, referred +500 (stacks with the universal
+100). **Cap 3 rewarded referrals per referrer per season**; same-household
+blocked; one referral per referred household. **Flag-not-block** fraud posture:
+staff flag suspicious referrals and can **claw back** (reason logged, both
+sides reversed).
+
+**Customer surface** (`play.…/points`): balance + ledger, referral link +
+season count, ladder progress, and the **disclaimer** (`POINTS_DISCLAIMER`)
+everywhere points appear. Earning notifies via the M13 `points.earned`
+template. **Reporting** (admin page, feeds M14): outstanding **liability in $**
+(1 pt = 1¢), earned/redeemed totals, referral conversion rate, top referrers
+(internal only). Verify: `/api/dev/points-verify` (13/13). Build green.
+
 ## TV displays — device setup
 
 Each display configured at `admin.…/displays` gets a **public unguessable URL**
