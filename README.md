@@ -420,6 +420,30 @@ families via the M13 `gallery.new_media` trigger.
 Verify: `/api/dev/gallery-verify` (8/8, incl. real Storage upload + transform
 URL check + zip assembly). Build green.
 
+## Module 18 — Dunning & Team-Balance Explainer ✅
+
+**(A) Automated dunning** (`lib/dunning/dunning.ts`, `/api/cron/dunning` daily,
+admin `…/dunning`, migration 0036). A failed PAD/card installment opens a
+`dunning_case`; the escalation ladder runs automatically:
+**auto-retry** (Stripe rails) → **email** with pay link → **SMS** → **staff
+call task + family flagged Overdue** (the only human step). Every timing is
+configurable (`dunning_config`, admin UI); every message is an editable M13
+template (`dunning.email` / `dunning.sms` / `dunning.task`). A successful
+retry — or payment at any point (`markRecovered`) — closes the case; the
+Overdue flag clears when the family's last open case closes. Built for Academy
+tuition PAD plans especially (NSF failures surface days late; the sweep in the
+cron catches them).
+
+**(B) Team-balance explainer** (`lib/team-explainer/explainer.ts`) —
+**ADMIN-PRIVATE** talking points from `claude-sonnet-4-6` explaining why the M6
+draft balanced teams as it did (team sizes, pinned players, friend groups kept
+together, the recorded attribute spread from the draft audit). Stored in
+`team_balance_explainers`; surfaced only on the admin page. **Never shown to
+families** — surfacing algorithmic reasoning invites litigating every
+placement. Falls back to a data-driven summary without `ANTHROPIC_API_KEY`.
+
+Verify: `/api/dev/dunning-verify` (8/8). Build green.
+
 ## TV displays — device setup
 
 Each display configured at `admin.…/displays` gets a **public unguessable URL**
