@@ -221,6 +221,55 @@ accepted players without the full pipeline (returning flag). Retention via
 separate academy-management app (messaging is built there). Verify:
 `/api/dev/academy-verify` (12/12). Build green.
 
+## Module 13 — Communications ✅
+
+Campaign/template/notification layer on top of Module 0 `notify()`. Code:
+`packages/foundation/src/comms-core.ts` (pure, `npm run test:comms` 24/24),
+`lib/comms/*`, `app/admin/comms/*`, migration 0031. Sending is permission-gated
+(M5); a **test email is required before a real send**.
+
+**Email builder** — campaigns are an ordered **block array** (`EmailBlock`:
+text/image/button/divider/columns/header/footer/social/dynamic) rendered to
+responsive HTML with **merge tags** (`{{first_name}}`, `{{balance_owed}}`, …).
+Brand chrome comes from the M0 brand system. *(The current admin UI edits blocks
+as structured fields + Claude-draft; a true drag-and-drop canvas is the one
+remaining polish item.)*
+
+**Claude-drafting** (`lib/comms/draft.ts`) — staff describe the email; the
+Anthropic Messages API (**`claude-sonnet-4-6`**, called via fetch, brand tokens
+in the system prompt) returns editable blocks. Degrades to a placeholder when
+`ANTHROPIC_API_KEY` is unset.
+
+**Recipient lists** (`lib/comms/segments.ts`) — saved **definitions**, not
+snapshots: `resolveAudience()` recomputes **live at send time**. Hierarchical
+include/exclude rules (brand → type → season → division / explicit programs),
+participant filters (category, returning-vs-new, age), and an **engagement
+filter** (drop no-open-in-N-months). Suppressions always removed.
+
+**Scheduling / A/B** — send-now or scheduled (edit/cancel while scheduled),
+`abSplit()` deterministic split + `pickAbWinner()` by click-then-open rate.
+
+**Stats** (`lib/comms/stats.ts` + `/api/webhooks/resend`) — Resend events
+ingested to per-campaign aggregate, per-recipient, per-link detail. **Hard
+bounces / unsubscribes / complaints auto-suppress** (no manual scrubbing).
+
+**Auto-notifications** (`lib/comms/notifications.ts`) — 15 seeded editable
+triggers (registration, receipts, installments, waitlist, reschedule, offers,
+cert expiry, abandoned-cart, refund, account-claim …) each with default copy,
+merge tags, channels, on/off toggle. `fireTrigger()` is the single entry other
+modules call; transactional sends ignore marketing suppression.
+
+**Announcement tool** — quick text blast to push/SMS/email, send or schedule.
+
+**Deliverability / CASL:** pre-send `spamCheck()` (image-heavy, missing
+unsubscribe/sender-ID, ALL-CAPS/punctuation/trigger-word subjects); marketing
+emails need unsubscribe + physical-address footer. ⚠️ **Before go-live:** verify
+Resend sending **domains** (SPF + DKIM + DMARC), use a dedicated bulk
+**subdomain** (`mail.`/`news.`) isolated from transactional mail, **warm up the
+domain gradually** (do NOT cold-blast the ~7,000 Playbook imports), add full
+**svix signature verification** to the Resend webhook, and one verified `info@`
+from-address per brand. Verify: `/api/dev/comms-verify` (11/11). Build green.
+
 ## TV displays — device setup
 
 Each display configured at `admin.…/displays` gets a **public unguessable URL**
