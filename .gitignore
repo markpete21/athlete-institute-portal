@@ -21,3 +21,4 @@ build/
 # vercel
 .vercel
 __compiled__/
+.env*

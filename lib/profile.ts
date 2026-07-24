@@ -32,22 +32,44 @@ export async function getOrCreateProfile(): Promise<Profile> {
   // imported-but-unclaimed profile ADOPTS it (keeps family links) instead of
   // creating a duplicate.
   const email = user.primaryEmailAddress?.emailAddress;
-  const { data: known } = await supabaseAdmin()
+  const emailVerified = user.primaryEmailAddress?.verification?.status === 'verified';
+  const db = supabaseAdmin();
+  const { data: known } = await db
     .from('profiles')
     .select('id')
     .eq('clerk_user_id', user.id)
     .maybeSingle();
+
   if (!known && email) {
+    // Claim flow: adopt an imported-but-unclaimed profile with this email.
     const { adoptUnclaimedProfile } = await import('@/lib/import/playbook');
     await adoptUnclaimedProfile(user.id, email);
+
+    // Re-link flow: a profile may already exist for this VERIFIED email under a
+    // different clerk_user_id - e.g. the dev→prod Clerk instance switch, or a
+    // returning user who re-signed-up. `profiles.email` is unique, so a plain
+    // insert would 500; the same verified email is the same person, so adopt
+    // that row (Clerk verifies primary-email ownership). Unverified emails are
+    // never re-linked (guards against email-squatting).
+    if (emailVerified) {
+      const { data: byEmail } = await db
+        .from('profiles')
+        .select('id, clerk_user_id')
+        .ilike('email', email)
+        .neq('clerk_user_id', user.id)
+        .maybeSingle();
+      if (byEmail) {
+        await db.from('profiles').update({ clerk_user_id: user.id }).eq('id', byEmail.id);
+      }
+    }
   }
 
-  const { data, error } = await supabaseAdmin()
+  const { data, error } = await db
     .from('profiles')
     .upsert(
       {
         clerk_user_id: user.id,
-        email: user.primaryEmailAddress?.emailAddress ?? null,
+        email: email ?? null,
         first_name: user.firstName,
         last_name: user.lastName,
       },
