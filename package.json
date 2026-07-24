@@ -20,7 +20,8 @@
     "test:competitive": "tsc packages/foundation/src/competitive.ts --module esnext --target es2022 --moduleResolution bundler --outDir packages/foundation/src/__compiled__ && node scripts/fix-compiled-imports.mjs && node packages/foundation/src/competitive.test.mjs",
     "test:leagues": "tsc packages/foundation/src/leagues-core.ts --module esnext --target es2022 --moduleResolution bundler --outDir packages/foundation/src/__compiled__ && node scripts/fix-compiled-imports.mjs && node packages/foundation/src/leagues-core.test.mjs",
     "test:academy": "tsc packages/foundation/src/academy-core.ts packages/foundation/src/money.ts --module esnext --target es2022 --moduleResolution bundler --outDir packages/foundation/src/__compiled__ && node scripts/fix-compiled-imports.mjs && node packages/foundation/src/academy-core.test.mjs",
-    "test:comms": "tsc packages/foundation/src/comms-core.ts --module esnext --target es2022 --moduleResolution bundler --outDir packages/foundation/src/__compiled__ && node scripts/fix-compiled-imports.mjs && node packages/foundation/src/comms-core.test.mjs"
+    "test:comms": "tsc packages/foundation/src/comms-core.ts --module esnext --target es2022 --moduleResolution bundler --outDir packages/foundation/src/__compiled__ && node scripts/fix-compiled-imports.mjs && node packages/foundation/src/comms-core.test.mjs",
+    "test:reports": "tsc packages/foundation/src/reports-core.ts packages/foundation/src/money.ts --module esnext --target es2022 --moduleResolution bundler --outDir packages/foundation/src/__compiled__ && node scripts/fix-compiled-imports.mjs && node packages/foundation/src/reports-core.test.mjs"
   },
   "dependencies": {
     "@ai/foundation": "file:packages/foundation",

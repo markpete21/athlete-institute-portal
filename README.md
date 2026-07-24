@@ -270,6 +270,57 @@ domain gradually** (do NOT cold-blast the ~7,000 Playbook imports), add full
 **svix signature verification** to the Resend webhook, and one verified `info@`
 from-address per brand. Verify: `/api/dev/comms-verify` (11/11). Build green.
 
+## Module 14 — Dashboard & Reporting ✅ (analytics capstone)
+
+Code: `packages/foundation/src/reports-core.ts` (pure, `npm run test:reports`
+26/26), `lib/reports/*`, `lib/quickbooks/qbo.ts`, `app/admin/reports`,
+migration 0032. **Financials are admin-only** (role check on the page; M5
+matrix refines it).
+
+**Multi-location model:** `locations` table + `programs.location_id` /
+`programs.definition_id`. A program is *defined once* and runs as
+location-specific *instances*. The three canonical views work:
+`definitionInstances()` (across sites), a single instance, and
+`programsAtLocation()`. Location maps to **QBO Location**, program →
+**QBO Class** (`programs.quickbooks_class`).
+
+**Landing dashboard** (`admin.…/reports`) — top programs by registration &
+revenue with 24h/7d/30d/3mo/1yr selector, upcoming sessions, upcoming
+rentals/events, outstanding balances, capacity alerts.
+
+**Financial suite:** revenue by program/type/brand/season/**location**;
+collected-vs-outstanding + 30/60/90 **aging**; **deferred revenue**
+(`recognizeDeferredRevenue` straight-lines Academy tuition Sept–June);
+discounts breakout; **payment-plan health** (on-track/behind/defaulted + $ at
+risk); collections **forecast** by month; **margin** = revenue − M5 staff cost −
+cached QBO expenses, fully itemized, with wage categories excluded by default
+to avoid **double-counting** staff pay.
+
+**QuickBooks** (`lib/quickbooks/qbo.ts`): OAuth2 (needs `QBO_CLIENT_ID`,
+`QBO_CLIENT_SECRET`, `QBO_REDIRECT_URI`; "Connect QBO" button on the reports
+page), revenue **push** (SalesReceipt, idempotent on source_ref, queues locally
+while disconnected), expense **pull** cached into `qbo_expenses`
+(nightly via `/api/cron/reports` + on-demand) because the QBO API is
+rate-limited.
+
+**Exec reports** (`lib/reports/exec.ts` + `/api/cron/reports`):
+**week-in-review** each Monday covering the prior **Mon–Sun**
+(`weekInReviewWindow`), **month-in-review** on the 1st for the prior month;
+brand-themed HTML email to the configurable `exec_recipients` list. *(A
+dedicated chart-heavy PDF renderer can swap in behind the same interface —
+listed as polish.)*
+
+**Registration reporting:** totals, new-vs-returning, fill rate vs capacity,
+waitlist, conversion + abandoned-cart (`conversionMetrics`),
+"where did you hear about us". **Capacity nudges:** per-program threshold
+(default 80%) → approaching/full/waitlist-forming alerts on the dashboard.
+**Facility utilization:** % booked by facility with by-type split + revenue per
+court-hour.
+
+Remaining polish (non-blocking): custom pivot report builder UI, registrant
+postal-code map (needs Module 1 address capture), scheduled custom-report
+emails, full PDF engine. Verify: `/api/dev/reports-verify` (13/13). Build green.
+
 ## TV displays — device setup
 
 Each display configured at `admin.…/displays` gets a **public unguessable URL**
