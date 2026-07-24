@@ -12,6 +12,18 @@ async function requireStaff() {
   return session;
 }
 
+/** Module 22: "Draft with AI" - generates an on-brand description from the
+ * program's structured fields; the draft lands in the description field for
+ * staff to edit + approve (never auto-publishes). */
+export async function draftDescriptionAction(formData: FormData): Promise<void> {
+  const session = await requireStaff();
+  const programId = Number(formData.get('programId'));
+  const { draftProgramDescription } = await import('@/lib/ai/enhancements');
+  const { draft } = await draftProgramDescription(programId, session.userId!);
+  await updateProgram(programId, { description: draft }, session.userId!);
+  revalidatePath(`/programs/${programId}`);
+}
+
 const num = (v: FormDataEntryValue | null): number | null => {
   const s = String(v ?? '').trim();
   return s ? Number(s) : null;

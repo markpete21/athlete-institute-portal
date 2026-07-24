@@ -548,6 +548,42 @@ ready for permission + confirmation gating.
 Verify: `/api/dev/assist-verify` (11/11 — scope, grounding, loop plumbing via
 injected mock model, handoff, rate limit). Build green.
 
+## Module 22 — AI Enhancements ✅ (ALL 22 MODULES COMPLETE 🎉)
+
+Seven ambient AI features in `lib/ai/enhancements.ts` (+ `lib/ai/claude.ts`,
+model **`claude-sonnet-5`**), migration 0040. Hard rule everywhere: **AI
+proposes, staff approve** — nothing auto-publishes; every feature has a
+deterministic core that works without `ANTHROPIC_API_KEY` (Claude adds
+narrative/polish).
+
+1. **Auto-draft descriptions (M4)** — "Draft description with AI" button on the
+   program builder generates on-brand copy from the structured fields; lands in
+   the description box for staff to edit + save.
+2. **AI roster generation (M6)** — `proposeRoster` runs balancer candidates,
+   stores the best split + trade-off narrative in `ai_proposals`
+   (**never writes teams**); pairs with the M18 explainer.
+3. **Smart scheduling (M6)** — `optimizeSlots` deterministic local-search pass
+   that improves time-slot fairness (per-team 6/7/8pm variance); returns a
+   before/after metric as a proposal — the existing builder still publishes.
+4. **Auto-galleries by player (M17)** — `mediaForPlayer`: **jersey-number
+   grouping is the default** (`gallery_media.jersey_numbers`). **Face grouping
+   is HARD-GATED on `families.face_grouping_consent`** (PIPEDA: biometrics of
+   minors = sensitive; off by default, explicit parent consent required) and
+   falls back to jersey numbers when refused.
+5. **Auto-highlights v1 (M17+M6)** — `highlightWindows` pads each
+   `score_events` timestamp (10s before / 5s after) and merges overlaps per
+   player attribution → `highlight_clips` metadata (incl. **per-player reels**);
+   the live-stream pipeline renders the actual clips. Audio-spike events use
+   the same windowing. Vision AI is phase-2, parked.
+6. **Pricing intelligence (M14)** — **own-data heuristics only** (full+waitlist
+   → headroom; chronic under-enrollment → repackage) with an optional Claude
+   narrative; explicitly no fabricated market data. Advisory only.
+7. **AI-timed nudges (M13+M16)** — `bestSendHour` picks each family's
+   most-likely-to-act hour from their real open history (Toronto), fallback
+   6pm.
+
+Verify: `/api/dev/ai-verify` (12/12). Build green.
+
 ## TV displays — device setup
 
 Each display configured at `admin.…/displays` gets a **public unguessable URL**

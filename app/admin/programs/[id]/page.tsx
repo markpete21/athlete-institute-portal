@@ -11,6 +11,7 @@ import {
   attachQuestionAction,
   detachQuestionAction,
   generateSessionsAction,
+  draftDescriptionAction,
   setStatusAction,
   unassignStaffAction,
   updateProgramAction,
@@ -61,6 +62,12 @@ export default async function ProgramBuilderPage({ params }: { params: { id: str
           <span className="tag" title="Copy share link">{playBase}/p/{program.share_token}</span>
         </div>
       </header>
+
+      {/* Module 22: staff-reviewed AI description draft (fills the field below). */}
+      <form action={draftDescriptionAction} className="flex justify-end">
+        <input type="hidden" name="programId" value={program.id} />
+        <button className="btn-ghost btn-sm" title="Generates an on-brand description from this program's fields - edit before saving.">Draft description with AI</button>
+      </form>
 
       {/* Core + pricing */}
       <form action={updateProgramAction} className="card grid gap-4 p-6 sm:grid-cols-2">
