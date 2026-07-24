@@ -480,6 +480,39 @@ template. **Reporting** (admin page, feeds M14): outstanding **liability in $**
 (1 pt = 1¢), earned/redeemed totals, referral conversion rate, top referrers
 (internal only). Verify: `/api/dev/points-verify` (13/13). Build green.
 
+## Module 20 — Promotions & Engagement ✅ (Phase 5 complete)
+
+The fun layer on Module 19. Code: `lib/promotions/promotions.ts`,
+`app/play/arcade/*` (games + wheel), `app/admin/promotions`,
+`/api/promotions/score` + `/spin`, migration 0038. All point awards flow
+through the M19/M1 ledger; announcements via the M13 `promo.announcement` /
+`promo.winner` templates. **No public leaderboards** — contest boards are
+staff-facing.
+
+**Contests + games:** staff create a time-boxed contest on a game
+(`basketball` / `soccer` / `volleyball` launch set; `pickleball` / `football`
+keys ready), optional auto-announcement. The portal embeds a lightweight
+mobile-first **HTML5 timing game** (one engine, skinned per sport — tap the
+sweet zone, zone shrinks as you score, 3 misses out). Scores post to the
+window-enforced scoreboard (best per family); `closeContest` **auto-awards the
+top-N** and notifies winners.
+
+**Spin-to-win wheel:** weighted variable rewards in `wheel_config` (point
+bundles / free drop-in / gear discount / better-luck), **unlocked at a
+lifetime-points-earned milestone** (default 1000), every spin logged, point
+prizes credited via the ledger. Odds + unlock fully configurable.
+
+**Challenge tool:** rule types **first-N-to-act** (slots enforced),
+**do-X-by-date** (count within window), streak and referral-push bonuses —
+auto-award on completion, optional announcement.
+
+**Streaks & badges:** `seasonStreak` (consecutive registered seasons — gap
+resets) surfaced on the Arcade ("4 seasons running — keep it alive!");
+badges (First Season / Referral Champ / Superfan / Streak Keeper) awarded once
+and shown on the family profile.
+
+Verify: `/api/dev/promotions-verify` (12/12). Build green.
+
 ## TV displays — device setup
 
 Each display configured at `admin.…/displays` gets a **public unguessable URL**
