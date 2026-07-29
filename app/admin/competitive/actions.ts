@@ -2,7 +2,8 @@
 
 import { redirect } from 'next/navigation';
 import { revalidatePath } from 'next/cache';
-import type { BalanceAttribute, Sport } from '@ai/foundation';
+import { audit, type BalanceAttribute, type Sport } from '@ai/foundation';
+import { supabaseAdmin } from '@ai/foundation/supabase';
 import { getPortalSession } from '@/lib/auth';
 import { profileCan } from '@/lib/staff/staff';
 import { buildLeagueSchedule, createDivision, runTeamBuilder, saveScore } from '@/lib/competitive/competitive';
@@ -65,6 +66,33 @@ export async function saveScoreAction(formData: FormData): Promise<void> {
     overtime: formData.get('overtime') === 'on',
     liveStreamRef: String(formData.get('liveStreamRef') ?? '').trim() || null,
     actorClerkId: session.userId!,
+  });
+  revalidatePath(`/competitive/${divisionId}`);
+}
+
+/**
+ * Compete. Portal visibility for a division: whether it appears on the public
+ * site at all, and whether public rosters show full names or "Ava P.".
+ * Defaults are set at creation by program type (leagues/clinics -> full names;
+ * tournaments/rep -> masked; Academy -> never public) and overridden here.
+ */
+export async function saveCompeteSettingsAction(formData: FormData): Promise<void> {
+  const s = await getPortalSession();
+  if (!s.isStaff) throw new Error('Staff only.');
+  const divisionId = Number(formData.get('divisionId'));
+  const { error } = await supabaseAdmin()
+    .from('divisions')
+    .update({
+      show_on_compete: formData.get('showOnCompete') === 'on',
+      show_full_names: formData.get('showFullNames') === 'on',
+    })
+    .eq('id', divisionId);
+  if (error) throw new Error(error.message);
+  await audit({
+    actorId: s.userId!,
+    action: 'division.compete-settings',
+    target: `division:${divisionId}`,
+    meta: { showOnCompete: formData.get('showOnCompete') === 'on', showFullNames: formData.get('showFullNames') === 'on' },
   });
   revalidatePath(`/competitive/${divisionId}`);
 }

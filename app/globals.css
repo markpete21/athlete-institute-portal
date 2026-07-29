@@ -656,3 +656,141 @@
   background-image: radial-gradient(rgba(184, 158, 109, 0.2) 1px, transparent 1.4px);
   background-size: 13px 13px; background-position: -3px -3px;
 }
+
+/* Compete inverts the Play lockup: gold word, red ball. Same everything else. */
+.pw-compete { color: #9e8959; font-weight: 900; }
+.pw-ball-red { color: #d2232a; }
+
+/* ==========================================================================
+   Compete. Portal — the PUBLIC competitive site (compete.athleteinstitute.ca).
+   `cs-` prefixed. Same Vanguard language; no account chrome.
+   ========================================================================== */
+.compete-shell {
+  --cs-paper: #ffffff; --cs-soft: #fafaf8; --cs-panel: #f5f2ea;
+  --cs-ink: #1e1e1e; --cs-body: #3a3733; --cs-silver: #9b9891;
+  --cs-hairline: rgba(30, 30, 30, 0.13); --cs-gold: #9e8959; --cs-red: #d2232a;
+  --cs-dark: #171613; --cs-dark-ink: #edeae3; --cs-dark-muted: #8c877c;
+  --cs-dark-hair: rgba(255, 255, 255, 0.08);
+  min-height: 100vh; display: flex; flex-direction: column;
+}
+.cs-topbar {
+  position: sticky; top: 0; z-index: 50; background-color: var(--cs-dark);
+  background-image: radial-gradient(rgba(184, 158, 109, 0.2) 1px, transparent 1.4px);
+  background-size: 13px 13px; background-position: -3px -3px;
+  border-bottom: 1px solid var(--cs-dark-hair);
+}
+.cs-topbar-in {
+  max-width: 1080px; margin: 0 auto; padding: 0 20px; min-height: 70px;
+  display: flex; align-items: center; gap: 22px;
+}
+.cs-nav { display: flex; gap: 4px; flex: 1; min-width: 0; overflow-x: auto; }
+.cs-nav a {
+  padding: 9px 12px; font-size: 13.5px; color: var(--cs-dark-muted);
+  text-decoration: none; white-space: nowrap; border-bottom: 2px solid transparent;
+}
+.cs-nav a:hover { color: var(--cs-dark-ink); }
+/* the always-there way back to Play */
+.cs-toplay {
+  display: flex; align-items: center; gap: 9px; flex: 0 0 auto; text-decoration: none;
+  border: 1px solid var(--cs-dark-hair); padding: 7px 12px;
+}
+.cs-toplay:hover { border-color: var(--cs-red); }
+.cs-toplay-lbl {
+  font-family: var(--font-mono), monospace; font-size: 9.5px; letter-spacing: 0.14em;
+  text-transform: uppercase; color: var(--cs-dark-muted); white-space: nowrap;
+}
+.cs-toplay-mark { font-size: 17px; font-weight: 900; letter-spacing: -0.02em; white-space: nowrap; }
+.cs-toplay-play { color: var(--cs-red); }
+.cs-toplay-dot { color: var(--cs-gold); font-size: 1.22em; }
+@media (max-width: 640px) {
+  .cs-topbar-in { flex-wrap: wrap; padding: 10px 20px 9px; min-height: 0; row-gap: 9px; }
+  .cs-nav { order: 3; width: 100%; }
+  .cs-toplay-lbl { display: none; }
+}
+
+.cs-main { flex: 1; max-width: 1080px; margin: 0 auto; width: 100%; padding: 26px 20px 50px; }
+.cs-head { border-bottom: 1px solid var(--cs-hairline); padding-bottom: 16px; margin-bottom: 24px; }
+.cs-h1 { font-size: clamp(30px, 5vw, 46px); }
+.cs-h1-dot { color: var(--cs-gold); }
+.cs-lede { color: var(--cs-body); max-width: 62ch; margin: 10px 0 0; font-size: 15px; }
+.cs-h2 { font-size: 20px; margin-bottom: 11px; }
+.cs-sec { margin-bottom: 30px; }
+.cs-note { font-size: 12px; color: var(--cs-silver); margin-top: 9px; }
+.cs-empty { padding: 22px; text-align: center; border: 1px dashed var(--cs-hairline); font-size: 13.5px; color: var(--cs-silver); }
+
+.cs-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 12px; }
+.cs-card {
+  display: flex; flex-direction: column; gap: 5px; padding: 15px 16px; text-decoration: none;
+  background: var(--cs-paper); border: 1px solid var(--cs-hairline); color: var(--cs-body);
+}
+.cs-card:hover { border-color: var(--cs-gold); }
+.cs-card b { color: var(--cs-ink); font-size: 17px; letter-spacing: -0.02em; }
+.cs-card-meta { font-size: 12px; color: var(--cs-silver); }
+
+.cs-tablewrap { overflow-x: auto; border: 1px solid var(--cs-hairline); background: var(--cs-paper); }
+.cs-table { width: 100%; border-collapse: collapse; min-width: 560px; font-size: 13.5px; }
+.cs-table th {
+  text-align: left; font-family: var(--font-mono), monospace; font-size: 10px; letter-spacing: 0.1em;
+  text-transform: uppercase; color: var(--cs-silver); font-weight: 500;
+  padding: 11px 14px; border-bottom: 1px solid var(--cs-hairline);
+}
+.cs-table td { padding: 12px 14px; border-bottom: 1px solid var(--cs-hairline); }
+.cs-table tbody tr:last-child td { border-bottom: 0; }
+.cs-team { font-weight: 700; color: var(--cs-ink); }
+
+.cs-games { display: flex; flex-direction: column; gap: 8px; }
+.cs-game {
+  display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
+  background: var(--cs-paper); border: 1px solid var(--cs-hairline); padding: 12px 15px;
+}
+.cs-when { display: flex; flex-direction: column; flex: 0 0 96px; }
+.cs-when b { color: var(--cs-ink); font-size: 13.5px; }
+.cs-when span { font-size: 11.5px; color: var(--cs-silver); }
+.cs-matchup { flex: 1; min-width: 180px; color: var(--cs-ink); font-size: 14px; }
+.cs-vs { color: var(--cs-silver); font-size: 12px; margin: 0 3px; }
+.cs-score { font-size: 17px; font-weight: 800; color: var(--cs-ink); }
+.cs-pending { flex: 0 0 auto; }
+.cs-watch {
+  flex: 0 0 auto; text-decoration: none; border: 1px solid var(--cs-red); color: var(--cs-red);
+  padding: 5px 11px; font-family: var(--font-mono), monospace; font-size: 10px;
+  letter-spacing: 0.12em; text-transform: uppercase;
+}
+.cs-watch:hover { background: var(--cs-red); color: #fff; }
+
+.cs-rosters { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 12px; }
+.cs-roster { background: var(--cs-paper); border: 1px solid var(--cs-hairline); padding: 13px 15px; }
+.cs-roster b { color: var(--cs-ink); display: block; margin-bottom: 7px; }
+.cs-roster ul { margin: 0; padding-left: 16px; }
+.cs-roster li { font-size: 13px; margin-bottom: 3px; }
+
+.cs-cta {
+  display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap;
+  background: var(--cs-panel); border: 1px solid var(--cs-hairline); padding: 18px 20px; margin-top: 34px;
+}
+.cs-cta b { color: var(--cs-ink); display: block; font-size: 16px; }
+.cs-cta span { font-size: 13.5px; color: var(--cs-body); }
+.cs-cta-btn {
+  text-decoration: none; background: var(--cs-red); color: #fff; padding: 10px 17px;
+  font-size: 13px; font-weight: 600; white-space: nowrap;
+}
+.cs-cta-btn:hover { filter: brightness(1.08); }
+
+.cs-foot { border-top: 1px solid var(--cs-hairline); background: var(--cs-paper); }
+.cs-foot-in {
+  max-width: 1080px; margin: 0 auto; padding: 18px 20px; display: flex;
+  align-items: center; justify-content: space-between; gap: 14px; flex-wrap: wrap;
+}
+.cs-foot-links { display: flex; gap: 16px; }
+.cs-foot-links a { font-size: 13px; color: var(--cs-body); text-decoration: none; }
+.cs-foot-links a:hover { color: var(--cs-gold); }
+
+/* Play -> Compete handoff in the public nav (Compete is a different host). */
+.ps-tocompete {
+  margin-left: auto; display: flex; align-items: center; gap: 8px; white-space: nowrap;
+  padding: 9px 12px; font-size: 13.5px; color: var(--ps-dark-muted); text-decoration: none;
+  border-left: 1px solid var(--ps-dark-hair);
+}
+.ps-tocompete:hover { color: #fff; }
+.ps-tocompete-mark { font-size: 15px; font-weight: 900; letter-spacing: -0.02em; }
+.ps-tc-word { color: #9e8959; }
+.ps-tc-dot { color: #d2232a; font-size: 1.22em; }

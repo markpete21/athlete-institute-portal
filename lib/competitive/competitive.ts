@@ -25,9 +25,27 @@ import { createBooking } from '@/lib/bookings';
  */
 
 export async function createDivision(input: { programId: number; name: string; sport: Sport; maxTeams?: number | null; minPlayers?: number | null; maxPlayers?: number | null }, actorClerkId: string): Promise<number> {
-  const { data, error } = await supabaseAdmin()
+  const db = supabaseAdmin();
+  // Compete. Portal defaults: leagues + clinics show full names; tournaments and
+  // rep/club start masked ("Ava P.") and staff toggle up per division. Academy
+  // divisions never appear publicly at all.
+  //
+  // NOTE: there is no 'tournament' PROGRAM TYPE - Module 9 models a tournament as
+  // a program with tournament_mode set (championship|showcase). So the masked
+  // default has to consider that column, not just the type key.
+  const { data: prog } = await db
+    .from('programs')
+    .select('tournament_mode, program_types(key)')
+    .eq('id', input.programId)
+    .maybeSingle();
+  const typeKey = (prog?.program_types as unknown as { key: string } | null)?.key ?? '';
+  const isTournament = !!prog?.tournament_mode;
+  const showFullNames = !isTournament && (typeKey === 'league' || typeKey === 'clinic');
+  const showOnCompete = typeKey !== 'academy';
+
+  const { data, error } = await db
     .from('divisions')
-    .insert({ program_id: input.programId, name: input.name.trim(), sport: input.sport, max_teams: input.maxTeams ?? null, min_players: input.minPlayers ?? null, max_players: input.maxPlayers ?? null, tiebreaks: DEFAULT_TIEBREAKS[input.sport] })
+    .insert({ program_id: input.programId, name: input.name.trim(), sport: input.sport, max_teams: input.maxTeams ?? null, min_players: input.minPlayers ?? null, max_players: input.maxPlayers ?? null, tiebreaks: DEFAULT_TIEBREAKS[input.sport], show_full_names: showFullNames, show_on_compete: showOnCompete })
     .select('id')
     .single();
   if (error) throw new Error(`division create failed: ${error.message}`);

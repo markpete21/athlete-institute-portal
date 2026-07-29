@@ -6,13 +6,20 @@ import { resolvePortalApp } from '@ai/foundation';
  * Subdomain routing (Module 0 §1) + auth wiring (Module 0 §3), one middleware.
  *
  * The host decides which route tree serves the request: play.* → /play/*,
- * admin.* → /admin/*. Direct path access to the wrong tree 404s by construction
+ * admin.* → /admin/*, compete.* → /compete/*. Direct path access to the wrong tree 404s by construction
  * (a play-host request for /admin/x becomes /play/admin/x, which doesn't exist).
  *
  * Auth model (mirrors the live app): middleware only enforces a *signed-in
  * session* for the admin host — the staff ROLE check needs the full user record
  * and lives in the /admin layout guard (requireStaff). play.* is open (tenants'
  * read-only gate + the rest come with Module 1).
+ *
+ * compete.* (Compete. Portal) is FULLY PUBLIC by design — standings, schedules
+ * and rosters are readable with no session at all. Nothing below gates it, and
+ * the data layer (lib/compete) only ever returns publishable fields, with
+ * minors' names masked per division. Do not add an auth check here without
+ * revisiting that: the whole point is that a parent can send a grandparent a
+ * link to the standings.
  *
  * Exempt from rewrite AND auth:
  *   /display/[token] — TV displays; the unguessable token is the credential.

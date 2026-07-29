@@ -41,6 +41,9 @@ const NAV = [
   { href: '/points', label: 'Play Points' },
 ];
 
+/** Compete lives on its own host, so it's an external link, not a route. */
+const COMPETE_URL = process.env.NEXT_PUBLIC_COMPETE_URL ?? 'https://compete.athleteinstitute.ca';
+
 /** Monogram fallback for a brand with no uploaded logo yet. */
 function Monogram({ name, colour }: { name: string; colour: string }) {
   const letters = name.split(/\s+/).slice(0, 2).map((w) => w[0]).join('').toUpperCase();
@@ -156,6 +159,12 @@ export default function PlayShell({ brands, status, signedIn, initials, children
               <Link key={n.href} href={n.href} className={on ? 'on' : undefined}>{n.label}</Link>
             );
           })}
+          <a href={COMPETE_URL} className="ps-tocompete">
+            Standings
+            <span className="ps-tocompete-mark">
+              <span className="ps-tc-word">Compete</span><span className="ps-tc-dot">.</span>
+            </span>
+          </a>
         </div>
       </nav>
 

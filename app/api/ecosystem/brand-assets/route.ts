@@ -38,6 +38,11 @@ export async function GET() {
       dark: '#171613',          // the constant dark chrome surface
       paper: '#ffffff',
     },
+    apps: {
+      play: process.env.NEXT_PUBLIC_PLAY_URL ?? 'https://play.athleteinstitute.ca',
+      admin: process.env.NEXT_PUBLIC_ADMIN_URL ?? 'https://admin.athleteinstitute.ca',
+      compete: process.env.NEXT_PUBLIC_COMPETE_URL ?? 'https://compete.athleteinstitute.ca',
+    },
     fonts: {
       display: "'Inter', 'Helvetica Neue', Helvetica, Arial, sans-serif",
       mono: "'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, monospace",
@@ -46,6 +51,7 @@ export async function GET() {
     wordmarks: {
       portal: { dark: `${STORAGE}/play/wordmark-portal.svg`, light: `${STORAGE}/play/wordmark-portal-light.svg` },
       admin: { dark: `${STORAGE}/play/wordmark-admin.svg`, light: `${STORAGE}/play/wordmark-admin-light.svg` },
+      compete: { dark: `${STORAGE}/play/wordmark-compete.svg`, light: `${STORAGE}/play/wordmark-compete-light.svg` },
     },
     brands: brands.map((b) => ({
       key: b.key,

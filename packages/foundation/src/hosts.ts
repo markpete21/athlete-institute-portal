@@ -12,11 +12,12 @@
  * Edge-safe: pure functions only, importable from middleware.
  */
 
-export type PortalApp = 'play' | 'admin';
+export type PortalApp = 'play' | 'admin' | 'compete';
 
 export const PORTAL_HOSTS: Record<PortalApp, string> = {
   play: 'play.athleteinstitute.ca',
   admin: 'admin.athleteinstitute.ca',
+  compete: 'compete.athleteinstitute.ca',
 };
 
 /** Cross-app links surfaced in the portal chrome (Module 0 §2). */
@@ -36,6 +37,11 @@ export function resolvePortalApp(host: string | null | undefined): PortalApp {
   const h = (host ?? '').toLowerCase().split(':')[0];
   if (h === 'admin.athleteinstitute.ca' || h === 'admin.localhost' || h.startsWith('admin.')) {
     return 'admin';
+  }
+  // Compete is the PUBLIC competitive portal - standings, schedules, rosters.
+  // No auth at all (see middleware); anyone can read it.
+  if (h === 'compete.athleteinstitute.ca' || h === 'compete.localhost' || h.startsWith('compete.')) {
+    return 'compete';
   }
   return 'play';
 }

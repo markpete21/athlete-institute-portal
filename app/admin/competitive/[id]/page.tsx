@@ -3,7 +3,7 @@ import { notFound } from 'next/navigation';
 import { buildTree, flattenTree, type FacilityNode } from '@ai/foundation';
 import { supabaseAdmin } from '@ai/foundation/supabase';
 import { divisionStandings } from '@/lib/competitive/competitive';
-import { buildScheduleAction, runBuilderAction, saveScoreAction } from '../actions';
+import { buildScheduleAction, runBuilderAction, saveCompeteSettingsAction, saveScoreAction } from '../actions';
 
 export const dynamic = 'force-dynamic';
 
@@ -14,7 +14,7 @@ const fmt = (iso: string | null) => iso ? new Date(iso).toLocaleString('en-CA', 
 export default async function DivisionAdminPage({ params }: { params: { id: string } }) {
   const db = supabaseAdmin();
   const divisionId = Number(params.id);
-  const { data: div } = await db.from('divisions').select('id, name, sport, programs(name)').eq('id', divisionId).maybeSingle();
+  const { data: div } = await db.from('divisions').select('id, name, sport, show_on_compete, show_full_names, programs(name)').eq('id', divisionId).maybeSingle();
   if (!div) notFound();
 
   const [{ data: teams }, { data: members }, { data: games }, { data: facRows }, standings] = await Promise.all([
@@ -105,6 +105,30 @@ export default async function DivisionAdminPage({ params }: { params: { id: stri
           <StandingsTable standings={standings} />
         </section>
       )}
+
+      <section className="flex flex-col gap-3">
+        <h2 className="text-2xl">Compete. Portal</h2>
+        <p className="text-body max-w-[62ch] text-sm">
+          Controls the public site at compete.athleteinstitute.ca — no login required to view it.
+          Leagues and clinics default to full names; tournaments and rep divisions start with last
+          names masked. A family can also hide an individual athlete, which always wins.
+        </p>
+        <form action={saveCompeteSettingsAction} className="card flex flex-wrap items-center gap-5 p-4">
+          <input type="hidden" name="divisionId" value={divisionId} />
+          <label className="flex items-center gap-2 text-sm">
+            <input type="checkbox" name="showOnCompete" defaultChecked={div.show_on_compete} />
+            Show this division publicly
+          </label>
+          <label className="flex items-center gap-2 text-sm">
+            <input type="checkbox" name="showFullNames" defaultChecked={div.show_full_names} />
+            Full names on public rosters
+          </label>
+          <span className="label text-[10px]">
+            {div.show_full_names ? 'e.g. Ava Peterson' : 'e.g. Ava P.'}
+          </span>
+          <button className="btn-ghost btn-sm ml-auto">Save</button>
+        </form>
+      </section>
 
       <Link href="/competitive" className="label text-[11px] hover:text-ink">← All divisions</Link>
     </main>

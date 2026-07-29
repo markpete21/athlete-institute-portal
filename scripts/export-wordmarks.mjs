@@ -31,16 +31,20 @@ function env() {
 }
 
 /** One lockup as SVG. `onDark` picks the qualifier colour that reads on the ground. */
-function lockup(qualifier, { onDark = true } = {}) {
+function lockup(qualifier, { onDark = true, word = 'Play' } = {}) {
   const q = qualifier.toUpperCase();
-  const playW = 92, ballW = 16, qualSize = 18.8, qualTrack = 6.8;
+  // Compete inverts the colours: gold word, red ball.
+  const isCompete = word === 'Compete';
+  const wordFill = isCompete ? GOLD : RED;
+  const ballFill = isCompete ? RED : GOLD;
+  const playW = word.length * 23, ballW = 16, qualSize = 18.8, qualTrack = 6.8;
   const qualW = q.length * (qualSize * 0.6 + qualTrack);
   const total = Math.ceil(playW + ballW + 10 + qualW);
-  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${total} 56" width="${total}" height="56" role="img" aria-label="Play ${qualifier}">
-  <title>Play ${qualifier}</title>
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${total} 56" width="${total}" height="56" role="img" aria-label="${word} ${qualifier}">
+  <title>${word} ${qualifier}</title>
   <g font-family="Inter, 'Helvetica Neue', Helvetica, Arial, sans-serif">
-    <text x="0" y="40" font-size="40" font-weight="900" letter-spacing="-0.8" fill="${RED}">Play</text>
-    <text x="${playW}" y="40" font-size="48.8" font-weight="900" fill="${GOLD}">.</text>
+    <text x="0" y="40" font-size="40" font-weight="900" letter-spacing="-0.8" fill="${wordFill}">${word}</text>
+    <text x="${playW}" y="40" font-size="48.8" font-weight="900" fill="${ballFill}">.</text>
   </g>
   <text x="${playW + ballW + 10}" y="40" font-family="'JetBrains Mono', ui-monospace, monospace"
         font-size="${qualSize}" font-weight="500" letter-spacing="${qualTrack}"
@@ -53,6 +57,8 @@ const FILES = [
   { path: 'play/wordmark-admin.svg', body: lockup('Admin') },
   { path: 'play/wordmark-portal-light.svg', body: lockup('Portal', { onDark: false }) },
   { path: 'play/wordmark-admin-light.svg', body: lockup('Admin', { onDark: false }) },
+  { path: 'play/wordmark-compete.svg', body: lockup('Portal', { word: 'Compete' }) },
+  { path: 'play/wordmark-compete-light.svg', body: lockup('Portal', { word: 'Compete', onDark: false }) },
 ];
 
 // Raw storage HTTP API: supabase-js pulls in realtime, which needs a WebSocket

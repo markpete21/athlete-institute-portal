@@ -14,13 +14,15 @@ import Link from 'next/link';
  * component, and scripts/export-wordmarks.mjs mirrors the same values into the
  * SVG files other apps consume.
  */
-export type WordmarkVariant = 'portal' | 'admin';
+export type WordmarkVariant = 'portal' | 'admin' | 'compete';
 
 export const WORDMARK = {
   red: '#d2232a',
   gold: '#9e8959',
   silver: '#9b9891',
-  qualifier: { portal: 'Portal', admin: 'Admin' } as Record<WordmarkVariant, string>,
+  qualifier: { portal: 'Portal', admin: 'Admin', compete: 'Portal' } as Record<WordmarkVariant, string>,
+  /** The word before the dot. Compete inverts the colours: gold word, red ball. */
+  word: { portal: 'Play', admin: 'Play', compete: 'Compete' } as Record<WordmarkVariant, string>,
 } as const;
 
 export default function PlayWordmark({
@@ -38,19 +40,19 @@ export default function PlayWordmark({
 }) {
   const inner = (
     <>
-      <span className="pw-play">Play</span>
-      <span className="pw-ball">.</span>
+      <span className={variant === 'compete' ? 'pw-compete' : 'pw-play'}>{WORDMARK.word[variant]}</span>
+      <span className={variant === 'compete' ? 'pw-ball pw-ball-red' : 'pw-ball'}>.</span>
       <span className="pw-qual">{WORDMARK.qualifier[variant]}</span>
     </>
   );
   const style = { fontSize: size } as React.CSSProperties;
 
   return href ? (
-    <Link href={href} className={`pw-lockup${className ? ` ${className}` : ''}`} style={style} aria-label={`Play ${WORDMARK.qualifier[variant]}`}>
+    <Link href={href} className={`pw-lockup${className ? ` ${className}` : ''}`} style={style} aria-label={`${WORDMARK.word[variant]} ${WORDMARK.qualifier[variant]}`}>
       {inner}
     </Link>
   ) : (
-    <span className={`pw-lockup${className ? ` ${className}` : ''}`} style={style} aria-label={`Play ${WORDMARK.qualifier[variant]}`}>
+    <span className={`pw-lockup${className ? ` ${className}` : ''}`} style={style} aria-label={`${WORDMARK.word[variant]} ${WORDMARK.qualifier[variant]}`}>
       {inner}
     </span>
   );
