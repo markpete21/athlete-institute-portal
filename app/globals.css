@@ -380,7 +380,17 @@
 }
 .ps-brand { flex: 0 0 auto; font-size: 25px; font-weight: 800; letter-spacing: -0.02em; text-decoration: none; white-space: nowrap; }
 .ps-play { color: var(--ps-red); font-weight: 900; }
-.ps-portal { color: var(--ps-silver); font-size: 0.68em; letter-spacing: 0; }
+/* "Portal" takes the house label treatment: JetBrains Mono, uppercase, tracked
+   out, silver — same voice as every field label and kicker in the system. */
+.ps-portal {
+  color: var(--ps-silver);
+  font-family: var(--font-mono);
+  font-size: 0.47em;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.17em;
+  margin-left: 4px;
+}
 .ps-ball {
   color: var(--accent); display: inline-block; transform-origin: bottom center;
   font-size: 1.22em; margin-left: 0; animation: ps-dribble 1.7s ease-in-out infinite;
