@@ -160,8 +160,11 @@
 .ash-brand-txt { display: block; }
 .ash-org { display: block; font-family: var(--font-mono, ui-monospace), monospace; font-size: 10px; letter-spacing: 0.18em; text-transform: uppercase; color: var(--ash-rail-muted); }
 .ash-word { display: block; margin-top: 6px; font-size: 26px; font-weight: 800; letter-spacing: -0.02em; white-space: nowrap; }
-.ash-play { color: #fff; }
-.ash-admin { color: #d1402f; }
+/* "Play" carries the colour (it's the product name); "Admin" labels the
+   environment. Red lifted to #E05744 so the product name isn't the dimmest
+   thing against the near-black rail. */
+.ash-play { color: #e05744; }
+.ash-admin { color: #fff; }
 .ash-ball {
   color: var(--accent); display: inline-block; transform-origin: bottom center;
   font-size: 1.22em; margin-left: 2px;
