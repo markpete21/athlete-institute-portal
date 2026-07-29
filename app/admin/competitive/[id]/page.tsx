@@ -110,8 +110,8 @@ export default async function DivisionAdminPage({ params }: { params: { id: stri
         <h2 className="text-2xl">Compete. Portal</h2>
         <p className="text-body max-w-[62ch] text-sm">
           Controls the public site at compete.athleteinstitute.ca — no login required to view it.
-          Leagues and clinics default to full names; tournaments and rep divisions start with last
-          names masked. A family can also hide an individual athlete, which always wins.
+          Leagues and clinics show last names as an initial by default; tournaments and rep/club
+          divisions show full names. A family can also hide an individual athlete, which always wins.
         </p>
         <form action={saveCompeteSettingsAction} className="card flex flex-wrap items-center gap-5 p-4">
           <input type="hidden" name="divisionId" value={divisionId} />

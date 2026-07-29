@@ -26,6 +26,7 @@ export async function GET() {
     const types = await listProgramTypes();
     const league = types.find((t) => t.key === 'league')!;
     const academy = types.find((t) => t.key === 'academy')!;
+    const club = types.find((t) => t.key === 'club')!;
 
     // 2. type-based defaults at creation
     const lp = await createProgram({ name: 'Compete Verify League', programTypeId: league.id, actorClerkId: 'system:verify' });
@@ -34,16 +35,19 @@ export async function GET() {
     const tp = await createProgram({ name: 'Compete Verify Tournament', programTypeId: league.id, actorClerkId: 'system:verify' });
     await db.from('programs').update({ tournament_mode: 'championship' }).eq('id', tp.id);
     const ap = await createProgram({ name: 'Compete Verify Academy', programTypeId: academy.id, actorClerkId: 'system:verify' });
-    progIds.push(lp.id, tp.id, ap.id);
+    const cp = await createProgram({ name: 'Compete Verify Club', programTypeId: club.id, actorClerkId: 'system:verify' });
+    progIds.push(lp.id, tp.id, ap.id, cp.id);
     const ld = await createDivision({ programId: lp.id, name: 'Verify League Div', sport: 'basketball' }, 'system:verify');
     const td = await createDivision({ programId: tp.id, name: 'Verify Tourney Div', sport: 'basketball' }, 'system:verify');
     const ad = await createDivision({ programId: ap.id, name: 'Verify Academy Div', sport: 'basketball' }, 'system:verify');
-    divIds.push(ld, td, ad);
+    const cd = await createDivision({ programId: cp.id, name: 'Verify Club Div', sport: 'basketball' }, 'system:verify');
+    divIds.push(ld, td, ad, cd);
 
     const row = async (id: number) => (await db.from('divisions').select('show_on_compete, show_full_names').eq('id', id).single()).data!;
-    const l = await row(ld), t = await row(td), a = await row(ad);
-    rec('league defaults to FULL names, public', l.show_full_names === true && l.show_on_compete === true, JSON.stringify(l));
-    rec('tournament (tournament_mode set) defaults to MASKED, public', t.show_full_names === false && t.show_on_compete === true, JSON.stringify(t));
+    const l = await row(ld), t = await row(td), a = await row(ad), c = await row(cd);
+    rec('league defaults to MASKED, public', l.show_full_names === false && l.show_on_compete === true, JSON.stringify(l));
+    rec('tournament (tournament_mode set) defaults to FULL names, public', t.show_full_names === true && t.show_on_compete === true, JSON.stringify(t));
+    rec('rep/club defaults to FULL names, public', c.show_full_names === true && c.show_on_compete === true, JSON.stringify(c));
     rec('academy is never public', a.show_on_compete === false, JSON.stringify(a));
 
     // 3. listing respects the flag

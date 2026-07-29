@@ -4,8 +4,8 @@
 --   show_on_compete  : does this division appear publicly at all
 --   show_full_names  : full "Ava Peterson" vs masked "Ava P." on public rosters
 -- Defaults by program type (Mark's rule):
---   league, clinic          -> full names ON
---   tournament, club (rep)  -> masked, staff toggle up per division
+--   league, clinic          -> MASKED ("Ava P.") - the conservative default
+--   tournament, club (rep)  -> FULL names, staff can toggle per division
 --   academy                 -> never appears on the competitive portal
 -- run-migration.mjs. Idempotent.
 -- ============================================================================
@@ -18,10 +18,21 @@ alter table public.divisions add column if not exists show_full_names boolean no
 -- NOT NULL DEFAULT now() with an update trigger, so it is never null. Going
 -- forward, createDivision() applies the same rule at insert time, which is the
 -- right place for it.)
--- NOTE: there is no 'tournament' program type. Module 9 models a tournament as
--- a program with tournament_mode set, so it must be excluded explicitly here.
+-- NOTE: there is no 'tournament' program type. Module 9 models a tournament as a
+-- program with tournament_mode set, so it must be matched on that column.
+-- The column default is false (masked), so we only need to turn ON the cases
+-- that should show full names: tournaments and rep/club.
 update public.divisions d
    set show_full_names = true
+  from public.programs p
+  join public.program_types t on t.id = p.program_type_id
+ where d.program_id = p.id
+   and (p.tournament_mode is not null or t.key = 'club');
+
+-- ...and force the recreational cases back to masked, in case an earlier run of
+-- this migration set them the other way round.
+update public.divisions d
+   set show_full_names = false
   from public.programs p
   join public.program_types t on t.id = p.program_type_id
  where d.program_id = p.id

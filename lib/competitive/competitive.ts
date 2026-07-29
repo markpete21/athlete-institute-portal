@@ -26,12 +26,15 @@ import { createBooking } from '@/lib/bookings';
 
 export async function createDivision(input: { programId: number; name: string; sport: Sport; maxTeams?: number | null; minPlayers?: number | null; maxPlayers?: number | null }, actorClerkId: string): Promise<number> {
   const db = supabaseAdmin();
-  // Compete. Portal defaults: leagues + clinics show full names; tournaments and
-  // rep/club start masked ("Ava P.") and staff toggle up per division. Academy
-  // divisions never appear publicly at all.
+  // Compete. Portal defaults (Mark's rule):
+  //   leagues + clinics      -> MASKED, "Ava P."      (recreational; most kids)
+  //   tournaments + rep/club -> FULL,   "Ava Peterson" (showcase/competitive)
+  //   academy                -> never public at all
+  // Masked is also the fallback for every other type, so a new program type can
+  // never accidentally publish a child's full name.
   //
   // NOTE: there is no 'tournament' PROGRAM TYPE - Module 9 models a tournament as
-  // a program with tournament_mode set (championship|showcase). So the masked
+  // a program with tournament_mode set (championship|showcase), so the full-name
   // default has to consider that column, not just the type key.
   const { data: prog } = await db
     .from('programs')
@@ -40,7 +43,7 @@ export async function createDivision(input: { programId: number; name: string; s
     .maybeSingle();
   const typeKey = (prog?.program_types as unknown as { key: string } | null)?.key ?? '';
   const isTournament = !!prog?.tournament_mode;
-  const showFullNames = !isTournament && (typeKey === 'league' || typeKey === 'clinic');
+  const showFullNames = isTournament || typeKey === 'club';
   const showOnCompete = typeKey !== 'academy';
 
   const { data, error } = await db
