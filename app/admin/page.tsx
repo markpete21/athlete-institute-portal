@@ -1,104 +1,90 @@
 import Link from 'next/link';
-import { UserButton } from '@clerk/nextjs';
-import { ECOSYSTEM_LINKS } from '@ai/foundation';
+import { formatCAD } from '@ai/foundation';
+import { supabaseAdmin } from '@ai/foundation/supabase';
+import { Icon } from '@/components/nav/icons';
 import { getPortalSession } from '@/lib/auth';
 
 export const dynamic = 'force-dynamic';
 
 /**
- * admin.athleteinstitute.ca home = the staff hub. Middleware confirmed a
- * session and the admin layout confirmed staff access; this links out to every
- * admin surface across all 22 modules, grouped by area.
+ * admin.athleteinstitute.ca home. Navigation lives in the persistent AdminShell
+ * rail, so this is a working landing view: today's shape of the business plus
+ * the handful of things staff most often start from.
  */
-const GROUPS: Array<{ title: string; links: Array<{ href: string; label: string; desc: string }> }> = [
-  {
-    title: 'Programs & Registration',
-    links: [
-      { href: '/programs', label: 'Programs', desc: 'Build programs, types, questions, pricing, sessions' },
-      { href: '/camps', label: 'Camps', desc: 'Weeks, capacity, check-in / check-out' },
-      { href: '/club', label: 'Club', desc: 'Teams, tryout → offer → confirm pipeline' },
-      { href: '/academy', label: 'Academy', desc: 'Recruitment offers, tuition, scholarships' },
-      { href: '/competitive', label: 'Competitive Play', desc: 'Divisions, team builder, schedules, standings' },
-    ],
-  },
-  {
-    title: 'Facilities & Scheduling',
-    links: [
-      { href: '/schedule', label: 'Schedule', desc: 'Day / week / month booking views' },
-      { href: '/facilities', label: 'Facilities', desc: 'Facility tree + bookable spaces' },
-      { href: '/conflicts', label: 'Conflicts', desc: 'Booking conflict queue' },
-      { href: '/rentals', label: 'Rentals', desc: 'Quotes, agreements, rates, settings' },
-      { href: '/displays', label: 'TV Displays', desc: 'Public display screens + templates' },
-    ],
-  },
-  {
-    title: 'People & Staff',
-    links: [
-      { href: '/staff', label: 'Staff', desc: 'Records, capabilities, pay, certs' },
-      { href: '/roles', label: 'Roles & Access', desc: 'Grant roles, staff by email' },
-      { href: '/waivers', label: 'Waivers', desc: 'Waiver editor + versions' },
-      { href: '/import', label: 'Playbook Import', desc: 'Import accounts from the Playbook export' },
-    ],
-  },
-  {
-    title: 'Engagement',
-    links: [
-      { href: '/comms', label: 'Communications', desc: 'Campaigns, announcements, auto-notifications' },
-      { href: '/feedback', label: 'Feedback & Ratings', desc: 'Ratings, responses, AI summaries' },
-      { href: '/points', label: 'Play Points', desc: 'Earn rules, referrals, liability' },
-      { href: '/promotions', label: 'Promotions', desc: 'Contests, challenges, wheel, badges' },
-      { href: '/gallery', label: 'Photo & Video', desc: 'Program galleries + uploads' },
-    ],
-  },
-  {
-    title: 'Business & Insight',
-    links: [
-      { href: '/reports', label: 'Dashboard & Reports', desc: 'Live dashboard, financials, QuickBooks' },
-      { href: '/retention', label: 'Retention', desc: 'At-risk families + one-click actions' },
-      { href: '/dunning', label: 'Dunning', desc: 'Failed-payment recovery + team explainer' },
-      { href: '/assist', label: 'Assist (AI copilot)', desc: 'Ask org questions, navigate-to-spot' },
-    ],
-  },
+async function counts() {
+  const db = supabaseAdmin();
+  const now = Date.now();
+  const since = new Date(now - 7 * 86_400_000).toISOString();
+  // Conflicts are computed live from the booking set (there is no stored table),
+  // so ask the Module 2 engine for the upcoming fortnight.
+  const { findConflictPairs } = await import('@/lib/conflicts');
+  const [progs, regs, conflicts] = await Promise.all([
+    db.from('programs').select('id', { count: 'exact', head: true }).in('status', ['published', 'registration_open']),
+    db.from('registrations').select('line_total_cents, created_at').gte('created_at', since).in('status', ['active', 'waitlisted']),
+    findConflictPairs(new Date(now).toISOString(), new Date(now + 14 * 86_400_000).toISOString()),
+  ]);
+  const rows = regs.data ?? [];
+  return {
+    openPrograms: progs.count ?? 0,
+    weekRegs: rows.length,
+    weekRevenueCents: rows.reduce((a, r) => a + (r.line_total_cents ?? 0), 0),
+    openConflicts: conflicts.length,
+  };
+}
+
+const QUICK = [
+  { href: '/programs', icon: 'programs', label: 'Programs', desc: 'Build and open registration' },
+  { href: '/schedule', icon: 'schedule', label: 'Schedule', desc: 'Bookings across every space' },
+  { href: '/reports', icon: 'reports', label: 'Reports', desc: 'Financials and dashboards' },
+  { href: '/comms', icon: 'comms', label: 'Communications', desc: 'Campaigns and announcements' },
 ];
 
 export default async function AdminHome() {
   const session = await getPortalSession();
+  const c = await counts().catch(() => null);
+  const firstName = session.email?.split('@')[0]?.split('.')[0] ?? 'there';
 
   return (
-    <main className="mx-auto flex min-h-screen max-w-5xl flex-col gap-10 px-6 py-12">
-      <header className="flex flex-wrap items-end justify-between gap-4 border-b border-hairline pb-6">
-        <div className="flex flex-col gap-2">
-          <p className="label text-[11px]">admin.athleteinstitute.ca</p>
-          <h1 className="text-5xl">Staff backend<span style={{ color: 'var(--accent)' }}>.</span></h1>
-        </div>
-        <div className="card flex items-center gap-3 p-3">
-          <UserButton />
-          <div className="flex flex-col">
-            <span className="text-sm text-ink">{session.email}</span>
-            <span className="label text-[11px]">{session.roles.length ? session.roles.join(', ') : session.userType}</span>
-          </div>
-        </div>
+    <main className="mx-auto flex max-w-5xl flex-col gap-9 px-7 py-9">
+      <header className="flex flex-col gap-1">
+        <p className="label text-[11px]">Overview</p>
+        <h1 className="text-4xl capitalize">
+          Welcome back, {firstName}<span style={{ color: 'var(--accent)' }}>.</span>
+        </h1>
       </header>
 
-      {GROUPS.map((group) => (
-        <section key={group.title} className="flex flex-col gap-3">
-          <h2 className="text-xl">{group.title}</h2>
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            {group.links.map((l) => (
-              <Link key={l.href} href={l.href} className="card flex flex-col gap-1 p-4 transition-colors hover:border-[var(--accent)]">
-                <span className="font-bold text-ink">{l.label}</span>
-                <span className="text-xs text-silver">{l.desc}</span>
-              </Link>
-            ))}
-          </div>
+      {c && (
+        <section className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+          {[
+            { k: 'Open programs', v: String(c.openPrograms) },
+            { k: 'Registrations · 7d', v: String(c.weekRegs) },
+            { k: 'Revenue · 7d', v: formatCAD(c.weekRevenueCents) },
+            { k: 'Open conflicts', v: String(c.openConflicts) },
+          ].map((s) => (
+            <div key={s.k} className="card p-4">
+              <p className="label text-[10px]">{s.k}</p>
+              <p className="mt-1 text-3xl font-bold tabular-nums text-ink">{s.v}</p>
+            </div>
+          ))}
         </section>
-      ))}
+      )}
 
-      <footer className="flex flex-wrap gap-3 border-t border-hairline pt-6 text-sm">
-        <span className="label text-[11px] self-center">Ecosystem:</span>
-        <a href={ECOSYSTEM_LINKS.hub} className="btn-ghost btn-sm">Apps hub</a>
-        <a href={process.env.NEXT_PUBLIC_PLAY_URL ?? '/'} className="btn-ghost btn-sm">Play portal (public)</a>
-      </footer>
+      <section className="flex flex-col gap-3">
+        <h2 className="text-xl">Jump back in</h2>
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          {QUICK.map((q) => (
+            <Link key={q.href} href={q.href} className="card flex flex-col gap-2 p-4 transition-colors hover:border-[var(--accent)]">
+              <span style={{ color: 'var(--accent)' }}><Icon name={q.icon} size={20} /></span>
+              <span className="font-bold text-ink">{q.label}</span>
+              <span className="text-xs text-silver">{q.desc}</span>
+            </Link>
+          ))}
+        </div>
+        <p className="text-body text-sm">
+          Everything else is in the menu on the left — pin your regulars to the favourites bar with the pin icon,
+          and pin up to three programs to keep their 7-day numbers on screen.
+        </p>
+      </section>
     </main>
   );
 }
