@@ -1,5 +1,6 @@
 import { listBrands } from '@/lib/brands/brands';
 import { removeLogoAction, updateBrandAction, uploadLogoAction } from './actions';
+import { SaveStatus, SubmitButton } from './SubmitButton';
 
 export const dynamic = 'force-dynamic';
 
@@ -62,10 +63,15 @@ export default async function BrandsPage() {
                       className="input text-sm"
                     />
                   </div>
-                  <button className="btn-gold btn-sm">{b.logoUrl ? 'Replace logo' : 'Upload logo'}</button>
+                  <SubmitButton className="btn-gold btn-sm" pendingLabel="Uploading…" doneLabel="Uploaded">
+                    {b.logoUrl ? 'Replace logo' : 'Upload logo'}
+                  </SubmitButton>
                   {b.logoUrl && (
-                    <button className="btn-ghost btn-sm" formAction={removeLogoAction}>Remove</button>
+                    <SubmitButton className="btn-ghost btn-sm" pendingLabel="Removing…" doneLabel="Removed" formAction={removeLogoAction}>
+                      Remove
+                    </SubmitButton>
                   )}
+                  <SaveStatus />
                 </form>
               </div>
             </div>
@@ -91,7 +97,8 @@ export default async function BrandsPage() {
               <label className="flex items-center gap-2 pb-2 text-sm">
                 <input type="checkbox" name="showInHeader" defaultChecked={b.showInHeader} /> In header
               </label>
-              <button className="btn-ghost btn-sm">Save</button>
+              <SubmitButton>Save</SubmitButton>
+              <SaveStatus />
             </form>
           </section>
         ))}

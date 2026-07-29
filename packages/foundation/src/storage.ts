@@ -25,12 +25,15 @@ export const BUCKETS = {
   /** Brand logos/wordmarks. PUBLIC — these render in the public header for
       anonymous visitors, so they cannot sit behind signed URLs. */
   brandAssets: 'brand-assets',
+  /** Family-member photos (parent-uploaded). PRIVATE — children's photos are
+      never public; the portal serves them through short-lived signed URLs. */
+  memberPhotos: 'member-photos',
 } as const;
 
 export type BucketKey = keyof typeof BUCKETS;
 export type BucketName = (typeof BUCKETS)[BucketKey];
 
-const IMAGE_BUCKETS: BucketName[] = ['staff-photos', 'event-logos', 'display-media', 'product-images', 'gallery-media', 'brand-assets'];
+const IMAGE_BUCKETS: BucketName[] = ['staff-photos', 'event-logos', 'display-media', 'product-images', 'gallery-media', 'brand-assets', 'member-photos'];
 
 /** Buckets served publicly (no signed URL). Everything else stays private. */
 const PUBLIC_BUCKETS: BucketName[] = ['brand-assets'];
