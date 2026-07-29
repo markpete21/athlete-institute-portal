@@ -78,7 +78,7 @@ export default function AdminShell(props: AdminShellProps) {
             <Link href="/" className="ash-brand-txt">
               <span className="ash-org">Athlete Institute</span>
               <span className="ash-word">
-                <span className="ash-play">Play</span><span className="ash-ball">.</span> <span className="ash-portal">Portal</span>
+                <span className="ash-play">Play</span><span className="ash-ball">.</span> <span className="ash-admin">Admin</span>
               </span>
             </Link>
             <button className="ash-rail-toggle" onClick={toggleRail} title={minimized ? 'Expand menu' : 'Collapse menu'} aria-label={minimized ? 'Expand menu' : 'Collapse menu'}>

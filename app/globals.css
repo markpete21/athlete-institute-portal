@@ -127,8 +127,8 @@
   --ash-body: #333333;
   --ash-silver: #9ea1a1;
   --ash-hairline: rgba(30, 30, 30, 0.14);
-  --ash-pos: var(--ash-pos);
-  --ash-neg: var(--ash-neg);
+  --ash-pos: #3f7a5b;
+  --ash-neg: #b4483c;
   --ash-rail-w: 264px;
   --ash-rail-bg: #171613;
   --ash-rail-ink: #edeae3;
@@ -164,7 +164,7 @@
    environment. Red lifted to #E05744 so the product name isn't the dimmest
    thing against the near-black rail. */
 .ash-play { color: #e05744; }
-.ash-portal { color: #fff; }
+.ash-admin { color: #fff; }
 .ash-ball {
   color: var(--accent); display: inline-block; transform-origin: bottom center;
   font-size: 1.22em; margin-left: 2px;
