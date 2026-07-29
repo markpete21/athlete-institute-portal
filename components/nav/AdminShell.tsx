@@ -4,6 +4,7 @@ import { useEffect, useRef, useState, useTransition } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { UserButton } from '@clerk/nextjs';
+import PlayWordmark from '@/components/brand/PlayWordmark';
 import { Icon } from '@/components/nav/icons';
 import {
   GROUP_ORDER, MAX_FAVOURITES, MODULES, MODULE_BY_KEY, activeModuleFor,
@@ -77,9 +78,7 @@ export default function AdminShell(props: AdminShellProps) {
           <div className="ash-brand-row">
             <Link href="/" className="ash-brand-txt">
               <span className="ash-org">Athlete Institute</span>
-              <span className="ash-word">
-                <span className="ash-play">Play</span><span className="ash-ball">.</span> <span className="ash-admin">Admin</span>
-              </span>
+              <PlayWordmark variant="admin" size={26} className="ash-word" />
             </Link>
             <button className="ash-rail-toggle" onClick={toggleRail} title={minimized ? 'Expand menu' : 'Collapse menu'} aria-label={minimized ? 'Expand menu' : 'Collapse menu'}>
               <span className="ash-chev2"><Icon name="collapse" size={16} /></span>

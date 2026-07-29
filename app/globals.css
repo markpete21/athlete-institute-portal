@@ -612,3 +612,47 @@
   position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
   overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0;
 }
+
+/* ==========================================================================
+   THE Play lockup (components/brand/PlayWordmark.tsx) — shared by the public
+   shell, the admin shell and the auth pages so there is ONE wordmark.
+   ========================================================================== */
+.pw-lockup {
+  display: inline-flex; align-items: baseline; white-space: nowrap;
+  font-weight: 800; letter-spacing: -0.02em; text-decoration: none; line-height: 1;
+}
+.pw-play { color: #d2232a; font-weight: 900; }
+.pw-ball {
+  color: var(--accent, #9e8959); display: inline-block; transform-origin: bottom center;
+  font-size: 1.22em; margin-left: 0;
+  animation: pw-dribble 1.7s ease-in-out infinite;
+}
+/* peak aligns the dot's ink-top with the cap height of the P/l */
+@keyframes pw-dribble {
+  0%   { transform: translateY(0)      scaleY(1); }
+  12%  { transform: translateY(-0.52em) scaleY(1.06); }
+  24%  { transform: translateY(0)      scaleY(0.86); }
+  30%  { transform: translateY(0)      scaleY(1); }
+  42%  { transform: translateY(-0.21em); }
+  52%  { transform: translateY(0)      scaleY(0.93); }
+  58%  { transform: translateY(0)      scaleY(1); }
+  100% { transform: translateY(0); }
+}
+@media (prefers-reduced-motion: reduce) { .pw-ball { animation: none; } }
+.pw-qual {
+  color: #9b9891;
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 0.47em; font-weight: 500;
+  text-transform: uppercase; letter-spacing: 0.17em;
+  margin-left: 4px;
+}
+
+/* Auth screens (sign-in / sign-up / Clerk's "Complete your profile") carry the
+   lockup above the widget, on the dark ground both shells use. */
+.pw-auth {
+  min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 26px; padding: 28px 20px;
+  background-color: #171613;
+  background-image: radial-gradient(rgba(184, 158, 109, 0.2) 1px, transparent 1.4px);
+  background-size: 13px 13px; background-position: -3px -3px;
+}

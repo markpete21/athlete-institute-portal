@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import PlayWordmark from '@/components/brand/PlayWordmark';
 import { Icon } from '@/components/nav/icons';
 import type { BrandTile } from '@/lib/play/brands';
 
@@ -69,9 +70,7 @@ export default function PlayShell({ brands, status, signedIn, initials, children
     <div className="play-shell">
       <header className="ps-topbar">
         <div className="ps-topbar-in">
-          <Link href="/account" className="ps-brand">
-            <span className="ps-play">Play</span><span className="ps-ball">.</span> <span className="ps-portal">Portal</span>
-          </Link>
+          <PlayWordmark variant="portal" href="/account" size={25} className="ps-brand" />
 
           <div className="ps-brands">
             {brands.map((b) => (
