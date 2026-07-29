@@ -30,6 +30,33 @@ function env() {
   return out;
 }
 
+/**
+ * Compete's period is a bracket the ball plays through: it rests as the period,
+ * advances along the bottom feed, up the connector and out the stem, holds the
+ * win, then fades back. SMIL so it animates even when consumed as an <img>.
+ * Mirrors CompeteBracket in components/brand/PlayWordmark.tsx (shorter here to
+ * fit the 56px lockup box).
+ */
+function bracket(x0, ballFill, onDark) {
+  const bot = 35.6, top = 6, mid = (top + bot) / 2;
+  const join = x0 + 20, end = x0 + 38;
+  const keys = '0;0.30;0.42;0.52;0.62;0.86;0.92;0.925;0.98;1';
+  // period -> along the bottom feed -> up the connector -> out the stem -> back
+  const cx = [x0, x0, join, join, end, end, end, x0, x0, x0].join(';');
+  const cy = [bot, bot, bot, mid, mid, mid, mid, bot, bot, bot].join(';');
+  return `<g fill="none" stroke="${onDark ? SILVER : '#1e1e1e'}" stroke-width="1.6" stroke-linecap="square">
+    <path d="M${x0 + 2} ${top} H${join}"/>
+    <path d="M${x0 + 2} ${bot} H${join}"/>
+    <path d="M${join} ${top} V${bot}"/>
+    <path d="M${join} ${mid} H${end}"/>
+  </g>
+  <circle cx="${x0}" cy="${bot}" r="4.4" fill="${ballFill}">
+    <animate attributeName="cx" values="${cx}" keyTimes="${keys}" dur="5s" repeatCount="indefinite"/>
+    <animate attributeName="cy" values="${cy}" keyTimes="${keys}" dur="5s" repeatCount="indefinite"/>
+    <animate attributeName="opacity" values="1;1;1;1;1;1;0;0;1;1" keyTimes="${keys}" dur="5s" repeatCount="indefinite"/>
+  </circle>`;
+}
+
 /** One lockup as SVG. `onDark` picks the qualifier colour that reads on the ground. */
 function lockup(qualifier, { onDark = true, word = 'Play' } = {}) {
   const q = qualifier.toUpperCase();
@@ -37,15 +64,22 @@ function lockup(qualifier, { onDark = true, word = 'Play' } = {}) {
   const isCompete = word === 'Compete';
   const wordFill = isCompete ? GOLD : RED;
   const ballFill = isCompete ? RED : GOLD;
-  const playW = word.length * 23, ballW = 16, qualSize = 18.8, qualTrack = 6.8;
+  // Where the period (or bracket) starts. The per-char estimate is fine for
+  // "Play"; "Compete" is long enough that it needs its real advance width
+  // (measured from Inter 900 at this size), or the ball lands on the final "e".
+  const playW = word === 'Compete' ? 176 : word.length * 23;
+  const ballW = isCompete ? 44 : 16, qualSize = 18.8, qualTrack = 6.8;
   const qualW = q.length * (qualSize * 0.6 + qualTrack);
   const total = Math.ceil(playW + ballW + 10 + qualW);
+  const ball = isCompete
+    ? bracket(playW + 6, ballFill, onDark)
+    : `<text x="${playW}" y="40" font-size="48.8" font-weight="900" fill="${ballFill}">.</text>`;
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${total} 56" width="${total}" height="56" role="img" aria-label="${word} ${qualifier}">
   <title>${word} ${qualifier}</title>
   <g font-family="Inter, 'Helvetica Neue', Helvetica, Arial, sans-serif">
     <text x="0" y="40" font-size="40" font-weight="900" letter-spacing="-0.8" fill="${wordFill}">${word}</text>
-    <text x="${playW}" y="40" font-size="48.8" font-weight="900" fill="${ballFill}">.</text>
   </g>
+  ${ball}
   <text x="${playW + ballW + 10}" y="40" font-family="'JetBrains Mono', ui-monospace, monospace"
         font-size="${qualSize}" font-weight="500" letter-spacing="${qualTrack}"
         fill="${onDark ? SILVER : '#6b6760'}">${q}</text>

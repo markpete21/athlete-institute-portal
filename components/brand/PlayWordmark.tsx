@@ -25,6 +25,28 @@ export const WORDMARK = {
   word: { portal: 'Play', admin: 'Play', compete: 'Compete' } as Record<WordmarkVariant, string>,
 } as const;
 
+/**
+ * Compete's period is a BRACKET, not a dribble: two feed lines into a vertical
+ * connector plus a stem, with the red ball resting as the period and then
+ * advancing along the bracket to the end of the stem — the winner coming out
+ * of the draw. Geometry is in units of 100 = 1em, so it scales with the lockup.
+ * Motion + line colour live in globals.css (.pw-bracket) so reduced-motion and
+ * dark grounds can override them.
+ */
+function CompeteBracket() {
+  return (
+    <svg className="pw-bracket" viewBox="-12 -114 120 120" aria-hidden focusable="false">
+      <g className="pwb-line">
+        <path d="M5 -108 H53" />
+        <path d="M5 -11 H53" />
+        <path d="M53 -108 V-11" />
+        <path d="M53 -59.5 H95" />
+      </g>
+      <circle className="pwb-ball" cx="0" cy="-11" r="11" />
+    </svg>
+  );
+}
+
 export default function PlayWordmark({
   variant = 'portal',
   href,
@@ -41,7 +63,11 @@ export default function PlayWordmark({
   const inner = (
     <>
       <span className={variant === 'compete' ? 'pw-compete' : 'pw-play'}>{WORDMARK.word[variant]}</span>
-      <span className={variant === 'compete' ? 'pw-ball pw-ball-red' : 'pw-ball'}>.</span>
+      {variant === 'compete' ? (
+        <CompeteBracket />
+      ) : (
+        <span className="pw-ball">.</span>
+      )}
       <span className="pw-qual">{WORDMARK.qualifier[variant]}</span>
     </>
   );
