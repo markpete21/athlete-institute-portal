@@ -398,10 +398,10 @@
 @media (prefers-reduced-motion: reduce) { .ps-ball { animation: none; } }
 
 /* --- brand logo tiles --- */
-.ps-brands { display: flex; align-items: center; justify-content: center; gap: 8px; min-width: 0; }
+.ps-brands { display: flex; align-items: center; justify-content: center; gap: 12px; min-width: 0; }
 .ps-bwrap { position: relative; }
 .ps-btile {
-  width: 64px; height: 64px; display: flex; align-items: center; justify-content: center; padding: 5px;
+  width: 58px; height: 58px; display: flex; align-items: center; justify-content: center; padding: 5px;
   background: rgba(255, 255, 255, 0.045); border: 1px solid var(--ps-dark-hair); cursor: pointer;
   transition: border-color 0.14s ease, transform 0.14s ease, background-color 0.14s ease;
 }
