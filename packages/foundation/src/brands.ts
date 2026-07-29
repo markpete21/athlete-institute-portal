@@ -72,16 +72,26 @@ export const BRANDS: Brand[] = [
   seed({
     key: 'all-can',
     name: 'ALL CAN',
-    accent: '#2f5d8a', // PROVISIONAL — awaiting real ALL CAN design system
-    provisional: true,
+    accent: '#d8232a', // from the supplied ALL CAN shield
   }),
   seed({
     key: 'bears',
-    name: 'Bears',
-    accent: '#b4483c', // PROVISIONAL — awaiting real Bears (VB + Rep BB) design system
-    provisional: true,
+    name: 'Orangeville Bears',
+    accent: '#a8935f', // from the supplied bear mark (gold on near-black)
+  }),
+  seed({
+    key: 'all-canadian-games',
+    name: 'All Canadian Games',
+    accent: '#d2232a', // from the supplied ACG roundel
   }),
 ];
+
+/**
+ * NOTE: ALL CAN (#d8232a) and All Canadian Games (#d2232a) are near-identical
+ * reds, and Bears' gold is the house accent — so brand colour alone cannot
+ * distinguish these four. Identify brands by their LOGO; keep colour free for
+ * other encodings (e.g. per-child keys on the family schedule).
+ */
 
 const BY_KEY = new Map(BRANDS.map((b) => [b.key, b]));
 

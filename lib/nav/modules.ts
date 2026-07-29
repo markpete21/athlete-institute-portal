@@ -9,7 +9,7 @@
 export type ModuleKey =
   | 'programs' | 'camps' | 'club' | 'academy' | 'competitive'
   | 'schedule' | 'facilities' | 'conflicts' | 'rentals' | 'displays'
-  | 'staff' | 'roles' | 'waivers' | 'import'
+  | 'staff' | 'roles' | 'waivers' | 'import' | 'brands'
   | 'comms' | 'feedback' | 'points' | 'promotions' | 'gallery'
   | 'reports' | 'retention' | 'dunning' | 'assist';
 
@@ -88,6 +88,9 @@ export const MODULES: ModuleDef[] = [
   ] },
   { key: 'import', label: 'Playbook Import', group: 'People & Staff', href: '/import', actions: [
     { label: 'Import accounts', href: '/import' },
+  ] },
+  { key: 'brands', label: 'Brands', group: 'People & Staff', href: '/brands', actions: [
+    { label: 'Brand settings', href: '/brands' },
   ] },
 
   { key: 'comms', label: 'Communications', group: 'Engagement', href: '/comms', actions: [

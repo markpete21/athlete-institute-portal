@@ -22,12 +22,18 @@ export const BUCKETS = {
   documents: 'documents',
   /** Program/session photo galleries (Module 17). Video streams via the live pipeline. */
   galleryMedia: 'gallery-media',
+  /** Brand logos/wordmarks. PUBLIC — these render in the public header for
+      anonymous visitors, so they cannot sit behind signed URLs. */
+  brandAssets: 'brand-assets',
 } as const;
 
 export type BucketKey = keyof typeof BUCKETS;
 export type BucketName = (typeof BUCKETS)[BucketKey];
 
-const IMAGE_BUCKETS: BucketName[] = ['staff-photos', 'event-logos', 'display-media', 'product-images', 'gallery-media'];
+const IMAGE_BUCKETS: BucketName[] = ['staff-photos', 'event-logos', 'display-media', 'product-images', 'gallery-media', 'brand-assets'];
+
+/** Buckets served publicly (no signed URL). Everything else stays private. */
+const PUBLIC_BUCKETS: BucketName[] = ['brand-assets'];
 
 /**
  * Idempotently create every bucket (private). Call from a setup script or the
@@ -44,7 +50,7 @@ export async function ensureBuckets(): Promise<{ created: string[]; existing: st
     if (have.has(name)) continue;
     const isImage = IMAGE_BUCKETS.includes(name);
     const { error: createErr } = await storage.createBucket(name, {
-      public: false,
+      public: PUBLIC_BUCKETS.includes(name),
       fileSizeLimit: isImage ? '10MB' : '25MB',
       allowedMimeTypes: isImage
         ? ['image/png', 'image/jpeg', 'image/webp', 'image/svg+xml', 'image/gif', 'video/mp4']
@@ -115,4 +121,18 @@ export async function deleteFile(bucket: BucketName, paths: string[]): Promise<v
       `delete(${bucket}) removed ${data?.length ?? 0} of ${paths.length} objects (check paths: ${paths.join(', ')})`,
     );
   }
+}
+
+
+/**
+ * Public URL for an object in a PUBLIC bucket (currently brand-assets only).
+ * Throws for private buckets — those must use getSignedUrl() instead, so a
+ * private asset can never be leaked through the wrong helper.
+ */
+export function getPublicUrl(bucket: BucketName, path: string): string {
+  if (!PUBLIC_BUCKETS.includes(bucket)) {
+    throw new Error(`getPublicUrl(): ${bucket} is private — use getSignedUrl().`);
+  }
+  const { data } = supabaseAdmin().storage.from(bucket).getPublicUrl(path);
+  return data.publicUrl;
 }

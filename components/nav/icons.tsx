@@ -18,6 +18,7 @@ const PATHS: Record<string, string> = {
   roles: 'M4 10h16v10H4zM8 10V7a4 4 0 0 1 8 0v3',
   waivers: 'M7 3h7l5 5v13H7zM14 3v5h5M10 13h6M10 17h6',
   import: 'M12 3v12M8 11l4 4 4-4M4 21h16',
+  brands: 'M4 7l8-4 8 4-8 4zM4 12l8 4 8-4M4 17l8 4 8-4',
   comms: 'M4 5h16v11H8l-4 4zM8 9h8M8 12h5',
   feedback: 'M12 3l2.6 5.3 5.9.9-4.3 4.1 1 5.8-5.2-2.7-5.2 2.7 1-5.8L3.5 9.2l5.9-.9z',
   points: 'M12 8v8M9.5 10.5c0-1.4 1.1-2 2.5-2s2.5.6 2.5 2-1.1 2-2.5 2-2.5.6-2.5 2 1.1 2 2.5 2 2.5-.6 2.5-2',
