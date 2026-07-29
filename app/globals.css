@@ -164,7 +164,7 @@
    environment. Red lifted to #E05744 so the product name isn't the dimmest
    thing against the near-black rail. */
 .ash-play { color: #e05744; }
-.ash-admin { color: #fff; }
+.ash-portal { color: #fff; }
 .ash-ball {
   color: var(--accent); display: inline-block; transform-origin: bottom center;
   font-size: 1.22em; margin-left: 2px;
