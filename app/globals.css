@@ -666,9 +666,7 @@
    hairlines; the default is ink for light grounds. */
 .pw-bracket {
   display: inline-block; width: 1.2em; height: 1.2em;
-  /* negative margin pulls the period back toward the "e" — the lockup reads as
-     one word plus its period, not a word with a gap. */
-  vertical-align: -0.06em; margin-left: -0.06em; overflow: visible;
+  vertical-align: -0.06em; margin-left: 0.02em; overflow: visible;
 }
 .pw-bracket .pwb-line {
   fill: none; stroke: var(--pw-bracket-line, #1e1e1e);
@@ -727,17 +725,9 @@
   border: 1px solid var(--cs-dark-hair); padding: 7px 12px;
 }
 .cs-toplay:hover { border-color: var(--cs-red); }
-.cs-toplay-lbl {
-  font-family: var(--font-mono), monospace; font-size: 9.5px; letter-spacing: 0.14em;
-  text-transform: uppercase; color: var(--cs-dark-muted); white-space: nowrap;
-}
-.cs-toplay-mark { font-size: 17px; font-weight: 900; letter-spacing: -0.02em; white-space: nowrap; }
-.cs-toplay-play { color: var(--cs-red); }
-.cs-toplay-dot { color: var(--cs-gold); font-size: 1.22em; }
 @media (max-width: 640px) {
   .cs-topbar-in { flex-wrap: wrap; padding: 10px 20px 9px; min-height: 0; row-gap: 9px; }
   .cs-nav { order: 3; width: 100%; }
-  .cs-toplay-lbl { display: none; }
 }
 
 .cs-main { flex: 1; max-width: 1080px; margin: 0 auto; width: 100%; padding: 26px 20px 50px; }

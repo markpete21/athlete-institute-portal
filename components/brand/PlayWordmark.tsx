@@ -52,6 +52,7 @@ export default function PlayWordmark({
   href,
   size = 25,
   className,
+  qualifier,
 }: {
   variant?: WordmarkVariant;
   /** Wraps the lockup in a link when provided. */
@@ -59,7 +60,10 @@ export default function PlayWordmark({
   /** Font size in px for "Play" — everything else scales from it. */
   size?: number;
   className?: string;
+  /** Replaces the variant's qualifier (e.g. "Login" on a sign-in link). */
+  qualifier?: string;
 }) {
+  const qual = qualifier ?? WORDMARK.qualifier[variant];
   const inner = (
     <>
       <span className={variant === 'compete' ? 'pw-compete' : 'pw-play'}>{WORDMARK.word[variant]}</span>
@@ -68,17 +72,17 @@ export default function PlayWordmark({
       ) : (
         <span className="pw-ball">.</span>
       )}
-      <span className="pw-qual">{WORDMARK.qualifier[variant]}</span>
+      <span className="pw-qual">{qual}</span>
     </>
   );
   const style = { fontSize: size } as React.CSSProperties;
 
   return href ? (
-    <Link href={href} className={`pw-lockup${className ? ` ${className}` : ''}`} style={style} aria-label={`${WORDMARK.word[variant]} ${WORDMARK.qualifier[variant]}`}>
+    <Link href={href} className={`pw-lockup${className ? ` ${className}` : ''}`} style={style} aria-label={`${WORDMARK.word[variant]} ${qual}`}>
       {inner}
     </Link>
   ) : (
-    <span className={`pw-lockup${className ? ` ${className}` : ''}`} style={style} aria-label={`${WORDMARK.word[variant]} ${WORDMARK.qualifier[variant]}`}>
+    <span className={`pw-lockup${className ? ` ${className}` : ''}`} style={style} aria-label={`${WORDMARK.word[variant]} ${qual}`}>
       {inner}
     </span>
   );

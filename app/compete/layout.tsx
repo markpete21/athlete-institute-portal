@@ -22,11 +22,11 @@ export default function CompeteLayout({ children }: { children: React.ReactNode 
             <a href="/">Divisions</a>
             <a href={`${PLAY_URL}/schedule`}>Facility schedule</a>
           </nav>
+          {/* The way back to Play. to register — the real lockup (dribbling
+              ball and all), with LOGIN in the same mono qualifier treatment
+              this bar uses for PORTAL. */}
           <a className="cs-toplay" href={`${PLAY_URL}/account`}>
-            <span className="cs-toplay-lbl">Register &amp; manage</span>
-            <span className="cs-toplay-mark">
-              <span className="cs-toplay-play">Play</span><span className="cs-toplay-dot">.</span>
-            </span>
+            <PlayWordmark qualifier="Login" size={17} />
           </a>
         </div>
       </header>
