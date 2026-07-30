@@ -164,7 +164,10 @@ export default function PlayShell({ brands, status, signedIn, initials, children
               hover line, not a permanent label competing with the nav. */}
           <a href={COMPETE_URL} className="ps-tocompete" aria-label="Compete: results, standings and schedules">
             <PlayWordmark variant="compete" qualifier="" size={15} />
-            <span className="ps-tocompete-hover" aria-hidden>Results &bull; Standings &bull; Schedules</span>
+            <span className="ps-tocompete-hover" aria-hidden>
+              <span>Results &bull; Standings</span>
+              <span>Schedules</span>
+            </span>
           </a>
         </div>
       </nav>

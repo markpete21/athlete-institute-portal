@@ -627,15 +627,18 @@
   font-size: 1.22em; margin-left: 0;
   animation: pw-dribble 1.7s ease-in-out infinite;
 }
-/* peak aligns the dot's ink-top with the cap height of the P/l */
+/* Peak puts the BOTTOM of the ball on the top of the "Pl"; the second bounce
+   reaches half that height. Both in the ball's own em (it renders at 1.22em):
+   cap height 0.7275em of the lockup + the dot's 0.0127em below the baseline
+   = 0.7404em of the lockup, which is 0.607em at 1.22 — and half is 0.303em. */
 @keyframes pw-dribble {
-  0%   { transform: translateY(0)      scaleY(1); }
-  12%  { transform: translateY(-0.52em) scaleY(1.06); }
-  24%  { transform: translateY(0)      scaleY(0.86); }
-  30%  { transform: translateY(0)      scaleY(1); }
-  42%  { transform: translateY(-0.21em); }
-  52%  { transform: translateY(0)      scaleY(0.93); }
-  58%  { transform: translateY(0)      scaleY(1); }
+  0%   { transform: translateY(0)       scaleY(1); }
+  12%  { transform: translateY(-0.607em) scaleY(1.06); }
+  24%  { transform: translateY(0)       scaleY(0.86); }
+  30%  { transform: translateY(0)       scaleY(1); }
+  42%  { transform: translateY(-0.303em); }
+  52%  { transform: translateY(0)       scaleY(0.93); }
+  58%  { transform: translateY(0)       scaleY(1); }
   100% { transform: translateY(0); }
 }
 @media (prefers-reduced-motion: reduce) { .pw-ball { animation: none; } }
@@ -713,6 +716,9 @@
 }
 /* the bracket's hairlines are ink by default — relight them on the dark bar */
 .cs-topbar { --pw-bracket-line: #8c877c; }
+/* and the bracket (ball included) sits a touch right and low of where the box
+   puts it, so the period reads level with the word */
+.cs-topbar .pw-bracket { position: relative; left: 2px; top: 1px; }
 .cs-nav { display: flex; gap: 4px; flex: 1; min-width: 0; overflow-x: auto; }
 .cs-nav a {
   padding: 9px 12px; font-size: 13.5px; color: var(--cs-dark-muted);
@@ -824,11 +830,23 @@
   /* the bracket's hairlines sit on the dark nav, same as on the Compete bar */
   --pw-bracket-line: #8c877c;
 }
+/* both states sit centred in the same cell, so neither the swap nor the two
+   line-lengths move anything */
 .ps-tocompete > * {
-  grid-area: 1 / 1; justify-self: end;
+  grid-area: 1 / 1; place-self: center;
   transition: opacity 0.15s ease;
 }
-.ps-tocompete-hover { opacity: 0; color: #fff; letter-spacing: 0.02em; }
+/* two centred lines, small enough that the LOCKUP sets the button width */
+/* at this size the bracket sits a touch high against the word — nudge it (and
+   the ball riding it) down, and give the ball a hair more weight so it still
+   reads as a period at 15px. Both scoped to the nav button, so the Compete
+   site header keeps its own alignment and proportions. */
+.ps-tocompete .pw-bracket { position: relative; top: 1px; left: 1px; }
+.ps-tocompete .pwb-ball { r: 12.2; }
+.ps-tocompete-hover {
+  opacity: 0; display: flex; flex-direction: column; align-items: center; gap: 1px;
+  text-align: center; color: #fff; font-size: 10.5px; line-height: 1.25; letter-spacing: 0.04em;
+}
 .ps-tocompete:hover .pw-lockup,
 .ps-tocompete:focus-visible .pw-lockup { opacity: 0; }
 .ps-tocompete:hover .ps-tocompete-hover,

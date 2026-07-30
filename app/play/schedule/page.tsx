@@ -42,7 +42,7 @@ export default async function PlaySchedulePage() {
   return (
     <main className="mx-auto flex min-h-screen max-w-3xl flex-col gap-10 px-6 py-16">
       <header className="flex flex-col gap-2 border-b border-hairline pb-6">
-        <p className="label text-[11px]">Facility schedule</p>
+        <p className="label text-[11px]">Program schedule</p>
         <h1 className="text-5xl">
           Schedule<span style={{ color: 'var(--accent)' }}>.</span>
         </h1>
