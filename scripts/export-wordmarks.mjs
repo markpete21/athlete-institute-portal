@@ -67,7 +67,7 @@ function lockup(qualifier, { onDark = true, word = 'Play' } = {}) {
   // Where the period (or bracket) starts. The per-char estimate is fine for
   // "Play"; "Compete" is long enough that it needs its real advance width
   // (measured from Inter 900 at this size), or the ball lands on the final "e".
-  const playW = word === 'Compete' ? 176 : word.length * 23;
+  const playW = word === 'Compete' ? 173 : word.length * 23;
   const ballW = isCompete ? 44 : 16, qualSize = 18.8, qualTrack = 6.8;
   const qualW = q.length * (qualSize * 0.6 + qualTrack);
   const total = Math.ceil(playW + ballW + 10 + qualW);

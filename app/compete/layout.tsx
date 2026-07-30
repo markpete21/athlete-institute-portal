@@ -15,7 +15,9 @@ export default function CompeteLayout({ children }: { children: React.ReactNode 
     <div className="compete-shell">
       <header className="cs-topbar">
         <div className="cs-topbar-in">
-          <PlayWordmark variant="compete" href="/" size={25} className="cs-brand" />
+          {/* Inter tops out at 900, so weight cannot go further — the lockup
+              carries more presence at a larger size instead. */}
+          <PlayWordmark variant="compete" href="/" size={29} className="cs-brand" />
           <nav className="cs-nav">
             <a href="/">Divisions</a>
             <a href={`${PLAY_URL}/schedule`}>Facility schedule</a>

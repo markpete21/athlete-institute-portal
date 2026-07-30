@@ -666,7 +666,9 @@
    hairlines; the default is ink for light grounds. */
 .pw-bracket {
   display: inline-block; width: 1.2em; height: 1.2em;
-  vertical-align: -0.06em; margin-left: 0.02em; overflow: visible;
+  /* negative margin pulls the period back toward the "e" — the lockup reads as
+     one word plus its period, not a word with a gap. */
+  vertical-align: -0.06em; margin-left: -0.06em; overflow: visible;
 }
 .pw-bracket .pwb-line {
   fill: none; stroke: var(--pw-bracket-line, #1e1e1e);
