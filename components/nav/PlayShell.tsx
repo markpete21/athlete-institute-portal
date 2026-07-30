@@ -159,11 +159,12 @@ export default function PlayShell({ brands, status, signedIn, initials, children
               <Link key={n.href} href={n.href} className={on ? 'on' : undefined}>{n.label}</Link>
             );
           })}
-          <a href={COMPETE_URL} className="ps-tocompete">
-            Standings
-            <span className="ps-tocompete-mark">
-              <span className="ps-tc-word">Compete</span><span className="ps-tc-dot">.</span>
-            </span>
+          {/* The live Compete lockup — gold word, red ball running the bracket
+              — so the button IS the brand it leads to. What it covers is the
+              hover line, not a permanent label competing with the nav. */}
+          <a href={COMPETE_URL} className="ps-tocompete" aria-label="Compete: results, standings and schedules">
+            <PlayWordmark variant="compete" qualifier="" size={15} />
+            <span className="ps-tocompete-hover" aria-hidden>Results &bull; Standings &bull; Schedules</span>
           </a>
         </div>
       </nav>

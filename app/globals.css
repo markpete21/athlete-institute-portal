@@ -725,6 +725,13 @@
   border: 1px solid var(--cs-dark-hair); padding: 7px 12px;
 }
 .cs-toplay:hover { border-color: var(--cs-red); }
+/* signed-in chip — the session is shared with Play, so Compete just shows it */
+.cs-me {
+  flex: 0 0 auto; width: 34px; height: 34px; display: flex; align-items: center; justify-content: center;
+  border: 1px solid var(--cs-dark-hair); color: var(--cs-dark-ink); text-decoration: none;
+  font-family: var(--font-mono), monospace; font-size: 11.5px; letter-spacing: 0.06em;
+}
+.cs-me:hover { border-color: var(--cs-red); }
 @media (max-width: 640px) {
   .cs-topbar-in { flex-wrap: wrap; padding: 10px 20px 9px; min-height: 0; row-gap: 9px; }
   .cs-nav { order: 3; width: 100%; }
@@ -807,12 +814,22 @@
 .cs-foot-links a:hover { color: var(--cs-gold); }
 
 /* Play -> Compete handoff in the public nav (Compete is a different host). */
+/* The lockup and the hover line share ONE grid cell, so the button is as wide
+   as the wider of the two and neither state shifts the nav. A tooltip would be
+   clipped here — .ps-navbar-in scrolls horizontally on narrow screens. */
 .ps-tocompete {
-  margin-left: auto; display: flex; align-items: center; gap: 8px; white-space: nowrap;
+  margin-left: auto; display: grid; align-items: center; white-space: nowrap;
   padding: 9px 12px; font-size: 13.5px; color: var(--ps-dark-muted); text-decoration: none;
   border-left: 1px solid var(--ps-dark-hair);
+  /* the bracket's hairlines sit on the dark nav, same as on the Compete bar */
+  --pw-bracket-line: #8c877c;
 }
-.ps-tocompete:hover { color: #fff; }
-.ps-tocompete-mark { font-size: 15px; font-weight: 900; letter-spacing: -0.02em; }
-.ps-tc-word { color: #9e8959; }
-.ps-tc-dot { color: #d2232a; font-size: 1.22em; }
+.ps-tocompete > * {
+  grid-area: 1 / 1; justify-self: end;
+  transition: opacity 0.15s ease;
+}
+.ps-tocompete-hover { opacity: 0; color: #fff; letter-spacing: 0.02em; }
+.ps-tocompete:hover .pw-lockup,
+.ps-tocompete:focus-visible .pw-lockup { opacity: 0; }
+.ps-tocompete:hover .ps-tocompete-hover,
+.ps-tocompete:focus-visible .ps-tocompete-hover { opacity: 1; }

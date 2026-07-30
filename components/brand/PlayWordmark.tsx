@@ -72,7 +72,7 @@ export default function PlayWordmark({
       ) : (
         <span className="pw-ball">.</span>
       )}
-      <span className="pw-qual">{qual}</span>
+      {qual && <span className="pw-qual">{qual}</span>}
     </>
   );
   const style = { fontSize: size } as React.CSSProperties;

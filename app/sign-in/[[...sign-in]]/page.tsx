@@ -16,7 +16,10 @@ export default function SignInPage() {
   const app = headers().get('x-portal-app') ?? 'play';
   return (
     <main className="pw-auth">
-      <PlayWordmark variant={app === 'admin' ? 'admin' : 'portal'} size={34} />
+      <PlayWordmark
+        variant={app === 'admin' ? 'admin' : app === 'compete' ? 'compete' : 'portal'}
+        size={34}
+      />
       <SignIn />
     </main>
   );

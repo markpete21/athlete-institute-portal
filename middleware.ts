@@ -21,6 +21,13 @@ import { resolvePortalApp } from '@ai/foundation';
  * revisiting that: the whole point is that a parent can send a grandparent a
  * link to the standings.
  *
+ * Public does NOT mean session-blind. clerkMiddleware wraps every host, so a
+ * session is READ on compete.* like anywhere else — one Clerk instance across
+ * play./admin./compete. means signing in on any of them carries to the others
+ * with no re-login, and /sign-in served on the compete host returns the visitor
+ * to the page they were on. Chrome and features may light up for a signed-in visitor; what must
+ * never happen is a signed-OUT visitor being turned away.
+ *
  * Exempt from rewrite AND auth:
  *   /display/[token] — TV displays; the unguessable token is the credential.
  *   /sign-in, /sign-up — shared auth pages, identical on both hosts.
