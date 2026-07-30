@@ -7,7 +7,7 @@ import { accountView, type AttentionItem, type Member } from '@/lib/play/account
 export const dynamic = 'force-dynamic';
 
 /**
- * The family account home (Play Portal). Hierarchy is deliberate:
+ * The family account home (Play App). Hierarchy is deliberate:
  *   act → attend → owe → explore
  * "Needs your attention" is rendered FIRST and omitted entirely when empty, so
  * its presence alone means "do something". Then the two-week schedule spine,

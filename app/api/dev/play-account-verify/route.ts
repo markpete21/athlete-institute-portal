@@ -3,7 +3,7 @@ import { supabaseAdmin } from '@ai/foundation/supabase';
 import { accountView } from '@/lib/play/account';
 import { brandTiles } from '@/lib/play/brands';
 
-/** DEV-ONLY: exercise the Play Portal data layer against a real household. */
+/** DEV-ONLY: exercise the Play App data layer against a real household. */
 export async function GET() {
   if (process.env.NODE_ENV === 'production') return NextResponse.json({ error: 'Not found' }, { status: 404 });
   const steps: Array<{ step: string; ok: boolean; detail: string }> = [];

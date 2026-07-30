@@ -57,6 +57,34 @@ function bracket(x0, ballFill, onDark) {
   </circle>`;
 }
 
+/**
+ * Play's period DRIBBLES — the same motion as .pw-ball / @keyframes pw-dribble in
+ * globals.css: up to the cap height of the "Pl", squash on the landing, a second
+ * bounce at half height, then rest. 1.7s loop, SMIL so it animates as an <img>.
+ *
+ * The CSS moves the ball in its OWN em (it renders at 1.22em of the lockup), so
+ * -0.607em / -0.303em become -29.6 / -14.8 at this 48.8px period. Two nested
+ * <g>s: the outer one travels, the inner one squashes about the baseline — one
+ * animateTransform each, so neither has to be additive.
+ */
+function dribble(x, ballFill) {
+  const keys = '0;0.12;0.24;0.3;0.42;0.52;0.58;1';
+  const rise = [0, -29.6, 0, 0, -14.8, 0, 0, 0].map((v) => `0 ${v}`).join(';');
+  const squash = [1, 1.06, 0.86, 1, 1, 0.93, 1, 1].map((v) => `1 ${v}`).join(';');
+  // ease-in-out per interval, matching the CSS timing function.
+  const ease = new Array(keys.split(';').length - 1).fill('0.42 0 0.58 1').join(';');
+  const anim = (type, values) =>
+    `<animateTransform attributeName="transform" type="${type}" values="${values}"` +
+    ` keyTimes="${keys}" calcMode="spline" keySplines="${ease}" dur="1.7s" repeatCount="indefinite"/>`;
+  return `<g transform="translate(${x},40)">
+    <g>${anim('translate', rise)}
+      <g>${anim('scale', squash)}
+        <text class="pw-w" x="0" y="0" font-size="48.8" font-weight="900" fill="${ballFill}">.</text>
+      </g>
+    </g>
+  </g>`;
+}
+
 /** One lockup as SVG. `onDark` picks the qualifier colour that reads on the ground. */
 function lockup(qualifier, { onDark = true, word = 'Play' } = {}) {
   const q = qualifier.toUpperCase();
@@ -68,28 +96,40 @@ function lockup(qualifier, { onDark = true, word = 'Play' } = {}) {
   // "Play"; "Compete" is long enough that it needs its real advance width
   // (measured from Inter 900 at this size), or the ball lands on the final "e".
   const playW = word === 'Compete' ? 176 : word.length * 23;
-  const ballW = isCompete ? 44 : 16, qualSize = 18.8, qualTrack = 6.8;
+  // The period tucks in tight against the word (Play); Compete's bracket keeps
+  // its breathing room. The qualifier then follows whatever the period does.
+  const dotX = isCompete ? playW + 6 : playW - 9;
+  const ballW = isCompete ? 44 : 16, qualSize = 14.5, qualTrack = 5.2;
+  const qualX = dotX + ballW + 10;
   const qualW = q.length * (qualSize * 0.6 + qualTrack);
-  const total = Math.ceil(playW + ballW + 10 + qualW);
-  const ball = isCompete
-    ? bracket(playW + 6, ballFill, onDark)
-    : `<text x="${playW}" y="40" font-size="48.8" font-weight="900" fill="${ballFill}">.</text>`;
+  const total = Math.ceil(qualX + qualW);
+  const ball = isCompete ? bracket(dotX, ballFill, onDark) : dribble(dotX, ballFill);
+  // Fonts come from CSS vars FIRST so a consumer that inlines this SVG renders it
+  // in its own loaded Inter / JetBrains Mono (next/font hashes the family name, so
+  // the literal names never match). Inside an <img> the vars are undefined and it
+  // falls back to the literal families — same result as before. A <style> block
+  // beats presentation attributes, which is why the families live here.
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${total} 56" width="${total}" height="56" role="img" aria-label="${word} ${qualifier}">
   <title>${word} ${qualifier}</title>
-  <g font-family="Inter, 'Helvetica Neue', Helvetica, Arial, sans-serif">
-    <text x="0" y="40" font-size="40" font-weight="900" letter-spacing="-0.8" fill="${wordFill}">${word}</text>
-  </g>
+  <style>
+    .pw-w { font-family: var(--font-display), Inter, 'Helvetica Neue', Helvetica, Arial, sans-serif }
+    .pw-q { font-family: var(--font-mono), 'JetBrains Mono', ui-monospace, monospace }
+  </style>
+  <text class="pw-w" x="0" y="40" font-size="40" font-weight="900" letter-spacing="-0.8" fill="${wordFill}">${word}</text>
   ${ball}
-  <text x="${playW + ballW + 10}" y="40" font-family="'JetBrains Mono', ui-monospace, monospace"
+  <text class="pw-q" x="${qualX}" y="40"
         font-size="${qualSize}" font-weight="500" letter-spacing="${qualTrack}"
         fill="${onDark ? SILVER : '#6b6760'}">${q}</text>
 </svg>`;
 }
 
+// NOTE: the `-portal` filenames (and the manifest's `wordmarks.portal` key) are
+// historical — the qualifier now reads APP. Consumers key off those paths, so the
+// names stay put; only the rendered lockup changed.
 const FILES = [
-  { path: 'play/wordmark-portal.svg', body: lockup('Portal') },
+  { path: 'play/wordmark-portal.svg', body: lockup('App') },
   { path: 'play/wordmark-admin.svg', body: lockup('Admin') },
-  { path: 'play/wordmark-portal-light.svg', body: lockup('Portal', { onDark: false }) },
+  { path: 'play/wordmark-portal-light.svg', body: lockup('App', { onDark: false }) },
   { path: 'play/wordmark-admin-light.svg', body: lockup('Admin', { onDark: false }) },
   { path: 'play/wordmark-compete.svg', body: lockup('Portal', { word: 'Compete' }) },
   { path: 'play/wordmark-compete-light.svg', body: lockup('Portal', { word: 'Compete', onDark: false }) },

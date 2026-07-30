@@ -123,9 +123,9 @@ export default async function DivisionPage({ params }: { params: { id: string } 
       <section className="cs-cta">
         <div>
           <b>Want to play?</b>
-          <span>Registration, schedules and payments all live in Play. Portal.</span>
+          <span>Registration, schedules and payments all live in Play. App.</span>
         </div>
-        <a className="cs-cta-btn" href={`${PLAY_URL}/programs`}>Register on Play. Portal →</a>
+        <a className="cs-cta-btn" href={`${PLAY_URL}/programs`}>Register on Play. App →</a>
       </section>
     </>
   );

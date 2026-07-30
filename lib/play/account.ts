@@ -4,7 +4,7 @@ import { supabaseAdmin } from '@ai/foundation/supabase';
 import { BUCKETS, getSignedUrl } from '@ai/foundation/storage';
 
 /**
- * Play Portal account data (public side). Assembles one household view from the
+ * Play App account data (public side). Assembles one household view from the
  * modules that own each piece: Module 2 bookings for the schedule spine, M4
  * registrations/orders/installments for money, M19 for points, M1 for the
  * household. Children are colour-KEYED (not filtered) so the whole household

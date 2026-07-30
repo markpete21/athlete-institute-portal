@@ -8,7 +8,7 @@ import { Icon } from '@/components/nav/icons';
 import type { BrandTile } from '@/lib/play/brands';
 
 /**
- * The persistent public chrome (Play. Portal): a dark header carrying the
+ * The persistent public chrome (Play. App): a dark header carrying the
  * wordmark and brand logo tiles (hover -> name + active programs, dropdown ->
  * program tiles), a dark nav row, and a fixed bottom status bar for the three
  * account numbers. Wraps the play tree via app/play/layout.tsx.

@@ -6,7 +6,7 @@ import Link from 'next/link';
  *
  *   Play  = Inter 900, All Canadian red (#D2232A)
  *   .     = gold, dribbling (respects prefers-reduced-motion)
- *   PORTAL / ADMIN = JetBrains Mono, uppercase, tracked, silver — the house
+ *   APP / ADMIN    = JetBrains Mono, uppercase, tracked, silver — the house
  *                    label treatment, so the qualifier never competes with the
  *                    product name.
  *
@@ -20,7 +20,7 @@ export const WORDMARK = {
   red: '#d2232a',
   gold: '#9e8959',
   silver: '#9b9891',
-  qualifier: { portal: 'Portal', admin: 'Admin', compete: 'Portal' } as Record<WordmarkVariant, string>,
+  qualifier: { portal: 'App', admin: 'Admin', compete: 'Portal' } as Record<WordmarkVariant, string>,
   /** The word before the dot. Compete inverts the colours: gold word, red ball. */
   word: { portal: 'Play', admin: 'Play', compete: 'Compete' } as Record<WordmarkVariant, string>,
 } as const;

@@ -37,7 +37,7 @@ export default async function CompeteLayout({ children }: { children: React.Reac
     <div className="compete-shell">
       <header className="cs-topbar">
         <div className="cs-topbar-in">
-          {/* Same 25px as the Play. Portal lockup — the two headers should read
+          {/* Same 25px as the Play. App lockup — the two headers should read
               as one family, not two sizes. */}
           <PlayWordmark variant="compete" href="/" size={25} className="cs-brand" />
           <nav className="cs-nav">
@@ -67,7 +67,7 @@ export default async function CompeteLayout({ children }: { children: React.Reac
         <div className="cs-foot-in">
           <span className="label">Athlete Institute</span>
           <div className="cs-foot-links">
-            <a href={`${PLAY_URL}/account`}>Play. Portal</a>
+            <a href={`${PLAY_URL}/account`}>Play. App</a>
             <a href={`${PLAY_URL}/programs`}>Register</a>
             <a href={ECOSYSTEM_LINKS.hub}>All apps</a>
           </div>

@@ -3,7 +3,7 @@ import { supabaseAdmin } from '@ai/foundation/supabase';
 import { headerBrands, type BrandRow } from '@/lib/brands/brands';
 
 /**
- * Brand tiles for the Play Portal header: each brand plus its live programs, so
+ * Brand tiles for the Play App header: each brand plus its live programs, so
  * hovering a tile can show "N active programs" and the dropdown can list them.
  * Logos come from Admin > Brands (public brand-assets bucket); a brand with no
  * uploaded logo falls back to a monogram in the UI.

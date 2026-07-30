@@ -13,7 +13,7 @@ export const dynamic = 'force-dynamic';
  *   const brand = await fetch('https://play.athleteinstitute.ca/api/ecosystem/brand-assets')
  *                        .then(r => r.json());
  *   brand.brands.find(b => b.key === 'bears').logoUrl   // <img src=...>
- *   brand.wordmarks.portal.dark                         // Play. PORTAL svg
+ *   brand.wordmarks.portal.dark                         // Play. APP svg
  *   brand.palette.accent                                // house gold
  *
  * Deliberately UNAUTHENTICATED and cache-friendly: these are the public-facing
@@ -46,7 +46,7 @@ export async function GET() {
     fonts: {
       display: "'Inter', 'Helvetica Neue', Helvetica, Arial, sans-serif",
       mono: "'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, monospace",
-      note: 'Play is Inter 900; the qualifier (PORTAL/ADMIN) is JetBrains Mono 500, uppercase, 0.17em tracking.',
+      note: 'Play is Inter 900; the qualifier (APP/ADMIN) is JetBrains Mono 500, uppercase, 0.17em tracking.',
     },
     wordmarks: {
       portal: { dark: `${STORAGE}/play/wordmark-portal.svg`, light: `${STORAGE}/play/wordmark-portal-light.svg` },
