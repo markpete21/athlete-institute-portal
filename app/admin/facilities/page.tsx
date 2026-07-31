@@ -78,27 +78,27 @@ export default async function FacilitiesAdminPage() {
           const byWeekday = new Map((ownWindows ?? []).map((w) => [Number(w.weekday), w]));
 
           return (
-            <div key={node.id} className="card flex flex-col gap-2 px-4 py-2" style={{ marginLeft: `${node.depth * 24}px` }}>
-              <div className="flex flex-wrap items-center gap-2">
-                <form action={updateFacilityAction} className="flex flex-1 flex-wrap items-center gap-2">
+            <div key={node.id} className="card flex flex-col px-3 py-1.5" style={{ marginLeft: `${node.depth * 20}px` }}>
+              <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                <form action={updateFacilityAction} className="flex min-w-0 flex-1 flex-wrap items-center gap-2">
                   <input type="hidden" name="id" value={node.id} />
-                  <input name="name" defaultValue={node.name} className="input max-w-64 text-sm" />
-                  <input name="label" defaultValue={node.label ?? ''} placeholder="label" className="input max-w-28 text-sm" />
-                  <label className="flex items-center gap-1 font-mono text-[11px] uppercase tracking-[0.1em] text-silver">
-                    <input type="checkbox" name="bookable" defaultChecked={node.bookable} /> bookable
+                  <input name="name" defaultValue={node.name} className="input h-8 min-w-44 max-w-64 flex-1 text-sm" />
+                  <input name="label" defaultValue={node.label ?? ''} placeholder="label" className="input h-8 w-24 text-sm" />
+                  <label className="flex items-center gap-1 font-mono text-[10px] uppercase tracking-[0.1em] text-silver" title="Bookable">
+                    <input type="checkbox" name="bookable" defaultChecked={node.bookable} /> book
                   </label>
                   <button type="submit" className="btn-ghost btn-sm">Save</button>
                 </form>
 
-                <form action={reorderFacilityAction} className="flex gap-1">
+                <form action={reorderFacilityAction} className="flex gap-0.5">
                   <input type="hidden" name="id" value={node.id} />
-                  <button name="direction" value="up" className="btn-ghost btn-sm" type="submit">↑</button>
-                  <button name="direction" value="down" className="btn-ghost btn-sm" type="submit">↓</button>
+                  <button name="direction" value="up" className="btn-ghost btn-sm px-2" type="submit" title="Move up">↑</button>
+                  <button name="direction" value="down" className="btn-ghost btn-sm px-2" type="submit" title="Move down">↓</button>
                 </form>
 
                 <form action={moveFacilityAction} className="flex items-center gap-1">
                   <input type="hidden" name="id" value={node.id} />
-                  <select name="parentId" defaultValue={node.parent_id ?? ''} className="input max-w-44 text-sm">
+                  <select name="parentId" defaultValue={node.parent_id ?? ''} className="input h-8 max-w-40 text-sm">
                     <option value="">(root)</option>
                     {live.filter((f) => f.id !== node.id).map((f) => (
                       <option key={f.id} value={f.id}>{f.name}</option>
@@ -113,8 +113,8 @@ export default async function FacilitiesAdminPage() {
                 </form>
               </div>
 
-              <details className="border-t border-hairline pt-2">
-                <summary className="cursor-pointer font-mono text-[11px] uppercase tracking-[0.1em] text-silver">
+              <details className="mt-1 border-t border-hairline pt-1">
+                <summary className="cursor-pointer py-0.5 font-mono text-[10px] uppercase tracking-[0.1em] text-silver">
                   Hours &amp; location
                   <span className="ml-2 normal-case tracking-normal text-body">
                     {summariseWeek(live, node.id)}
@@ -125,14 +125,14 @@ export default async function FacilitiesAdminPage() {
                 <div className="flex flex-col gap-3 pt-3">
                   <form action={updateHoursAction} className="flex flex-col gap-2">
                     <input type="hidden" name="id" value={node.id} />
-                    <div className="flex flex-wrap gap-3">
+                    <div className="grid max-w-3xl grid-cols-4 gap-2 sm:grid-cols-7">
                       {DAYS.map((d, weekday) => {
                         const w = byWeekday.get(weekday);
                         return (
                           <div key={d} className="flex flex-col gap-1">
                             <span className="field-label">{d}</span>
-                            <input type="time" name={`open-${weekday}`} defaultValue={w?.open ?? ''} className="input text-sm" />
-                            <input type="time" name={`close-${weekday}`} defaultValue={w?.close ?? ''} className="input text-sm" />
+                            <input type="time" name={`open-${weekday}`} defaultValue={w?.open ?? ''} className="input h-8 px-1.5 text-xs" />
+                            <input type="time" name={`close-${weekday}`} defaultValue={w?.close ?? ''} className="input h-8 px-1.5 text-xs" />
                           </div>
                         );
                       })}
@@ -154,7 +154,7 @@ export default async function FacilitiesAdminPage() {
                     <input type="hidden" name="id" value={node.id} />
                     <div>
                       <label className="field-label" htmlFor={`loc-${node.id}`}>Reporting location</label>
-                      <select id={`loc-${node.id}`} name="locationId" defaultValue={row.location_id ?? ''} className="input text-sm">
+                      <select id={`loc-${node.id}`} name="locationId" defaultValue={row.location_id ?? ''} className="input h-8 text-sm">
                         <option value="">(inherit from parent)</option>
                         {locations.map((l) => (
                           <option key={l.id} value={l.id}>{l.name}</option>
