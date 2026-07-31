@@ -26,7 +26,9 @@ interface MenuApp {
   ground: 'dark' | 'light';
 }
 
-const MENU_URL = 'https://home.athleteinstitute.ca/api/ecosystem/apps-menu';
+const MENU_URL =
+  process.env.NEXT_PUBLIC_APPS_MENU_URL ||
+  'https://home.athleteinstitute.ca/api/ecosystem/apps-menu';
 
 const DOTS_DARK = 'radial-gradient(rgba(255,255,255,0.15) 1px, transparent 1px)';
 const DOTS_LIGHT = 'radial-gradient(rgba(30,30,30,0.1) 1px, transparent 1px)';
