@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { UserButton } from '@clerk/nextjs';
 import PlayWordmark from '@/components/brand/PlayWordmark';
+import AppsMenu from '@/components/nav/AppsMenu';
 import { Icon } from '@/components/nav/icons';
 import {
   GROUP_ORDER, MAX_FAVOURITES, MODULES, MODULE_BY_KEY, activeModuleFor,
@@ -165,6 +166,9 @@ export default function AdminShell(props: AdminShellProps) {
           </div>
 
           <div className="ash-top-right">
+            {/* THE shared apps menu (hub manifest) — staff surface, so the
+                Admin group shows too. Light topbar → ink hover. */}
+            <AppsMenu current="play-admin" showAdmin tone="onLight" />
             <div className="ash-userchip">
               <UserButton />
               <span className="ash-who"><b>{props.email ?? 'Staff'}</b><span className="ash-role">{props.roleLabel}</span></span>

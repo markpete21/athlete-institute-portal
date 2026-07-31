@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { auth, currentUser } from '@clerk/nextjs/server';
 import PlayWordmark from '@/components/brand/PlayWordmark';
+import AppsMenu from '@/components/nav/AppsMenu';
 import { ECOSYSTEM_LINKS } from '@ai/foundation';
 
 export const dynamic = 'force-dynamic';
@@ -58,6 +59,8 @@ export default async function CompeteLayout({ children }: { children: React.Reac
               <PlayWordmark qualifier="Login" size={17} />
             </Link>
           )}
+          {/* THE shared apps menu (hub manifest) — public apps only here. */}
+          <AppsMenu current="compete" />
         </div>
       </header>
 
