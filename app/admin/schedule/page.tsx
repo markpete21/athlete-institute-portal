@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { buildTree, flattenTree, torontoInstant, type FacilityNode } from '@ai/foundation';
 import { supabaseAdmin } from '@ai/foundation/supabase';
+import { getPortalSession } from '@/lib/auth';
 import { listBookings, type BookingRecord } from '@/lib/bookings';
 import { findConflictPairs } from '@/lib/conflicts';
 import { listLocations } from '@/lib/locations';
@@ -32,7 +33,9 @@ interface SavedView {
   id: number;
   name: string;
   facility_ids: number[];
-  filters: { source?: string | null; status?: string | null; internal?: string | null };
+  filters: { location?: string | null; source?: string | null; status?: string | null; internal?: string | null };
+  shared: boolean;
+  created_by: string;
 }
 
 const addDaysISO = (dateISO: string, n: number) => {
@@ -55,10 +58,15 @@ export default async function SchedulePage({
   const view = (['day', 'week', 'month'].includes(searchParams.view ?? '') ? searchParams.view : 'day') as ViewMode;
   const date = /^\d{4}-\d{2}-\d{2}$/.test(searchParams.date ?? '') ? searchParams.date! : torontoDateOf(new Date().toISOString());
 
+  const session = await getPortalSession();
   const db = supabaseAdmin();
   const [{ data: facRows }, { data: viewRows }, locations] = await Promise.all([
     db.from('facilities').select('id, parent_id, name, label, sort_order, bookable, deleted_at, location_id').is('deleted_at', null),
-    db.from('saved_schedule_views').select('id, name, facility_ids, filters').order('name'),
+    // Everyone sees shared views; personal views only surface for their owner.
+    db.from('saved_schedule_views')
+      .select('id, name, facility_ids, filters, shared, created_by')
+      .or(`shared.eq.true,created_by.eq.${session.userId}`)
+      .order('name'),
     listLocations(),
   ]);
   const tree = (facRows ?? []) as FacilityRow[];
@@ -233,27 +241,40 @@ export default async function SchedulePage({
         <span className="label text-[11px]">Saved views:</span>
         {savedViews.map((v) => {
           const p = new URLSearchParams({ view, date });
+          if (v.filters.location) p.set('location', v.filters.location);
           if (v.facility_ids.length) p.set('facilities', v.facility_ids.join(','));
           if (v.filters.source) p.set('source', v.filters.source);
           if (v.filters.status) p.set('status', v.filters.status);
           if (v.filters.internal) p.set('internal', v.filters.internal);
+          const canDelete = v.shared || v.created_by === session.userId;
           return (
             <span key={v.id} className="flex items-center gap-1">
-              <Link href={`/schedule?${p.toString()}`} className="tag hover:border-ink hover:text-ink">{v.name}</Link>
-              <form action={deleteViewAction}>
-                <input type="hidden" name="viewId" value={v.id} />
-                <button type="submit" className="text-[11px] text-silver hover:text-neg" title="Delete view">×</button>
-              </form>
+              <Link
+                href={`/schedule?${p.toString()}`}
+                className="tag hover:border-ink hover:text-ink"
+                title={v.shared ? 'Shared with all staff' : 'Only you see this view'}
+              >
+                {v.name}
+                {v.shared && <span style={{ color: 'var(--accent)' }}>· all</span>}
+              </Link>
+              {canDelete && (
+                <form action={deleteViewAction}>
+                  <input type="hidden" name="viewId" value={v.id} />
+                  <button type="submit" className="text-[11px] text-silver hover:text-neg" title="Delete view">×</button>
+                </form>
+              )}
             </span>
           );
         })}
         <form action={saveViewAction} className="flex items-center gap-2">
+          <input type="hidden" name="location" value={searchParams.location ?? ''} />
           <input type="hidden" name="facilities" value={searchParams.facilities ?? ''} />
           <input type="hidden" name="source" value={searchParams.source ?? ''} />
           <input type="hidden" name="status" value={searchParams.status ?? ''} />
           <input type="hidden" name="internal" value={searchParams.internal ?? ''} />
-          <input name="name" placeholder="Save current as…" className="input max-w-44 text-sm" />
-          <button type="submit" className="btn-ghost btn-sm">Save view</button>
+          <input name="name" required placeholder="Save current as…" className="input max-w-44 text-sm" />
+          <button type="submit" name="scope" value="me" className="btn-ghost btn-sm">Save for me</button>
+          <button type="submit" name="scope" value="all" className="btn-gold btn-sm">Save for all</button>
         </form>
       </div>
 
