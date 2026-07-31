@@ -1,5 +1,13 @@
 import 'server-only';
-import { audit, wouldCycle, type FacilityNode } from '@ai/foundation';
+import {
+  ancestorIds,
+  audit,
+  wouldCycle,
+  type FacilityClosure,
+  type FacilityHours,
+  type FacilityNode,
+  type HoursWindow,
+} from '@ai/foundation';
 import { supabaseAdmin } from '@ai/foundation/supabase';
 
 /**
@@ -8,15 +16,24 @@ import { supabaseAdmin } from '@ai/foundation/supabase';
  * every move; sibling-name uniqueness is enforced by the DB partial index.
  */
 
-const COLS = 'id, parent_id, name, label, sort_order, bookable, deleted_at';
+/** A facility row as the app reads it: tree fields + hours + reporting site. */
+export interface FacilityRow extends FacilityHours {
+  location_id?: number | null;
+  public_open?: boolean;
+}
+
+// Every column the app reads MUST be listed here - a column missing from the
+// SELECT silently reads back as undefined rather than erroring.
+const COLS =
+  'id, parent_id, name, label, sort_order, bookable, deleted_at, hours_open, hours_close, hours_windows, location_id, public_open';
 
 /** Live (non-deleted) nodes; pass includeDeleted for the editor's trash view. */
-export async function listFacilities(includeDeleted = false): Promise<FacilityNode[]> {
+export async function listFacilities(includeDeleted = false): Promise<FacilityRow[]> {
   let q = supabaseAdmin().from('facilities').select(COLS).order('sort_order').order('name');
   if (!includeDeleted) q = q.is('deleted_at', null);
   const { data, error } = await q;
   if (error) throw new Error(`facilities read failed: ${error.message}`);
-  return (data ?? []) as FacilityNode[];
+  return (data ?? []) as FacilityRow[];
 }
 
 export interface FacilityInput {
@@ -56,19 +73,105 @@ export async function createFacility(input: FacilityInput, actorClerkId: string)
 
 export async function updateFacility(
   id: number,
-  patch: { name?: string; label?: string | null; bookable?: boolean },
+  patch: {
+    name?: string;
+    label?: string | null;
+    bookable?: boolean;
+    /** Null clears the override so the node inherits from its nearest ancestor. */
+    hoursWindows?: HoursWindow[] | null;
+    locationId?: number | null;
+  },
   actorClerkId: string,
 ): Promise<void> {
+  if (patch.hoursWindows) assertValidWindows(patch.hoursWindows);
   const { error } = await supabaseAdmin()
     .from('facilities')
     .update({
       ...(patch.name !== undefined ? { name: patch.name.trim() } : {}),
       ...(patch.label !== undefined ? { label: patch.label?.trim() || null } : {}),
       ...(patch.bookable !== undefined ? { bookable: patch.bookable } : {}),
+      ...(patch.hoursWindows !== undefined
+        ? { hours_windows: patch.hoursWindows?.length ? patch.hoursWindows : null }
+        : {}),
+      ...(patch.locationId !== undefined ? { location_id: patch.locationId } : {}),
     })
     .eq('id', id);
   if (error) throw new Error(`facility update failed: ${error.message}`);
   await audit({ actorId: actorClerkId, action: 'facility.updated', target: `facility:${id}`, meta: patch });
+}
+
+const HHMM = /^([01]\d|2[0-3]):[0-5]\d$/;
+
+/** Reject malformed windows before they reach the availability engine. */
+function assertValidWindows(windows: HoursWindow[]): void {
+  const seen = new Set<number>();
+  for (const w of windows) {
+    if (!Number.isInteger(w.weekday) || w.weekday < 0 || w.weekday > 6) {
+      throw new Error(`Weekday must be 0-6 (got ${w.weekday}).`);
+    }
+    if (seen.has(w.weekday)) throw new Error('One window per weekday.');
+    seen.add(w.weekday);
+    if (!HHMM.test(w.open) || !HHMM.test(w.close)) {
+      throw new Error(`Times must be HH:MM (got ${w.open}-${w.close}).`);
+    }
+    if (w.close <= w.open) {
+      throw new Error(`Closing time must be after opening time (got ${w.open}-${w.close}).`);
+    }
+  }
+}
+
+/**
+ * The reporting site a node rolls up to: its own location_id, else the nearest
+ * ancestor's. This is what lets a Dome Court 2 rental land under "Athlete
+ * Institute" in revenue-by-location (and in the QuickBooks Location mapping).
+ */
+export function resolveLocationId(tree: FacilityRow[], facilityId: number): number | null {
+  const byId = new Map(tree.map((n) => [n.id, n]));
+  for (const id of [facilityId, ...ancestorIds(tree, facilityId)]) {
+    const loc = byId.get(id)?.location_id;
+    if (loc != null) return loc;
+  }
+  return null;
+}
+
+// ---------------------------------------------------------------------------
+// Seasonal / holiday closures
+// ---------------------------------------------------------------------------
+
+export async function listClosures(): Promise<FacilityClosure[]> {
+  const { data, error } = await supabaseAdmin()
+    .from('facility_closures')
+    .select('id, facility_id, starts_on, ends_on, reason')
+    .order('starts_on');
+  if (error) throw new Error(`closures read failed: ${error.message}`);
+  return (data ?? []) as FacilityClosure[];
+}
+
+export async function createClosure(
+  input: { facilityId: number; startsOn: string; endsOn: string; reason?: string | null },
+  actorClerkId: string,
+): Promise<FacilityClosure> {
+  if (input.endsOn < input.startsOn) throw new Error('Closure end date must be on or after the start date.');
+  const { data, error } = await supabaseAdmin()
+    .from('facility_closures')
+    .insert({
+      facility_id: input.facilityId,
+      starts_on: input.startsOn,
+      ends_on: input.endsOn,
+      reason: input.reason?.trim() || null,
+      created_by: actorClerkId,
+    })
+    .select('id, facility_id, starts_on, ends_on, reason')
+    .single();
+  if (error) throw new Error(`closure create failed: ${error.message}`);
+  await audit({ actorId: actorClerkId, action: 'facility.closure-created', target: `facility:${input.facilityId}`, meta: input });
+  return data as FacilityClosure;
+}
+
+export async function deleteClosure(id: number, actorClerkId: string): Promise<void> {
+  const { error } = await supabaseAdmin().from('facility_closures').delete().eq('id', id);
+  if (error) throw new Error(`closure delete failed: ${error.message}`);
+  await audit({ actorId: actorClerkId, action: 'facility.closure-deleted', target: `closure:${id}` });
 }
 
 /** Re-parent a node (cycle-checked against the live tree). */

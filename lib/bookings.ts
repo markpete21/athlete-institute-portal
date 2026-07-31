@@ -1,10 +1,14 @@
 import 'server-only';
 import {
   audit,
+  checkClosures,
   checkOperatingHours,
   findConflicts,
+  torontoDate,
   type BookingInterval,
+  type ClosureWarning,
   type Conflict,
+  type FacilityClosure,
   type FacilityHours,
   type HoursWarning,
 } from '@ai/foundation';
@@ -62,7 +66,10 @@ export interface CreateBookingInput {
 export interface AvailabilityReport {
   available: boolean;
   conflicts: Conflict[];
+  /** Operating-hours warnings (advisory - staff may book outside hours). */
   warnings: HoursWarning[];
+  /** Seasonal/holiday closure warnings, incl. ones inherited from an ancestor. */
+  closures: ClosureWarning[];
 }
 
 const COLS =
@@ -74,10 +81,21 @@ const MAX_BUFFER_MIN = 480;
 async function facilityRows(): Promise<FacilityHours[]> {
   const { data, error } = await supabaseAdmin()
     .from('facilities')
-    .select('id, parent_id, name, label, sort_order, bookable, deleted_at, hours_open, hours_close')
+    .select('id, parent_id, name, label, sort_order, bookable, deleted_at, hours_open, hours_close, hours_windows, location_id')
     .is('deleted_at', null);
   if (error) throw new Error(`facilities read failed: ${error.message}`);
   return (data ?? []) as FacilityHours[];
+}
+
+/** Closures overlapping the window (the tree walk decides which ones apply). */
+async function closureRows(startsAt: string, endsAt: string): Promise<FacilityClosure[]> {
+  const { data, error } = await supabaseAdmin()
+    .from('facility_closures')
+    .select('id, facility_id, starts_on, ends_on, reason')
+    .lte('starts_on', torontoDate(endsAt))
+    .gte('ends_on', torontoDate(startsAt));
+  if (error) throw new Error(`closures read failed: ${error.message}`);
+  return (data ?? []) as FacilityClosure[];
 }
 
 /** Live bookings that could overlap the window (SQL pre-filter, exact math in code). */
@@ -102,9 +120,10 @@ export async function checkAvailability(slot: {
   cleanupMinutes?: number;
   ignoreBookingId?: number;
 }): Promise<AvailabilityReport> {
-  const [tree, bookings] = await Promise.all([
+  const [tree, bookings, closures] = await Promise.all([
     facilityRows(),
     candidateBookings(slot.startsAt, slot.endsAt),
+    closureRows(slot.startsAt, slot.endsAt),
   ]);
   const conflicts = findConflicts(tree, bookings, {
     facility_id: slot.facilityId,
@@ -123,6 +142,11 @@ export async function checkAvailability(slot: {
     available: conflicts.length === 0,
     conflicts,
     warnings: hoursWarning ? [hoursWarning] : [],
+    closures: checkClosures(tree, closures, {
+      facility_id: slot.facilityId,
+      starts_at: slot.startsAt,
+      ends_at: slot.endsAt,
+    }),
   };
 }
 
@@ -253,7 +277,7 @@ export interface CreateSeriesInput extends Omit<CreateBookingInput, 'startsAt' |
 
 export interface SeriesResult {
   seriesId: number;
-  occurrences: Array<{ date: string; booking: BookingRecord; conflicts: Conflict[]; warnings: HoursWarning[] }>;
+  occurrences: Array<{ date: string; booking: BookingRecord; conflicts: Conflict[]; warnings: HoursWarning[]; closures: ClosureWarning[] }>;
   /** Dates whose occurrence collided - resolve individually in the queue. */
   conflictedDates: string[];
 }
@@ -302,7 +326,13 @@ export async function createRecurringBookings(input: CreateSeriesInput): Promise
       endsAt: occ.ends_at,
       seriesId: series.id,
     });
-    results.push({ date: occ.date, booking: created.booking, conflicts: created.conflicts, warnings: created.warnings });
+    results.push({
+      date: occ.date,
+      booking: created.booking,
+      conflicts: created.conflicts,
+      warnings: created.warnings,
+      closures: created.closures,
+    });
   }
 
   await audit({

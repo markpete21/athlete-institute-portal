@@ -2,7 +2,7 @@
  * Availability engine tests (Module 2 Stage 2) — the spec's worked cases.
  * Run: npm run test:availability
  */
-import { findConflicts, checkOperatingHours, effectiveHours, occupiedInterval, intervalsOverlap } from './__compiled__/availability.js';
+import { findConflicts, checkOperatingHours, effectiveHours, effectiveHoursOn, occupiedInterval, intervalsOverlap, torontoWeekday, torontoDate, checkClosures } from './__compiled__/availability.js';
 
 let pass = 0, fail = 0;
 const ok = (name, cond, detail = '') => {
@@ -104,6 +104,91 @@ ok('crossing midnight warns', checkOperatingHours(tree, { facility_id: 2, starts
   ok('override inherits to descendants', checkOperatingHours(t2, slot(3, 6, 8)) === null);
   ok('sibling subtree keeps default', checkOperatingHours(t2, slot(8, 7, 9)) !== null);
   ok('effectiveHours resolution', JSON.stringify(effectiveHours(t2, 3)) === JSON.stringify({ open: '06:00', close: '23:30' }));
+}
+
+// 14. weekday windows — the real Athlete Institute schedule
+// 2026-08-10 is a Monday (weekday 1); 2026-08-15 is the Saturday that week.
+{
+  ok('torontoWeekday reads Toronto local day', torontoWeekday(at(12)) === 1);
+  ok('torontoDate reads Toronto local date', torontoDate(at(12)) === '2026-08-10');
+  // A 00:30 UTC instant is still the previous evening in Toronto.
+  ok('torontoDate respects the offset', torontoDate('2026-08-11T02:30:00Z') === '2026-08-10');
+
+  const AI_WINDOWS = [
+    { weekday: 0, open: '08:00', close: '22:00' },
+    { weekday: 1, open: '09:00', close: '22:00' },
+    { weekday: 2, open: '09:00', close: '22:00' },
+    { weekday: 3, open: '09:00', close: '22:00' },
+    { weekday: 4, open: '09:00', close: '22:00' },
+    { weekday: 5, open: '09:00', close: '22:00' },
+    { weekday: 6, open: '08:00', close: '22:00' },
+  ];
+  const t3 = tree.map((n) => (n.id === 1 ? { ...n, hours_windows: AI_WINDOWS } : n));
+  const sat = (h) => `2026-08-15T${String(h).padStart(2, '0')}:00:00-04:00`;
+
+  ok('Monday 08:00 warns (weeknights open at 09:00)', checkOperatingHours(t3, slot(1, 8, 10)) !== null);
+  ok('Monday 09:00 is fine', checkOperatingHours(t3, slot(1, 9, 11)) === null);
+  ok('Saturday 08:00 is fine (weekends open at 08:00)',
+    checkOperatingHours(t3, { facility_id: 1, starts_at: sat(8), ends_at: sat(10) }) === null);
+  ok('Monday 22:30 end warns', checkOperatingHours(t3, { facility_id: 1, starts_at: at(21), ends_at: at(22, 30) }) !== null);
+  ok('weekday windows inherit to descendants', checkOperatingHours(t3, slot(3, 8, 10)) !== null);
+  ok('sibling subtree still on the default', checkOperatingHours(t3, slot(8, 8, 10)) === null);
+
+  // A node that lists windows is closed on the weekdays it omits.
+  const weeknightsOnly = tree.map((n) =>
+    n.id === 1 ? { ...n, hours_windows: [{ weekday: 1, open: '17:00', close: '21:00' }] } : n);
+  const closedSat = checkOperatingHours(weeknightsOnly, { facility_id: 1, starts_at: sat(18), ends_at: sat(20) });
+  ok('unlisted weekday reads as closed', closedSat !== null && /Closed on Saturdays/.test(closedSat.message));
+  ok('closed day reports null open/close', closedSat.open === null && closedSat.close === null);
+  ok('listed weekday inside the window is fine',
+    checkOperatingHours(weeknightsOnly, { facility_id: 1, starts_at: at(17), ends_at: at(21) }) === null);
+
+  // Nearest definition wins outright — no merging with an ancestor's schedule.
+  const childOverride = t3.map((n) =>
+    n.id === 3 ? { ...n, hours_windows: [{ weekday: 1, open: '06:00', close: '23:00' }] } : n);
+  ok('child window overrides the ancestor', checkOperatingHours(childOverride, slot(3, 6, 8)) === null);
+  ok('ancestor still governs its other descendants', checkOperatingHours(childOverride, slot(2, 6, 8)) !== null);
+
+  ok('effectiveHoursOn returns the weekday window',
+    JSON.stringify(effectiveHoursOn(t3, 3, 6)) === JSON.stringify({ closed: false, open: '08:00', close: '22:00' }));
+  ok('effectiveHoursOn falls back to the default',
+    JSON.stringify(effectiveHoursOn(tree, 8, 1)) === JSON.stringify({ closed: false, open: '08:00', close: '23:00' }));
+  ok('legacy single window applies every weekday', (() => {
+    const legacy = tree.map((n) => (n.id === 1 ? { ...n, hours_open: '06:00', hours_close: '23:30' } : n));
+    return effectiveHoursOn(legacy, 1, 0).open === '06:00' && effectiveHoursOn(legacy, 1, 3).open === '06:00';
+  })());
+  ok('windows win over legacy columns on the same node', (() => {
+    const both = tree.map((n) =>
+      n.id === 1 ? { ...n, hours_open: '06:00', hours_close: '23:30', hours_windows: AI_WINDOWS } : n);
+    return effectiveHoursOn(both, 1, 1).open === '09:00';
+  })());
+}
+
+// 15. seasonal closures (outdoor facilities in winter) — advisory, cascading
+{
+  const winter = { id: 1, facility_id: 1, starts_on: '2026-11-01', ends_on: '2027-04-15', reason: 'Winter' };
+  ok('booking inside a closure warns', checkClosures(tree, [winter], {
+    facility_id: 1, starts_at: '2026-12-05T18:00:00-05:00', ends_at: '2026-12-05T20:00:00-05:00',
+  }).length === 1);
+  ok('booking outside a closure is clean', checkClosures(tree, [winter], slot(1, 18, 20)).length === 0);
+
+  const inherited = checkClosures(tree, [winter], {
+    facility_id: 3, starts_at: '2026-12-05T18:00:00-05:00', ends_at: '2026-12-05T20:00:00-05:00',
+  });
+  ok('closure cascades to descendants', inherited.length === 1 && inherited[0].inherited === true);
+  ok('closure does not leak to a sibling subtree', checkClosures(tree, [winter], {
+    facility_id: 8, starts_at: '2026-12-05T18:00:00-05:00', ends_at: '2026-12-05T20:00:00-05:00',
+  }).length === 0);
+
+  // Inclusive bounds, and a booking that only clips the first day still warns.
+  const oneDay = { id: 2, facility_id: 1, starts_on: '2026-12-25', ends_on: '2026-12-25', reason: 'Christmas' };
+  ok('closure bounds are inclusive', checkClosures(tree, [oneDay], {
+    facility_id: 1, starts_at: '2026-12-25T10:00:00-05:00', ends_at: '2026-12-25T12:00:00-05:00',
+  }).length === 1);
+  ok('day before the closure is clean', checkClosures(tree, [oneDay], {
+    facility_id: 1, starts_at: '2026-12-24T10:00:00-05:00', ends_at: '2026-12-24T12:00:00-05:00',
+  }).length === 0);
+  ok('no closures configured means no warnings', checkClosures(tree, [], slot(1, 18, 20)).length === 0);
 }
 
 console.log(`\n${pass} passed, ${fail} failed`);

@@ -36,7 +36,7 @@ export async function GET() {
 
     // 2. walkers: Dome descendants = 3 courts + 6 baskets; basket ancestors chain to root
     const domeDesc = descendantIds(rows, dome!.id);
-    const basket = byName.get('Court 1 - East Basket');
+    const basket = byName.get('Dome Court 1 - East Basket');
     const basketAnc = ancestorIds(rows, basket!.id);
     record(
       'walkers: descendants + ancestors',

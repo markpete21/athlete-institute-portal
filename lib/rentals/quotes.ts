@@ -267,7 +267,13 @@ export async function addRentalLine(input: {
   if (error) throw new Error(`line create failed: ${error.message}`);
 
   await recomputeTotals(input.rentalId);
-  return { line: line as RentalLine, available: created.available, conflicts: created.conflicts, warnings: created.warnings };
+  return {
+    line: line as RentalLine,
+    available: created.available,
+    conflicts: created.conflicts,
+    warnings: created.warnings,
+    closures: created.closures,
+  };
 }
 
 /**

@@ -25,7 +25,7 @@ export async function GET() {
     const { data: fac } = await db.from('facilities').select('id, name').is('deleted_at', null);
     const idOf = (name: string) => fac!.find((f) => f.name === name)!.id;
     const court2 = idOf('Dome Court 2');
-    const basketC = idOf('Court 2 - East Basket');
+    const basketC = idOf('Dome Court 2 - East Basket');
 
     // 1. same-node collision: confirmed program vs tentative rental quote
     const prog = await createBooking({ facilityId: court2, startsAt: iso(18), endsAt: iso(20), source: 'program', title: 'U14 League Night', actorClerkId: 'system:verify' });

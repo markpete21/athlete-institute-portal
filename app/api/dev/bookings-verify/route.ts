@@ -22,8 +22,8 @@ export async function GET() {
   try {
     const { data: fac } = await db.from('facilities').select('id, name').is('deleted_at', null);
     const idOf = (name: string) => fac!.find((f) => f.name === name)!.id;
-    const basketA = idOf('Court 1 - East Basket');
-    const basketB = idOf('Court 1 - West Basket');
+    const basketA = idOf('Dome Court 1 - East Basket');
+    const basketB = idOf('Dome Court 1 - West Basket');
     const court1 = idOf('Dome Court 1');
     const court2 = idOf('Dome Court 2');
     const dome = idOf('Dome');

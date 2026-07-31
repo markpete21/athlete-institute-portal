@@ -28,7 +28,7 @@ export async function GET() {
     const idOf = (name: string) => tree.find((f) => f.name === name)!.id;
     const dome = idOf('Dome');
     const court1 = idOf('Dome Court 1');
-    const basketA = idOf('Court 1 - East Basket');
+    const basketA = idOf('Dome Court 1 - East Basket');
 
     // 1. rate on Dome; court + basket inherit; court override wins for court
     await upsertRate({ facility_id: dome, hourly_cents: 20000, full_day_cents: 150000, flat_cents: null }, 'system:verify');

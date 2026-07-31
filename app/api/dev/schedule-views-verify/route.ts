@@ -31,7 +31,7 @@ export async function GET() {
     const dome = idOf('Dome');
     const fieldhouse = idOf('Fieldhouse');
     const court1 = idOf('Dome Court 1');
-    const basketA = idOf('Court 1 - East Basket');
+    const basketA = idOf('Dome Court 1 - East Basket');
 
     // Bookings: one on a basket (should roll up to Court 1's row), one on the
     // whole Dome, one rental on Fieldhouse Gym.
