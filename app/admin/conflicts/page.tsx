@@ -1,5 +1,7 @@
+import Link from 'next/link';
 import { findConflictPairs } from '@/lib/conflicts';
 import { supabaseAdmin } from '@ai/foundation/supabase';
+import { torontoDateOf } from '@/lib/schedule-views';
 import { cancelSideAction, keepBothAction } from './actions';
 
 export const dynamic = 'force-dynamic';
@@ -38,7 +40,7 @@ export default async function ConflictsPage() {
       </header>
 
       {pairs.length === 0 && (
-        <p className="text-body">No unresolved conflicts in the next 90 days. 🎉</p>
+        <p className="text-body">No unresolved conflicts in the next 90 days.</p>
       )}
 
       <section className="flex flex-col gap-5">
@@ -47,7 +49,14 @@ export default async function ConflictsPage() {
             <div className="grid gap-4 sm:grid-cols-2">
               {[p.a, p.b].map((bk) => (
                 <div key={bk.id} className="flex flex-col gap-1">
-                  <p className="text-lg font-bold text-ink">{bk.title}</p>
+                  {/* the spec's "edit" path: jump to this booking's day on the Gantt */}
+                  <Link
+                    href={`/schedule?view=day&date=${torontoDateOf(bk.starts_at)}`}
+                    className="text-lg font-bold text-ink underline decoration-hairline underline-offset-4 hover:decoration-current"
+                    title="Open this day on the schedule to edit"
+                  >
+                    {bk.title}
+                  </Link>
                   <p className="label text-[11px]">{facName.get(bk.facility_id) ?? `facility ${bk.facility_id}`}</p>
                   <p className="mono text-sm text-body">{fmt(bk.starts_at)} – {fmt(bk.ends_at)}</p>
                   <div className="flex gap-2">
@@ -60,7 +69,11 @@ export default async function ConflictsPage() {
               ))}
             </div>
 
-            {p.hint && <p className="text-sm" style={{ color: 'var(--accent)' }}>💡 {p.hint}</p>}
+            {p.hint && (
+              <p className="font-mono text-[11px] uppercase tracking-[0.12em]" style={{ color: 'var(--accent)' }}>
+                Hint <span className="normal-case tracking-normal">— {p.hint}</span>
+              </p>
+            )}
 
             <div className="flex flex-wrap items-end gap-3 border-t border-hairline pt-4">
               <form action={cancelSideAction}>
@@ -74,7 +87,7 @@ export default async function ConflictsPage() {
               <form action={keepBothAction} className="flex flex-1 items-end gap-2">
                 <input type="hidden" name="bookingA" value={p.a.id} />
                 <input type="hidden" name="bookingB" value={p.b.id} />
-                <input name="note" placeholder="note (optional)" className="input flex-1 text-sm" />
+                <input name="note" placeholder="Why keeping both? (optional)" className="input min-w-52 flex-1 text-sm" />
                 <button type="submit" className="btn-gold btn-sm">Keep both</button>
               </form>
             </div>

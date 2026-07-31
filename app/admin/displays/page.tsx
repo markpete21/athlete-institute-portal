@@ -18,6 +18,12 @@ export default async function DisplaysAdminPage() {
   ]);
   const ordered = flattenTree(buildTree((facRows ?? []) as FacilityNode[]));
   const playBase = process.env.NEXT_PUBLIC_PLAY_URL ?? 'https://play.athleteinstitute.ca';
+  const facName = new Map(ordered.map((f) => [f.id, f.name]));
+  const scopeLabel = (ids: number[]) => {
+    if (!ids.length) return 'all facilities';
+    const names = ids.map((id) => facName.get(id) ?? `#${id}`);
+    return names.length <= 2 ? names.join(' + ') : `${names.slice(0, 2).join(' + ')} +${names.length - 2}`;
+  };
 
   return (
     <main className="mx-auto flex min-h-screen max-w-4xl flex-col gap-8 px-6 py-16">
@@ -40,7 +46,7 @@ export default async function DisplaysAdminPage() {
           <div key={d.id} className="card flex flex-wrap items-center gap-3 p-4">
             <span className="text-lg font-bold text-ink">{d.name}</span>
             <span className="tag">{templates.find((t) => t.id === d.template_id)?.name ?? 'no template'}</span>
-            <span className="tag">{d.facility_ids.length ? `${d.facility_ids.length} facilities` : 'all facilities'}</span>
+            <span className="tag">{scopeLabel(d.facility_ids)}</span>
             <code className="mono flex-1 truncate text-xs text-silver">{playBase}/display/{d.token}</code>
             <a href={`/display/${d.token}`} target="_blank" className="btn-ghost btn-sm">Open</a>
             <form action={deleteDisplayAction}>
