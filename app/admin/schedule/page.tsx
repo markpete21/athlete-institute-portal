@@ -73,10 +73,14 @@ export default async function SchedulePage({
   const bookings = filterBookings(tree, rawBookings, filters);
   const conflictedIds = new Set(conflictPairs.flatMap((p) => [p.a.id, p.b.id]));
 
-  // Gantt parents: the operational facilities (children of locations = depth 2).
-  // With a facility filter active, keep only parents whose subtree touches the
-  // selection (selection itself, its ancestors, or its descendants).
-  const depth2 = ordered.filter((n) => n.depth === 2);
+  // Gantt parents: the operational facilities (children of locations = depth 2)
+  // PLUS childless locations (OCS has no spaces inside it yet - without this
+  // its bookings would silently vanish from the primary view). With a facility
+  // filter active, keep only parents whose subtree touches the selection
+  // (selection itself, its ancestors, or its descendants).
+  const depth2 = ordered.filter(
+    (n) => n.depth === 2 || (n.depth === 1 && !tree.some((c) => c.parent_id === n.id)),
+  );
   const { ancestorIds } = await import('@ai/foundation');
   const parentIds = selectedFacilities.length
     ? depth2
@@ -116,7 +120,10 @@ export default async function SchedulePage({
         </div>
         <div className="flex items-center gap-2">
           <Link href={qs({ date: addDaysISO(date, -step) })} className="btn-ghost btn-sm">←</Link>
-          <span className="mono text-sm text-ink">{date}</span>
+          <span className="mono whitespace-nowrap text-sm text-ink">
+            {new Date(`${date}T12:00:00Z`).toLocaleDateString('en-CA', { weekday: 'short', month: 'short', day: 'numeric' })}
+            <span className="ml-2 text-silver">{date}</span>
+          </span>
           <Link href={qs({ date: addDaysISO(date, step) })} className="btn-ghost btn-sm">→</Link>
           <span className="w-2" />
           {(['day', 'week', 'month'] as const).map((v) => (
@@ -202,7 +209,7 @@ export default async function SchedulePage({
       </div>
 
       {view === 'day' && (
-        <DayGantt rows={ganttForDay(tree, bookings, date, parentIds, conflictedIds)} />
+        <DayGantt rows={ganttForDay(tree, bookings, date, parentIds, conflictedIds)} dateISO={date} />
       )}
 
       {view === 'week' && (
