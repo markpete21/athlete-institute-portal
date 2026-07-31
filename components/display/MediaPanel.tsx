@@ -23,12 +23,28 @@ export function MediaPanel({
     return () => clearInterval(t);
   }, [mode, urls.length, slideSeconds]);
 
+  // No media configured: a deliberate brand moment rather than a void —
+  // dot-field texture, hairline frame, stacked wordmark on the accent.
   if (urls.length === 0) {
     return (
-      <div className="flex h-full items-center justify-center">
-        <span className="text-2xl font-extrabold tracking-tight text-white/40">
-          Athlete Institute<span style={{ color: 'var(--accent)' }}>.</span>
-        </span>
+      <div className="dot-field relative flex h-full flex-col justify-between border-r border-white/10 p-10">
+        <div
+          aria-hidden
+          className="absolute inset-0"
+          style={{ background: 'linear-gradient(180deg, transparent 40%, rgba(0,0,0,0.55) 100%)' }}
+        />
+        <span className="relative h-1.5 w-16" style={{ backgroundColor: 'var(--accent, #9e8959)' }} />
+        <div className="relative flex flex-col gap-4">
+          <span className="font-mono text-sm uppercase tracking-[0.3em] text-white/50">
+            Orangeville, ON
+          </span>
+          <span className="text-6xl font-extrabold leading-[0.95] tracking-tight text-white">
+            Athlete
+            <br />
+            Institute
+            <span style={{ color: 'var(--accent, #9e8959)' }}>.</span>
+          </span>
+        </div>
       </div>
     );
   }

@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import PlayWordmark from '@/components/brand/PlayWordmark';
+import AppsMenu from '@/components/nav/AppsMenu';
 import { Icon } from '@/components/nav/icons';
 import type { BrandTile } from '@/lib/play/brands';
 
@@ -147,6 +148,8 @@ export default function PlayShell({ brands, status, signedIn, initials, children
             ) : (
               <Link href="/sign-in" className="ps-signin">Sign in</Link>
             )}
+            {/* THE shared apps menu (hub manifest) — public apps only here. */}
+            <AppsMenu current="play" />
           </div>
         </div>
       </header>

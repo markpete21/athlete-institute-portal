@@ -5,8 +5,15 @@ import { torontoDateOf } from '@/lib/schedule-views';
 
 export const dynamic = 'force-dynamic';
 
-const fmtTime = (iso: string) =>
-  new Date(iso).toLocaleTimeString('en-CA', { timeZone: 'America/Toronto', hour: 'numeric', minute: '2-digit' });
+// Compact range: "9:00–11:00 a.m." / "9:00 a.m.–1:00 p.m." — one line, no wrap.
+const fmtRange = (fromIso: string, toIso: string) => {
+  const t = (iso: string) =>
+    new Date(iso).toLocaleTimeString('en-CA', { timeZone: 'America/Toronto', hour: 'numeric', minute: '2-digit' });
+  const a = t(fromIso);
+  const b = t(toIso);
+  const period = (s: string) => s.replace(/^[\d:]+\s*/, '');
+  return period(a) === period(b) ? `${a.replace(/\s*[ap]\.m\.$/, '')}–${b}` : `${a}–${b}`;
+};
 const fmtDay = (dateISO: string) =>
   new Date(`${dateISO}T12:00:00Z`).toLocaleDateString('en-CA', { weekday: 'long', month: 'long', day: 'numeric' });
 
@@ -58,8 +65,8 @@ export default async function PlaySchedulePage() {
             <div key={date} className="flex flex-col gap-2">
               <p className="label text-[11px]">{fmtDay(date)}</p>
               {items.map((b) => (
-                <div key={b.id} className="card flex items-center gap-4 p-4" style={{ borderLeft: '3px solid var(--accent)' }}>
-                  <span className="mono w-36 shrink-0 text-sm text-body">{fmtTime(b.starts_at)}–{fmtTime(b.ends_at)}</span>
+                <div key={b.id} className="card flex flex-wrap items-center gap-x-4 gap-y-1 p-4" style={{ borderLeft: '3px solid var(--accent)' }}>
+                  <span className="mono w-44 shrink-0 whitespace-nowrap text-sm text-body">{fmtRange(b.starts_at, b.ends_at)}</span>
                   <span className="font-bold text-ink">{b.title}</span>
                   <span className="ml-auto label text-[10px]">{facName.get(b.facility_id)}</span>
                 </div>
@@ -78,8 +85,8 @@ export default async function PlaySchedulePage() {
           <div key={date} className="flex flex-col gap-2">
             <p className="label text-[11px]">{fmtDay(date)}</p>
             {items.map((b) => (
-              <div key={b.id} className="card flex items-center gap-4 p-4">
-                <span className="mono w-36 shrink-0 text-sm text-body">{fmtTime(b.starts_at)}–{fmtTime(b.ends_at)}</span>
+              <div key={b.id} className="card flex flex-wrap items-center gap-x-4 gap-y-1 p-4">
+                <span className="mono w-44 shrink-0 whitespace-nowrap text-sm text-body">{fmtRange(b.starts_at, b.ends_at)}</span>
                 {b.logo_url && (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img src={b.logo_url} alt="" className="h-8 w-8 shrink-0 object-contain" />
