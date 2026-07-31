@@ -1,10 +1,13 @@
 import Link from 'next/link';
-import { buildTree, flattenTree, type FacilityNode } from '@ai/foundation';
+import { buildTree, flattenTree, torontoInstant, type FacilityNode } from '@ai/foundation';
 import { supabaseAdmin } from '@ai/foundation/supabase';
 import { listBookings, type BookingRecord } from '@/lib/bookings';
 import { findConflictPairs } from '@/lib/conflicts';
+import { listLocations } from '@/lib/locations';
+import { resolveLocationId, type FacilityRow } from '@/lib/facilities';
 import { DayGantt } from '@/components/schedule/DayGantt';
 import {
+  DAY_AXIS,
   bookingsByDate,
   filterBookings,
   ganttForDay,
@@ -12,6 +15,14 @@ import {
   type ScheduleFilters,
 } from '@/lib/schedule-views';
 import { deleteViewAction, saveViewAction } from './actions';
+
+/** Bar colours for the week/month mini-cards (mirrors the Gantt legend). */
+const SOURCE_COLOR: Record<string, string> = {
+  program: 'var(--accent)',
+  event: '#3f7a5b',
+  rental: '#5b7a9e',
+  internal: '#9ea1a1',
+};
 
 export const dynamic = 'force-dynamic';
 
@@ -39,22 +50,41 @@ const fmtTime = (iso: string) =>
 export default async function SchedulePage({
   searchParams,
 }: {
-  searchParams: { view?: string; date?: string; facilities?: string; source?: string; status?: string; internal?: string };
+  searchParams: { view?: string; date?: string; location?: string; facilities?: string; source?: string; status?: string; internal?: string };
 }) {
   const view = (['day', 'week', 'month'].includes(searchParams.view ?? '') ? searchParams.view : 'day') as ViewMode;
   const date = /^\d{4}-\d{2}-\d{2}$/.test(searchParams.date ?? '') ? searchParams.date! : torontoDateOf(new Date().toISOString());
 
   const db = supabaseAdmin();
-  const [{ data: facRows }, { data: viewRows }] = await Promise.all([
-    db.from('facilities').select('id, parent_id, name, label, sort_order, bookable, deleted_at').is('deleted_at', null),
+  const [{ data: facRows }, { data: viewRows }, locations] = await Promise.all([
+    db.from('facilities').select('id, parent_id, name, label, sort_order, bookable, deleted_at, location_id').is('deleted_at', null),
     db.from('saved_schedule_views').select('id, name, facility_ids, filters').order('name'),
+    listLocations(),
   ]);
-  const tree = (facRows ?? []) as FacilityNode[];
+  const tree = (facRows ?? []) as FacilityRow[];
   const savedViews = (viewRows ?? []) as SavedView[];
   const ordered = flattenTree(buildTree(tree));
 
-  const selectedFacilities = (searchParams.facilities ?? '')
+  // Location filter (above facility, spec ordering): a location narrows the
+  // facility dropdown and the board to the site's subtree. Site nodes carry
+  // facilities.location_id; everything beneath inherits via walk-up.
+  const selectedLocation = Number(searchParams.location) || null;
+  const locationFacilityIds = selectedLocation
+    ? ordered.filter((f) => resolveLocationId(tree, f.id) === selectedLocation).map((f) => f.id)
+    : null;
+  const facilityChoices = locationFacilityIds
+    ? ordered.filter((f) => locationFacilityIds.includes(f.id))
+    : ordered;
+
+  const explicitFacilities = (searchParams.facilities ?? '')
     .split(',').map(Number).filter(Boolean);
+  // Explicit facility beats location; otherwise the location's site roots act
+  // as the (tree-aware) selection.
+  const selectedFacilities = explicitFacilities.length
+    ? explicitFacilities
+    : selectedLocation
+      ? tree.filter((f) => f.location_id === selectedLocation).map((f) => f.id)
+      : [];
   const filters: ScheduleFilters = {
     facilityIds: selectedFacilities.length ? selectedFacilities : undefined,
     source: (searchParams.source as BookingRecord['source']) || undefined,
@@ -99,6 +129,7 @@ export default async function SchedulePage({
     const p = new URLSearchParams();
     p.set('view', over.view ?? view);
     p.set('date', over.date ?? date);
+    if (searchParams.location) p.set('location', searchParams.location);
     if (searchParams.facilities) p.set('facilities', searchParams.facilities);
     if (searchParams.source) p.set('source', searchParams.source);
     if (searchParams.status) p.set('status', searchParams.status);
@@ -108,6 +139,15 @@ export default async function SchedulePage({
   };
 
   const step = view === 'day' ? 1 : view === 'week' ? 7 : 31;
+
+  // Now-marker fraction (red line) when viewing today.
+  const axisStartMs = Date.parse(torontoInstant(date, `${String(DAY_AXIS.startHour).padStart(2, '0')}:00`));
+  const axisEndMs = Date.parse(torontoInstant(date, `${String(DAY_AXIS.endHour).padStart(2, '0')}:00`));
+  const rawNowFrac = (Date.now() - axisStartMs) / (axisEndMs - axisStartMs);
+  const nowFrac =
+    torontoDateOf(new Date().toISOString()) === date && rawNowFrac >= 0 && rawNowFrac <= 1
+      ? rawNowFrac
+      : null;
 
   return (
     <main className="mx-auto flex min-h-screen max-w-6xl flex-col gap-6 px-6 py-12">
@@ -137,15 +177,24 @@ export default async function SchedulePage({
         </div>
       </header>
 
-      {/* Filters - location/facility first (spec ordering) */}
+      {/* Filters - location first, then facility (spec ordering) */}
       <form method="get" action="/schedule" className="card flex flex-wrap items-end gap-3 p-4">
         <input type="hidden" name="view" value={view} />
         <input type="hidden" name="date" value={date} />
+        <div className="min-w-48">
+          <label className="field-label" htmlFor="location">Location</label>
+          <select id="location" name="location" className="input" defaultValue={searchParams.location ?? ''}>
+            <option value="">All — Orangeville</option>
+            {locations.map((l) => (
+              <option key={l.id} value={l.id}>{l.name}</option>
+            ))}
+          </select>
+        </div>
         <div className="min-w-56 flex-1">
-          <label className="field-label" htmlFor="facilities">Location / facility</label>
+          <label className="field-label" htmlFor="facilities">Facility</label>
           <select id="facilities" name="facilities" className="input" defaultValue={searchParams.facilities ?? ''}>
             <option value="">All facilities</option>
-            {ordered.map((f) => (
+            {facilityChoices.map((f) => (
               <option key={f.id} value={f.id}>{' '.repeat(f.depth * 2)}{f.name}</option>
             ))}
           </select>
@@ -209,26 +258,41 @@ export default async function SchedulePage({
       </div>
 
       {view === 'day' && (
-        <DayGantt rows={ganttForDay(tree, bookings, date, parentIds, conflictedIds)} dateISO={date} />
+        <DayGantt groups={ganttForDay(tree, bookings, date, parentIds, conflictedIds)} dateISO={date} nowFrac={nowFrac} />
       )}
 
       {view === 'week' && (
         <div className="grid gap-3 md:grid-cols-7">
           {Array.from({ length: 7 }, (_, i) => addDaysISO(addDaysISO(date, -3), i)).map((d) => {
             const day = (bookingsByDate(bookings).get(d) ?? []).sort((x, y) => x.starts_at.localeCompare(y.starts_at));
+            const weekday = new Date(`${d}T12:00:00Z`).toLocaleDateString('en-CA', { weekday: 'short' });
             return (
-              <div key={d} className={`card p-3 ${d === date ? 'border-2' : ''}`} style={d === date ? { borderColor: 'var(--accent)' } : undefined}>
-                <Link href={qs({ view: 'day', date: d })} className="label block pb-2 text-[10px] hover:text-ink">{d}</Link>
-                <div className="flex flex-col gap-1">
+              <div key={d} className={`card flex flex-col ${d === date ? 'border-2' : ''}`} style={d === date ? { borderColor: 'var(--accent)' } : undefined}>
+                <Link
+                  href={qs({ view: 'day', date: d })}
+                  className="flex items-baseline justify-between border-b border-hairline px-3 py-2 hover:bg-paper-panel"
+                >
+                  <span className="label text-[10px]">{weekday}</span>
+                  <span className="mono text-sm font-bold text-ink">{d.slice(8)}</span>
+                </Link>
+                <div className="flex flex-col gap-1.5 p-2">
                   {day.map((b) => (
-                    <div key={b.id} className="text-[11px]" title={b.title}>
-                      <span className="mono text-silver">{fmtTime(b.starts_at)}</span>{' '}
-                      <span className={conflictedIds.has(b.id) ? 'font-bold text-neg' : 'text-ink'}>
+                    <div
+                      key={b.id}
+                      className="flex flex-col gap-0.5 border border-hairline px-2 py-1.5"
+                      style={{ borderLeft: `3px solid ${conflictedIds.has(b.id) ? '#b4483c' : SOURCE_COLOR[b.source] ?? 'var(--accent)'}` }}
+                      title={b.title}
+                    >
+                      <span className="mono whitespace-nowrap text-[10px] tabular-nums text-silver">
+                        {fmtTime(b.starts_at)} – {fmtTime(b.ends_at)}
+                      </span>
+                      <span className={`text-[11px] font-semibold leading-tight ${conflictedIds.has(b.id) ? 'text-neg' : 'text-ink'}`}>
                         {conflictedIds.has(b.id) ? '⚠ ' : ''}{b.title}
+                        {b.status === 'tentative' ? ' (hold)' : ''}
                       </span>
                     </div>
                   ))}
-                  {day.length === 0 && <span className="text-[11px] text-silver">—</span>}
+                  {day.length === 0 && <span className="px-1 text-[11px] text-silver">—</span>}
                 </div>
               </div>
             );
@@ -241,14 +305,27 @@ export default async function SchedulePage({
           {Array.from({ length: 35 }, (_, i) => addDaysISO(`${date.slice(0, 7)}-01`, i - 3)).map((d) => {
             const day = bookingsByDate(bookings).get(d) ?? [];
             const inMonth = d.slice(0, 7) === date.slice(0, 7);
+            const row = (b: BookingRecord) => (
+              <p key={b.id} className={`truncate text-[10px] ${conflictedIds.has(b.id) ? 'font-bold text-neg' : 'text-ink'}`} title={b.title}>
+                {b.title}
+              </p>
+            );
             return (
-              <Link key={d} href={qs({ view: 'day', date: d })} className={`card min-h-20 p-2 ${inMonth ? '' : 'opacity-40'}`}>
-                <span className="mono text-[10px] text-silver">{d.slice(8)}</span>
-                {day.slice(0, 3).map((b) => (
-                  <p key={b.id} className={`truncate text-[10px] ${conflictedIds.has(b.id) ? 'font-bold text-neg' : 'text-ink'}`}>{b.title}</p>
-                ))}
-                {day.length > 3 && <p className="text-[10px] text-silver">+{day.length - 3} more</p>}
-              </Link>
+              <div key={d} className={`card min-h-20 p-2 ${inMonth ? '' : 'opacity-40'}`}>
+                <Link href={qs({ view: 'day', date: d })} className="mono block text-[10px] text-silver hover:text-ink" title="Open day view">
+                  {d.slice(8)}
+                </Link>
+                {day.slice(0, 3).map(row)}
+                {day.length > 3 && (
+                  // expands IN PLACE - the date number above is the day-view link
+                  <details>
+                    <summary className="cursor-pointer list-none text-[10px] text-silver hover:text-ink">
+                      +{day.length - 3} more
+                    </summary>
+                    {day.slice(3).map(row)}
+                  </details>
+                )}
+              </div>
             );
           })}
         </div>

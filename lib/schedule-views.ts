@@ -25,25 +25,46 @@ export interface GanttBar {
   source: BookingRecord['source'];
   status: BookingRecord['status'];
   conflicted: boolean;
+  /** Hover-card fields. */
+  timeLabel: string;
+  facilityName: string;
+  isInternal: boolean;
+  setupMinutes: number;
+  cleanupMinutes: number;
 }
 
 export interface GanttViewRow {
   facilityId: number;
-  /** Column 1 (parent facility) - blank for repeat rows under the same parent. */
-  parent: string;
-  /** Column 2 (child) - or "(whole)" for bookings directly on the parent. */
+  /** Column 2 (child facility). */
   child: string;
   bars: GanttBar[];
+}
+
+/**
+ * One column-1 facility (Dome, Fieldhouse, a childless location) with its
+ * child rows. Bookings placed directly on the parent land in `wholeBars` and
+ * render as ONE block spanning every child row - there is no separate
+ * "(whole)" line. A childless parent renders wholeBars as its only row.
+ */
+export interface GanttGroup {
+  parentId: number;
+  parent: string;
+  wholeBars: GanttBar[];
+  rows: GanttViewRow[];
 }
 
 const frac = (iso: string, dayStartMs: number, dayEndMs: number) =>
   Math.min(1, Math.max(0, (Date.parse(iso) - dayStartMs) / (dayEndMs - dayStartMs)));
 
+const fmtBarTime = (iso: string) =>
+  new Date(iso).toLocaleTimeString('en-CA', { timeZone: 'America/Toronto', hour: 'numeric', minute: '2-digit' });
+
 /**
  * The parent/child resource view. `parents` are the column-1 facilities
  * (e.g. Dome, Fieldhouse); each of their children gets a row, with bookings
  * on that child OR ANY OF ITS DESCENDANTS rolled up onto the row. Bookings
- * placed directly on the parent get a "(whole)" row above the children.
+ * placed directly on the parent become group-level `wholeBars` (they occupy
+ * every child).
  */
 export function ganttForDay(
   tree: FacilityNode[],
@@ -51,7 +72,7 @@ export function ganttForDay(
   dateISO: string,
   parentIds: number[],
   conflictedIds: Set<number>,
-): GanttViewRow[] {
+): GanttGroup[] {
   const dayStartMs = Date.parse(torontoInstant(dateISO, `${String(DAY_AXIS.startHour).padStart(2, '0')}:00`));
   const dayEndMs = Date.parse(torontoInstant(dateISO, `${String(DAY_AXIS.endHour).padStart(2, '0')}:00`));
   const byId = new Map(tree.map((n) => [n.id, n]));
@@ -68,9 +89,14 @@ export function ganttForDay(
     source: b.source,
     status: b.status,
     conflicted: conflictedIds.has(b.id),
+    timeLabel: `${fmtBarTime(b.starts_at)} – ${fmtBarTime(b.ends_at)}`,
+    facilityName: byId.get(b.facility_id)?.name ?? `facility ${b.facility_id}`,
+    isInternal: b.is_internal,
+    setupMinutes: b.setup_minutes ?? 0,
+    cleanupMinutes: b.cleanup_minutes ?? 0,
   });
 
-  const rows: GanttViewRow[] = [];
+  const groups: GanttGroup[] = [];
   for (const pid of parentIds) {
     const parent = byId.get(pid);
     if (!parent) continue;
@@ -78,27 +104,18 @@ export function ganttForDay(
       .filter((n) => n.parent_id === pid)
       .sort((a, b) => a.sort_order - b.sort_order || a.name.localeCompare(b.name));
 
-    // Bookings directly on the parent occupy it "as a whole".
     const wholeBars = inDay.filter((b) => b.facility_id === pid).map(toBar);
-    if (wholeBars.length) {
-      rows.push({ facilityId: pid, parent: parent.name, child: '(whole)', bars: wholeBars });
-    }
-
-    children.forEach((child, idx) => {
+    const rows: GanttViewRow[] = children.map((child) => {
       const scope = new Set([child.id, ...descendantIds(tree, child.id)]);
-      const bars = inDay.filter((b) => scope.has(b.facility_id)).map(toBar);
-      rows.push({
+      return {
         facilityId: child.id,
-        parent: idx === 0 && !wholeBars.length ? parent.name : idx === 0 ? '' : '',
         child: child.name,
-        bars,
-      });
+        bars: inDay.filter((b) => scope.has(b.facility_id)).map(toBar),
+      };
     });
-    // First child row carries the parent label when no (whole) row shown.
-    const firstIdx = rows.findIndex((r) => r.parent === '' && byId.get(r.facilityId)?.parent_id === pid);
-    if (!wholeBars.length && firstIdx >= 0) rows[firstIdx].parent = parent.name;
+    groups.push({ parentId: pid, parent: parent.name, wholeBars, rows });
   }
-  return rows;
+  return groups;
 }
 
 /** Toronto calendar date (YYYY-MM-DD) of an instant. */

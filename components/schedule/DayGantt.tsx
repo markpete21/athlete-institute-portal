@@ -1,13 +1,21 @@
+'use client';
+
+import { useState } from 'react';
 import Link from 'next/link';
-import { torontoInstant } from '@ai/foundation';
-import { DAY_AXIS, torontoDateOf, type GanttViewRow } from '@/lib/schedule-views';
+import { DAY_AXIS, type GanttBar, type GanttGroup } from '@/lib/schedule-views';
 
 /**
  * The operational parent/child resource view (Module 2 Stage 5): facility
  * columns left (parent, child), time across the top, bookings as bars.
- * Conflicted bars get the clash treatment and link to the conflicts queue.
- * Bars are hard-cornered data marks (house style reserves pills for
- * controls); a hairline now-marker crosses the grid when viewing today.
+ *
+ * - A booking on the PARENT node renders as one block spanning every child
+ *   row (booking the Dome occupies all three courts) - no "(whole)" line.
+ * - Overlapping bars in a row stack into greedy sub-lanes (keep-both pairs
+ *   must show both bookings).
+ * - Hovering a bar shows a fixed-position hover card (immune to the
+ *   horizontal scroll container's clipping).
+ * - Conflicted bars link to the conflicts queue; a hairline now-marker
+ *   crosses the grid when viewing today.
  */
 
 const SOURCE_COLOR: Record<string, string> = {
@@ -24,24 +32,12 @@ const SOURCE_LABEL: Record<string, string> = {
   internal: 'Internal',
 };
 
-/** Fraction of the day axis elapsed as of now; null when not viewing today. */
-function nowFraction(dateISO: string): number | null {
-  const nowIso = new Date().toISOString();
-  if (torontoDateOf(nowIso) !== dateISO) return null;
-  const startMs = Date.parse(torontoInstant(dateISO, `${String(DAY_AXIS.startHour).padStart(2, '0')}:00`));
-  const endMs = Date.parse(torontoInstant(dateISO, `${String(DAY_AXIS.endHour).padStart(2, '0')}:00`));
-  const f = (Date.now() - startMs) / (endMs - startMs);
-  return f >= 0 && f <= 1 ? f : null;
-}
-
 const LANE_HEIGHT = 28;
+const MIN_ROW = 44;
+const BAR_H = 24;
 
-/**
- * Greedy lane assignment: overlapping bars in one row stack into sub-lanes
- * instead of occluding each other (a keep-both double-booking must show BOTH
- * bookings). Returns each bar's lane and the row's lane count.
- */
-function assignLanes(bars: GanttViewRow['bars']): { lanes: number[]; laneCount: number } {
+/** Greedy lane assignment so overlapping bars stack instead of occluding. */
+function assignLanes(bars: GanttBar[]): { lanes: number[]; laneCount: number } {
   const order = bars
     .map((b, i) => ({ i, start: b.start, end: b.end }))
     .sort((a, b) => a.start - b.start || a.end - b.end);
@@ -60,12 +56,76 @@ function assignLanes(bars: GanttViewRow['bars']): { lanes: number[]; laneCount: 
   return { lanes, laneCount: Math.max(1, laneEnds.length) };
 }
 
-export function DayGantt({ rows, dateISO }: { rows: GanttViewRow[]; dateISO: string }) {
+interface Hover {
+  bar: GanttBar;
+  x: number;
+  y: number;
+}
+
+function HoverCard({ hover }: { hover: Hover }) {
+  const { bar, x, y } = hover;
+  // Clamp so the card never leaves the viewport on the right.
+  const left = Math.min(x, typeof window === 'undefined' ? x : window.innerWidth - 290);
+  return (
+    <div
+      className="pointer-events-none fixed z-50 w-72 border border-hairline bg-paper p-4 shadow-none"
+      style={{ left, top: y, borderTop: `3px solid ${SOURCE_COLOR[bar.source] ?? 'var(--accent)'}` }}
+    >
+      <p className="text-sm font-bold text-ink">{bar.title}</p>
+      <p className="mono mt-1 text-xs text-body">{bar.timeLabel}</p>
+      <p className="mt-0.5 font-mono text-[10px] uppercase tracking-[0.12em] text-silver">{bar.facilityName}</p>
+      <div className="mt-2 flex flex-wrap gap-1.5">
+        <span className="tag">{SOURCE_LABEL[bar.source] ?? bar.source}</span>
+        <span className="tag">{bar.isInternal ? 'internal' : 'external'}</span>
+        <span className="tag" style={bar.status === 'tentative' ? { color: 'var(--accent)', borderColor: 'var(--accent)' } : undefined}>
+          {bar.status === 'tentative' ? 'quote hold' : 'confirmed'}
+        </span>
+      </div>
+      {(bar.setupMinutes > 0 || bar.cleanupMinutes > 0) && (
+        <p className="mt-2 font-mono text-[10px] uppercase tracking-[0.12em] text-silver">
+          Buffers: {bar.setupMinutes}m setup · {bar.cleanupMinutes}m cleanup
+        </p>
+      )}
+      {bar.conflicted && (
+        <p className="mt-2 font-mono text-[10px] uppercase tracking-[0.12em]" style={{ color: '#b4483c' }}>
+          ⚠ In conflict — click to resolve
+        </p>
+      )}
+    </div>
+  );
+}
+
+export function DayGantt({ groups, dateISO, nowFrac }: { groups: GanttGroup[]; dateISO: string; nowFrac: number | null }) {
+  const [hover, setHover] = useState<Hover | null>(null);
   const hours = Array.from(
     { length: DAY_AXIS.endHour - DAY_AXIS.startHour },
     (_, i) => DAY_AXIS.startHour + i,
   );
-  const nowFrac = nowFraction(dateISO);
+
+  const enter = (bar: GanttBar) => (e: React.MouseEvent) => {
+    const r = (e.currentTarget as HTMLElement).getBoundingClientRect();
+    setHover({ bar, x: r.left, y: r.bottom + 6 });
+  };
+  const leave = () => setHover(null);
+
+  const barStyle = (b: GanttBar): React.CSSProperties => ({
+    left: `${b.start * 100}%`,
+    width: `${Math.max(0.015, b.end - b.start) * 100}%`,
+    backgroundColor: SOURCE_COLOR[b.source] ?? 'var(--accent)',
+    opacity: b.status === 'tentative' ? 0.55 : 1,
+    outline: b.conflicted ? '2px solid #b4483c' : undefined,
+    outlineOffset: b.conflicted ? 1 : undefined,
+    borderLeft: b.status === 'tentative' ? '3px double #ffffff' : undefined,
+  });
+
+  const barInner = (b: GanttBar) => (
+    <>
+      {b.conflicted ? '⚠ ' : ''}
+      {b.title}
+    </>
+  );
+
+  const nonEmpty = groups.filter((g) => g.rows.length > 0 || g.wholeBars.length > 0);
 
   return (
     <div className="flex flex-col gap-2">
@@ -88,25 +148,44 @@ export function DayGantt({ rows, dateISO }: { rows: GanttViewRow[]; dateISO: str
             </div>
           </div>
 
-          {rows.map((r, rowIdx) => {
-            const { lanes, laneCount } = assignLanes(r.bars);
-            const rowHeight = Math.max(44, laneCount * LANE_HEIGHT + 8);
-            // Parent label prints once per contiguous group; the hairline
-            // between groups stays heavier than between a group's children.
-            const isNewParent = rowIdx === 0 || rows[rowIdx - 1].parent !== r.parent;
+          {nonEmpty.map((g) => {
+            // A childless parent (OCS, or a leaf location) renders its whole
+            // bars as a single ordinary row.
+            const rows =
+              g.rows.length > 0
+                ? g.rows
+                : [{ facilityId: g.parentId, child: '—', bars: g.wholeBars }];
+            const spanBars = g.rows.length > 0 ? g.wholeBars : [];
+
+            const laneInfo = rows.map((r) => assignLanes(r.bars));
+            const rowHeights = laneInfo.map(({ laneCount }) =>
+              Math.max(MIN_ROW, laneCount * LANE_HEIGHT + 8),
+            );
+            const groupHeight = rowHeights.reduce((a, b) => a + b, 0);
+
             return (
-              <div
-                key={`${r.facilityId}-${r.child}`}
-                className={`flex border-b border-hairline last:border-0 ${isNewParent ? 'border-t border-t-hairline' : ''}`}
-              >
+              <div key={g.parentId} className="flex border-b border-hairline last:border-0">
+                {/* col 1: parent */}
                 <div className="w-28 shrink-0 border-r border-hairline px-3 py-3 text-[12px] font-bold text-ink">
-                  {isNewParent ? r.parent : ''}
+                  {g.parent}
                 </div>
-                <div className="w-36 shrink-0 border-r border-hairline px-3 py-3 label text-[10px]">
-                  {r.child}
+
+                {/* col 2: child labels, heights mirroring the tracks */}
+                <div className="w-36 shrink-0 border-r border-hairline">
+                  {rows.map((r, i) => (
+                    <div
+                      key={r.facilityId}
+                      className={`px-3 py-3 label text-[10px] ${i > 0 ? 'border-t border-hairline' : ''}`}
+                      style={{ height: rowHeights[i] }}
+                    >
+                      {r.child}
+                    </div>
+                  ))}
                 </div>
-                <div className="relative flex-1" style={{ height: rowHeight }}>
-                  {/* hour gridlines */}
+
+                {/* time area: stacked tracks + group-spanning whole blocks */}
+                <div className="relative flex-1" style={{ height: groupHeight }}>
+                  {/* hour gridlines across the whole group */}
                   {hours.map((h, i) => (
                     <div
                       key={h}
@@ -114,35 +193,60 @@ export function DayGantt({ rows, dateISO }: { rows: GanttViewRow[]; dateISO: str
                       style={{ left: `${(i / hours.length) * 100}%` }}
                     />
                   ))}
-                  {/* now marker (row segment) */}
                   {nowFrac !== null && (
                     <div
-                      className="absolute bottom-0 top-0 w-px"
+                      className="absolute bottom-0 top-0 z-10 w-px"
                       style={{ left: `${nowFrac * 100}%`, backgroundColor: '#b4483c' }}
                     />
                   )}
-                  {r.bars.map((b, barIdx) => {
-                    const laneTop =
-                      laneCount === 1
-                        ? (rowHeight - 24) / 2
-                        : 4 + lanes[barIdx] * LANE_HEIGHT;
+
+                  {rows.map((r, ri) => {
+                    const { lanes, laneCount } = laneInfo[ri];
+                    const top = rowHeights.slice(0, ri).reduce((a, b) => a + b, 0);
+                    return (
+                      <div
+                        key={r.facilityId}
+                        className={`absolute inset-x-0 ${ri > 0 ? 'border-t border-hairline' : ''}`}
+                        style={{ top, height: rowHeights[ri] }}
+                      >
+                        {r.bars.map((b, bi) => {
+                          const laneTop =
+                            laneCount === 1 ? (rowHeights[ri] - BAR_H) / 2 : 4 + lanes[bi] * LANE_HEIGHT;
+                          const bar = (
+                            <div
+                              className="absolute flex cursor-default items-center overflow-hidden whitespace-nowrap px-2 text-[10px] font-bold uppercase tracking-wide text-white"
+                              style={{ ...barStyle(b), top: laneTop, height: BAR_H }}
+                              onMouseEnter={enter(b)}
+                              onMouseLeave={leave}
+                            >
+                              {barInner(b)}
+                            </div>
+                          );
+                          return b.conflicted ? (
+                            <Link key={b.bookingId} href="/conflicts">{bar}</Link>
+                          ) : (
+                            <span key={b.bookingId}>{bar}</span>
+                          );
+                        })}
+                      </div>
+                    );
+                  })}
+
+                  {/* bookings on the parent: ONE block overlapping every child row */}
+                  {spanBars.map((b) => {
                     const bar = (
                       <div
-                        className="absolute flex items-center overflow-hidden whitespace-nowrap px-2 text-[10px] font-bold uppercase tracking-wide text-white"
+                        className="absolute z-20 flex cursor-default items-center justify-center overflow-hidden whitespace-nowrap border-2 border-paper px-2 text-[11px] font-bold uppercase tracking-wide text-white"
                         style={{
-                          left: `${b.start * 100}%`,
-                          width: `${Math.max(0.015, b.end - b.start) * 100}%`,
-                          top: laneTop,
-                          height: 24,
-                          backgroundColor: SOURCE_COLOR[b.source] ?? 'var(--accent)',
-                          opacity: b.status === 'tentative' ? 0.55 : 1,
-                          outline: b.conflicted ? '2px solid #b4483c' : undefined,
-                          outlineOffset: b.conflicted ? 1 : undefined,
-                          borderLeft: b.status === 'tentative' ? '3px double #ffffff' : undefined,
+                          ...barStyle(b),
+                          top: 3,
+                          height: groupHeight - 6,
+                          opacity: b.status === 'tentative' ? 0.55 : 0.92,
                         }}
-                        title={`${b.title}${b.status === 'tentative' ? ' (quote hold)' : ''}${b.conflicted ? ' - CONFLICT' : ''}`}
+                        onMouseEnter={enter(b)}
+                        onMouseLeave={leave}
                       >
-                        {b.conflicted ? '⚠ ' : ''}{b.title}
+                        {barInner(b)}
                       </div>
                     );
                     return b.conflicted ? (
@@ -156,7 +260,7 @@ export function DayGantt({ rows, dateISO }: { rows: GanttViewRow[]; dateISO: str
             );
           })}
 
-          {rows.length === 0 && (
+          {nonEmpty.length === 0 && (
             <p className="px-4 py-6 text-sm text-silver">Nothing on the schedule for this day.</p>
           )}
         </div>
@@ -185,6 +289,9 @@ export function DayGantt({ rows, dateISO }: { rows: GanttViewRow[]; dateISO: str
           </span>
         )}
       </div>
+
+      {hover && <HoverCard hover={hover} />}
+      <span className="sr-only">{dateISO}</span>
     </div>
   );
 }

@@ -41,19 +41,25 @@ export async function GET() {
     made.push(b1.booking.id, b2.booking.id, b3.booking.id);
     const bookings = [b1.booking, b2.booking, b3.booking] as BookingRecord[];
 
-    // 1. Gantt rows: parent/child columns, basket rolls up to Court 1 row
-    const rows = ganttForDay(tree, bookings, day, [dome, fieldhouse], new Set([b1.booking.id]));
-    const court1Row = rows.find((r) => r.child === 'Dome Court 1');
-    const wholeRow = rows.find((r) => r.parent === 'Dome' && r.child === '(whole)');
+    // 1. Gantt groups: basket rolls up to Court 1's row; the whole-Dome
+    //    booking lands in the group's wholeBars (renders spanning all courts)
+    const groups = ganttForDay(tree, bookings, day, [dome, fieldhouse], new Set([b1.booking.id]));
+    const domeGroup = groups.find((g) => g.parent === 'Dome');
+    const court1Row = domeGroup?.rows.find((r) => r.child === 'Dome Court 1');
     record(
       'rollup: basket booking appears on its court row',
       !!court1Row && court1Row.bars.length === 1 && court1Row.bars[0].title === 'Skills' && court1Row.bars[0].conflicted,
       `Court 1 bars=${court1Row?.bars.length}, conflicted flag=${court1Row?.bars[0]?.conflicted}`,
     );
     record(
-      'whole-facility booking gets its own row',
-      !!wholeRow && wholeRow.bars[0].title === 'Showcase',
-      wholeRow ? `(whole) row with "${wholeRow.bars[0]?.title}"` : 'missing',
+      'whole-facility booking spans the group (wholeBars)',
+      !!domeGroup && domeGroup.wholeBars.length === 1 && domeGroup.wholeBars[0].title === 'Showcase',
+      domeGroup ? `Dome wholeBars: "${domeGroup.wholeBars[0]?.title}"` : 'missing',
+    );
+    record(
+      'hover-card fields populated',
+      !!court1Row && /a\.m\..+a\.m\./.test(court1Row.bars[0].timeLabel) && court1Row.bars[0].facilityName === 'Dome Court 1 - East Basket',
+      `timeLabel="${court1Row?.bars[0]?.timeLabel}", facility="${court1Row?.bars[0]?.facilityName}"`,
     );
 
     // 2. bar fractions: 9-11am on the 7-23 axis -> start=(9-7)/16=0.125, end=0.25
@@ -65,7 +71,7 @@ export async function GET() {
     );
 
     // 3. clamping: 15:00-23:00 rental ends exactly at 1.0
-    const fhRow = rows.find((r) => r.child === 'Fieldhouse Gym');
+    const fhRow = groups.find((g) => g.parent === 'Fieldhouse')?.rows.find((r) => r.child === 'Fieldhouse Gym');
     record('end-of-day clamps to 1.0', fhRow!.bars[0].end === 1, `end=${fhRow!.bars[0].end}`);
 
     // 4. tree-aware facility filter: selecting Court 1 keeps the basket booking

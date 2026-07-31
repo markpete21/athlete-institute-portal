@@ -1,6 +1,7 @@
 import { supabaseAdmin } from '@ai/foundation/supabase';
 import { getPortalSession } from '@/lib/auth';
 import { listBookings, type BookingRecord } from '@/lib/bookings';
+import { listBrands } from '@/lib/brands/brands';
 import { torontoDateOf } from '@/lib/schedule-views';
 
 export const dynamic = 'force-dynamic';
@@ -14,8 +15,13 @@ const fmtRange = (fromIso: string, toIso: string) => {
   const period = (s: string) => s.replace(/^[\d:]+\s*/, '');
   return period(a) === period(b) ? `${a.replace(/\s*[ap]\.m\.$/, '')}–${b}` : `${a}–${b}`;
 };
-const fmtDay = (dateISO: string) =>
-  new Date(`${dateISO}T12:00:00Z`).toLocaleDateString('en-CA', { weekday: 'long', month: 'long', day: 'numeric' });
+const dayParts = (dateISO: string) => {
+  const d = new Date(`${dateISO}T12:00:00Z`);
+  return {
+    weekday: d.toLocaleDateString('en-CA', { weekday: 'long' }),
+    rest: d.toLocaleDateString('en-CA', { month: 'long', day: 'numeric' }),
+  };
+};
 
 function groupByDate(bookings: BookingRecord[]): Array<[string, BookingRecord[]]> {
   const map = new Map<string, BookingRecord[]>();
@@ -39,12 +45,17 @@ export default async function PlaySchedulePage() {
   const from = new Date().toISOString();
   const to = new Date(Date.now() + 14 * 86400_000).toISOString();
 
-  const [publicBookings, familyBookings, facRows] = await Promise.all([
+  const [publicBookings, familyBookings, facRows, brands] = await Promise.all([
     listBookings({ from, to, publicOnly: true }),
     session.familyId ? listBookings({ from, to, familyId: session.familyId }) : Promise.resolve([]),
     supabaseAdmin().from('facilities').select('id, name').is('deleted_at', null),
+    listBrands(),
   ]);
   const facName = new Map((facRows.data ?? []).map((f) => [f.id, f.name]));
+  // Every row carries a mark: the booking's own logo when it has one, else
+  // the org's default brand logo (brands are shared across all the apps).
+  const defaultLogo = brands.find((b) => b.logoUrl)?.logoUrl ?? null;
+  const markFor = (b: BookingRecord) => b.logo_url ?? defaultLogo;
 
   return (
     <main className="mx-auto flex min-h-screen max-w-3xl flex-col gap-10 px-6 py-16">
@@ -63,10 +74,20 @@ export default async function PlaySchedulePage() {
           <h2 className="text-2xl">Your family</h2>
           {groupByDate(familyBookings).map(([date, items]) => (
             <div key={date} className="flex flex-col gap-2">
-              <p className="label text-[11px]">{fmtDay(date)}</p>
+              <p className="label text-[11px]">
+                <span className="text-ink">{dayParts(date).weekday}</span>
+                <span className="mx-1.5" style={{ color: 'var(--accent)' }}>·</span>
+                {dayParts(date).rest}
+              </p>
               {items.map((b) => (
-                <div key={b.id} className="card flex flex-wrap items-center gap-x-4 gap-y-1 p-4" style={{ borderLeft: '3px solid var(--accent)' }}>
-                  <span className="mono w-44 shrink-0 whitespace-nowrap text-sm text-body">{fmtRange(b.starts_at, b.ends_at)}</span>
+                <div key={b.id} className="card flex flex-wrap items-center gap-x-4 gap-y-1 p-4 transition-colors hover:border-ink" style={{ borderLeft: '3px solid var(--accent)' }}>
+                  <span className="mono w-40 shrink-0 whitespace-nowrap text-sm text-body">{fmtRange(b.starts_at, b.ends_at)}</span>
+                  {markFor(b) && (
+                    <span className="flex h-8 w-8 shrink-0 items-center justify-center bg-ink p-1">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={markFor(b)!} alt="" className="max-h-full max-w-full object-contain" />
+                    </span>
+                  )}
                   <span className="font-bold text-ink">{b.title}</span>
                   <span className="ml-auto label text-[10px]">{facName.get(b.facility_id)}</span>
                 </div>
@@ -83,13 +104,19 @@ export default async function PlaySchedulePage() {
         )}
         {groupByDate(publicBookings).map(([date, items]) => (
           <div key={date} className="flex flex-col gap-2">
-            <p className="label text-[11px]">{fmtDay(date)}</p>
+            <p className="label text-[11px]">
+              <span className="text-ink">{dayParts(date).weekday}</span>
+              <span className="mx-1.5" style={{ color: 'var(--accent)' }}>·</span>
+              {dayParts(date).rest}
+            </p>
             {items.map((b) => (
-              <div key={b.id} className="card flex flex-wrap items-center gap-x-4 gap-y-1 p-4">
-                <span className="mono w-44 shrink-0 whitespace-nowrap text-sm text-body">{fmtRange(b.starts_at, b.ends_at)}</span>
-                {b.logo_url && (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={b.logo_url} alt="" className="h-8 w-8 shrink-0 object-contain" />
+              <div key={b.id} className="card group flex flex-wrap items-center gap-x-4 gap-y-1 p-4 transition-colors hover:border-ink">
+                <span className="mono w-40 shrink-0 whitespace-nowrap text-sm text-body">{fmtRange(b.starts_at, b.ends_at)}</span>
+                {markFor(b) && (
+                  <span className="flex h-8 w-8 shrink-0 items-center justify-center bg-ink p-1">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={markFor(b)!} alt="" className="max-h-full max-w-full object-contain" />
+                  </span>
                 )}
                 <span className="font-bold text-ink">{b.title}</span>
                 <span className="ml-auto label text-[10px]">{facName.get(b.facility_id)}</span>

@@ -119,7 +119,10 @@ export default async function DisplayPage({ params }: { params: { token: string 
                       // eslint-disable-next-line @next/next/no-img-element
                       <img src={b.logo_url} alt="" className="h-14 w-14 shrink-0 object-contain" />
                     )}
-                    <span className="truncate text-4xl font-bold tracking-tight">{b.title}</span>
+                    {/* full title always visible: wrap, never clip */}
+                    <span className="min-w-0 flex-1 whitespace-normal break-words text-4xl font-bold leading-[1.05] tracking-tight">
+                      {b.title}
+                    </span>
                     <span className="ml-auto shrink-0 font-mono text-xl uppercase tracking-wider text-white/50">
                       {facilityNames.get(b.facility_id)}
                     </span>
@@ -150,7 +153,7 @@ export default async function DisplayPage({ params }: { params: { token: string 
                         // eslint-disable-next-line @next/next/no-img-element
                         <img src={b.logo_url} alt="" className="h-8 w-8 self-center object-contain" />
                       )}
-                      <span className="truncate">{b.title}</span>
+                      <span className="min-w-0 whitespace-normal break-words leading-tight">{b.title}</span>
                     </p>
                   ))}
                 </div>

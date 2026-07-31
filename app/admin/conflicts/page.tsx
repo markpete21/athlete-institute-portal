@@ -3,6 +3,18 @@ import { findConflictPairs } from '@/lib/conflicts';
 import { supabaseAdmin } from '@ai/foundation/supabase';
 import { torontoDateOf } from '@/lib/schedule-views';
 import { cancelSideAction, keepBothAction } from './actions';
+import { EditPair, type EditablePairSide } from './EditPair';
+
+const torontoHHMM = (iso: string) =>
+  new Date(iso).toLocaleTimeString('en-CA', { timeZone: 'America/Toronto', hour12: false, hour: '2-digit', minute: '2-digit' });
+
+const toSide = (bk: { id: number; title: string; starts_at: string; ends_at: string }): EditablePairSide => ({
+  id: bk.id,
+  title: bk.title,
+  date: torontoDateOf(bk.starts_at),
+  start: torontoHHMM(bk.starts_at),
+  end: torontoHHMM(bk.ends_at),
+});
 
 export const dynamic = 'force-dynamic';
 
@@ -76,6 +88,7 @@ export default async function ConflictsPage() {
             )}
 
             <div className="flex flex-wrap items-end gap-3 border-t border-hairline pt-4">
+              <EditPair a={toSide(p.a)} b={toSide(p.b)} />
               <form action={cancelSideAction}>
                 <input type="hidden" name="loserId" value={p.a.id} />
                 <button type="submit" className="btn-ghost btn-sm text-neg">Cancel “{p.a.title}”</button>
