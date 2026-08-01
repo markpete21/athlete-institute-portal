@@ -296,6 +296,8 @@ export async function addRecurringRentalLines(input: {
   until?: string;
   count?: number;
   rateCentsOverride?: number;
+  /** Concrete booking: every occurrence lands CONFIRMED instead of held. */
+  confirm?: boolean;
   actorClerkId: string;
 }): Promise<{ lineCount: number; conflictedDates: string[] }> {
   const { expandRecurrence } = await import('@ai/foundation');
@@ -340,6 +342,7 @@ export async function addRecurringRentalLines(input: {
       endsAt: occ.ends_at,
       rateCentsOverride: input.rateCentsOverride,
       seriesId: series.id,
+      confirm: input.confirm,
       actorClerkId: input.actorClerkId,
     });
     if (res.conflicts.length > 0) conflictedDates.push(occ.date);

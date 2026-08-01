@@ -4,7 +4,7 @@ import { revalidatePath } from 'next/cache';
 import { torontoInstant } from '@ai/foundation';
 import { getPortalSession } from '@/lib/auth';
 import { createBooking } from '@/lib/bookings';
-import { addRentalAddon, addRentalLine, createRental } from '@/lib/rentals/quotes';
+import { addRecurringRentalLines, addRentalAddon, addRentalLine, createRental } from '@/lib/rentals/quotes';
 
 /**
  * The booking wizard's submit. One path for both kinds:
@@ -24,6 +24,14 @@ export interface WizardLine {
   rateMode: 'hourly' | 'full_day';
   /** Override; null/undefined = resolve from the rate card. */
   unitRateCents?: number | null;
+  /**
+   * Recurrence: weekly repeats the line's weekday until a date (a real
+   * booking_series, so one instance can be resolved without the rest);
+   * dates adds extra specific dates as sibling lines.
+   */
+  repeat?:
+    | { mode: 'weekly'; until: string }
+    | { mode: 'dates'; dates: string[] };
 }
 
 export interface WizardBlock {
@@ -79,7 +87,19 @@ export async function bookWizardAction(payload: WizardPayload): Promise<WizardRe
   if (!title) throw new Error('Title is required.');
   if (!payload.bookingType) throw new Error('Booking type is required.');
   if (payload.lines.length === 0) throw new Error('At least one facility/time line is required.');
-  payload.lines.forEach((l, i) => assertSlot(l, `Line ${i + 1}`));
+  payload.lines.forEach((l, i) => {
+    assertSlot(l, `Line ${i + 1}`);
+    if (l.repeat?.mode === 'weekly') {
+      if (!DATE.test(l.repeat.until)) throw new Error(`Line ${i + 1}: repeat needs an until date.`);
+      if (l.repeat.until <= l.date) throw new Error(`Line ${i + 1}: repeat-until must be after the start date.`);
+    }
+    if (l.repeat?.mode === 'dates') {
+      if (!l.repeat.dates.length) throw new Error(`Line ${i + 1}: pick at least one extra date.`);
+      for (const d of l.repeat.dates) {
+        if (!DATE.test(d)) throw new Error(`Line ${i + 1}: invalid extra date.`);
+      }
+    }
+  });
   payload.blocks.forEach((b, i) => assertSlot(b, `Block ${i + 1}`));
 
   const isInternal = payload.kind === 'internal';
@@ -104,20 +124,49 @@ export async function bookWizardAction(payload: WizardPayload): Promise<WizardRe
   let warningCount = 0;
   const lineBookingIds: number[] = [];
 
+  let lineCount = 0;
   for (const l of payload.lines) {
-    const res = await addRentalLine({
-      rentalId: rental.id,
-      facilityId: l.facilityId,
-      rateMode: l.rateMode,
-      startsAt: torontoInstant(l.date, l.start),
-      endsAt: torontoInstant(l.date, l.end),
-      rateCentsOverride: isInternal ? undefined : l.unitRateCents ?? undefined,
-      confirm: payload.intent === 'book',
-      actorClerkId: actor,
-    });
-    conflictCount += res.conflicts.length;
-    warningCount += res.warnings.length + res.closures.length;
-    if (res.line.booking_id) lineBookingIds.push(res.line.booking_id);
+    const override = isInternal ? undefined : l.unitRateCents ?? undefined;
+
+    if (l.repeat?.mode === 'weekly') {
+      // Weekly series through the Module 2 recurrence engine (DST-correct,
+      // per-date conflict reporting, shared booking_series).
+      const weekday = new Date(`${l.date}T12:00:00Z`).getUTCDay();
+      const res = await addRecurringRentalLines({
+        rentalId: rental.id,
+        facilityId: l.facilityId,
+        rateMode: l.rateMode,
+        pattern: { freq: 'weekly', byWeekday: [weekday] },
+        startDate: l.date,
+        startTime: l.start,
+        endTime: l.end,
+        until: l.repeat.until,
+        rateCentsOverride: override,
+        confirm: payload.intent === 'book',
+        actorClerkId: actor,
+      });
+      lineCount += res.lineCount;
+      conflictCount += res.conflictedDates.length;
+      continue;
+    }
+
+    const dates = [l.date, ...(l.repeat?.mode === 'dates' ? l.repeat.dates : [])];
+    for (const d of dates) {
+      const res = await addRentalLine({
+        rentalId: rental.id,
+        facilityId: l.facilityId,
+        rateMode: l.rateMode,
+        startsAt: torontoInstant(d, l.start),
+        endsAt: torontoInstant(d, l.end),
+        rateCentsOverride: override,
+        confirm: payload.intent === 'book',
+        actorClerkId: actor,
+      });
+      lineCount += 1;
+      conflictCount += res.conflicts.length;
+      warningCount += res.warnings.length + res.closures.length;
+      if (res.line.booking_id) lineBookingIds.push(res.line.booking_id);
+    }
   }
 
   for (const a of payload.addons) {
@@ -158,7 +207,7 @@ export async function bookWizardAction(payload: WizardPayload): Promise<WizardRe
 
   return {
     rentalId: rental.id,
-    lineCount: payload.lines.length,
+    lineCount,
     blockCount: payload.blocks.length,
     conflictCount,
     warningCount,

@@ -34,6 +34,21 @@ interface LineDraft {
   end: string;
   rateMode: 'hourly' | 'full_day';
   rateOverride: string; // dollars, '' = use card rate
+  repeatMode: 'none' | 'weekly' | 'dates';
+  repeatUntil: string;      // weekly: last date (inclusive)
+  repeatDates: string[];    // dates: extra specific dates
+}
+
+const NO_REPEAT = { repeatMode: 'none' as const, repeatUntil: '', repeatDates: [] as string[] };
+
+/** How many bookings a line will create (weekly = same weekday, inclusive). */
+function lineOccurrences(l: LineDraft): number {
+  if (l.repeatMode === 'weekly' && /^\d{4}-\d{2}-\d{2}$/.test(l.repeatUntil) && l.repeatUntil > l.date) {
+    const days = (Date.parse(`${l.repeatUntil}T12:00:00Z`) - Date.parse(`${l.date}T12:00:00Z`)) / 86400_000;
+    return Math.floor(days / 7) + 1;
+  }
+  if (l.repeatMode === 'dates') return 1 + l.repeatDates.length;
+  return 1;
 }
 
 interface BlockDraft {
@@ -80,16 +95,16 @@ export function Wizard({
   const [lines, setLines] = useState<LineDraft[]>(() => {
     const fromSlots = prefillSlots.map((s) => ({
       facilityId: s.facilityId, date: defaultDate, start: s.start, end: s.end,
-      rateMode: 'hourly' as const, rateOverride: '',
+      rateMode: 'hourly' as const, rateOverride: '', ...NO_REPEAT,
     }));
     const fromFacilities = prefillFacilities.map((id) => ({
       facilityId: id, date: defaultDate, start: '', end: '',
-      rateMode: 'hourly' as const, rateOverride: '',
+      rateMode: 'hourly' as const, rateOverride: '', ...NO_REPEAT,
     }));
     const drafts = [...fromSlots, ...fromFacilities];
     return drafts.length
       ? drafts
-      : [{ facilityId: facilities[0]?.id ?? 0, date: defaultDate, start: '', end: '', rateMode: 'hourly', rateOverride: '' }];
+      : [{ facilityId: facilities[0]?.id ?? 0, date: defaultDate, start: '', end: '', rateMode: 'hourly', rateOverride: '', ...NO_REPEAT }];
   });
 
   // A quote is by definition a priced customer hold - internal is not offered.
@@ -117,7 +132,10 @@ export function Wizard({
   const [error, setError] = useState<string | null>(null);
 
   const linesValid = lines.length > 0 && lines.every(
-    (l) => l.facilityId && l.date && /^\d{2}:\d{2}$/.test(l.start) && /^\d{2}:\d{2}$/.test(l.end) && l.end > l.start,
+    (l) =>
+      l.facilityId && l.date && /^\d{2}:\d{2}$/.test(l.start) && /^\d{2}:\d{2}$/.test(l.end) && l.end > l.start
+      && (l.repeatMode !== 'weekly' || (/^\d{4}-\d{2}-\d{2}$/.test(l.repeatUntil) && l.repeatUntil > l.date))
+      && (l.repeatMode !== 'dates' || l.repeatDates.length > 0),
   );
   const blocksValid = blocks.every(
     (b) => b.facilityId && b.date && /^\d{2}:\d{2}$/.test(b.start) && /^\d{2}:\d{2}$/.test(b.end) && b.end > b.start,
@@ -139,7 +157,7 @@ export function Wizard({
     return l.rateMode === 'hourly' ? Math.round(rate * hoursBetween(l.start, l.end)) : rate;
   };
   const feesTotal = kind === 'rental'
-    ? lines.reduce((sum, l) => sum + (lineTotal(l) ?? 0), 0)
+    ? lines.reduce((sum, l) => sum + (lineTotal(l) ?? 0) * lineOccurrences(l), 0)
       + addons.reduce((sum, a) => sum + (addonQty[a.id] ?? 0) * a.priceCents, 0)
     : 0;
   const missingRates = kind === 'rental' && lines.some((l) => lineRate(l) == null);
@@ -171,6 +189,12 @@ export function Wizard({
         facilityId: l.facilityId, date: l.date, start: l.start, end: l.end,
         rateMode: l.rateMode,
         unitRateCents: l.rateOverride !== '' ? Math.round(Number(l.rateOverride) * 100) : null,
+        repeat:
+          l.repeatMode === 'weekly'
+            ? { mode: 'weekly' as const, until: l.repeatUntil }
+            : l.repeatMode === 'dates'
+              ? { mode: 'dates' as const, dates: l.repeatDates }
+              : undefined,
       })),
       addons: Object.entries(addonQty).map(([id, qty]) => ({ addonId: Number(id), qty })).filter((a) => a.qty > 0),
       blocks,
@@ -258,6 +282,28 @@ export function Wizard({
                     style={invalid(!!attempted[1] && (!/^\d{2}:\d{2}$/.test(l.end) || (!!l.start && !!l.end && l.end <= l.start)))}
                     onChange={(e) => setLines(lines.map((x, j) => (j === i ? { ...x, end: e.target.value } : x)))} />
                 </div>
+                <div>
+                  <label className="field-label">Repeat</label>
+                  <select
+                    className="input h-9 text-sm"
+                    value={l.repeatMode}
+                    onChange={(e) => setLines(lines.map((x, j) => (j === i ? { ...x, repeatMode: e.target.value as LineDraft['repeatMode'] } : x)))}
+                  >
+                    <option value="none">One time</option>
+                    <option value="weekly">Weekly until…</option>
+                    <option value="dates">Specific dates</option>
+                  </select>
+                </div>
+                {l.repeatMode === 'weekly' && (
+                  <div>
+                    <label className="field-label">Until (incl.)</label>
+                    <input
+                      type="date" className="input h-9 text-sm" value={l.repeatUntil} min={l.date}
+                      style={invalid(!!attempted[1] && !(l.repeatUntil > l.date))}
+                      onChange={(e) => setLines(lines.map((x, j) => (j === i ? { ...x, repeatUntil: e.target.value } : x)))}
+                    />
+                  </div>
+                )}
                 <button
                   type="button"
                   className="btn-ghost btn-sm text-neg"
@@ -266,6 +312,42 @@ export function Wizard({
                 >
                   Remove
                 </button>
+                {l.repeatMode === 'dates' && (
+                  <div className="flex w-full flex-wrap items-center gap-2 pl-1">
+                    <span className="font-mono text-[10px] uppercase tracking-[0.12em] text-silver">Also on:</span>
+                    {l.repeatDates.map((d) => (
+                      <span key={d} className="tag">
+                        {d}
+                        <button
+                          type="button" className="ml-1 text-silver hover:text-neg" title="Remove date"
+                          onClick={() => setLines(lines.map((x, j) => (j === i ? { ...x, repeatDates: x.repeatDates.filter((y) => y !== d) } : x)))}
+                        >
+                          ×
+                        </button>
+                      </span>
+                    ))}
+                    <input
+                      type="date" className="input h-8 w-40 text-sm"
+                      style={invalid(!!attempted[1] && l.repeatDates.length === 0)}
+                      onChange={(e) => {
+                        const d = e.target.value;
+                        if (!/^\d{4}-\d{2}-\d{2}$/.test(d)) return;
+                        setLines(lines.map((x, j) =>
+                          j === i && d !== x.date && !x.repeatDates.includes(d)
+                            ? { ...x, repeatDates: [...x.repeatDates, d].sort() }
+                            : x,
+                        ));
+                        e.target.value = '';
+                      }}
+                    />
+                    <span className="text-[11px] text-silver">pick a date to add it</span>
+                  </div>
+                )}
+                {lineOccurrences(l) > 1 && (
+                  <span className="w-full pl-1 font-mono text-[10px] uppercase tracking-[0.12em]" style={{ color: 'var(--accent)' }}>
+                    {lineOccurrences(l)} bookings
+                  </span>
+                )}
               </div>
             ))}
           </div>
@@ -273,7 +355,7 @@ export function Wizard({
             <button
               type="button"
               className="btn-ghost btn-sm"
-              onClick={() => setLines([...lines, { ...lines[lines.length - 1], rateOverride: '' }])}
+              onClick={() => setLines([...lines, { ...lines[lines.length - 1], rateOverride: '', ...NO_REPEAT }])}
             >
               + Add another facility / time
             </button>
@@ -428,7 +510,13 @@ export function Wizard({
                       onChange={(e) => setLines(lines.map((x, j) => (j === i ? { ...x, rateOverride: e.target.value } : x)))}
                     />
                   </div>
-                  <span className="mono pb-2 text-sm">{total != null ? cad(total) : <span className="text-neg">no rate</span>}</span>
+                  <span className="mono pb-2 text-sm">
+                    {total != null
+                      ? lineOccurrences(l) > 1
+                        ? `${cad(total)} × ${lineOccurrences(l)} = ${cad(total * lineOccurrences(l))}`
+                        : cad(total)
+                      : <span className="text-neg">no rate</span>}
+                  </span>
                 </div>
               );
             })}
@@ -623,7 +711,9 @@ export function Wizard({
               {lines.map((l, i) => (
                 <span key={i} className="mono text-xs">
                   {facById.get(l.facilityId)?.name} · {l.date} {l.start}–{l.end}
-                  {kind === 'rental' && lineTotal(l) != null ? ` · ${cad(lineTotal(l)!)}` : ''}
+                  {l.repeatMode === 'weekly' ? ` · weekly until ${l.repeatUntil} (${lineOccurrences(l)}×)` : ''}
+                  {l.repeatMode === 'dates' ? ` · +${l.repeatDates.length} more date${l.repeatDates.length === 1 ? '' : 's'}` : ''}
+                  {kind === 'rental' && lineTotal(l) != null ? ` · ${cad(lineTotal(l)! * lineOccurrences(l))}` : ''}
                 </span>
               ))}
             </dd>
