@@ -188,6 +188,7 @@ export default async function SchedulePage({
           <Link href="/conflicts" className="btn-ghost btn-sm">
             Conflicts{conflictedIds.size ? ` (${conflictPairs.length})` : ''}
           </Link>
+          <Link href="/schedule/calendar" className="btn-ghost btn-sm" title="Subscribe your calendar to this schedule">Sync</Link>
           {bookMode ? (
             <Link href={qs({ book: '', intent: '' })} className="btn-ghost btn-sm">Exit booking</Link>
           ) : (

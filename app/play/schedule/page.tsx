@@ -1,6 +1,7 @@
 import { supabaseAdmin } from '@ai/foundation/supabase';
 import { getPortalSession } from '@/lib/auth';
 import { listBookings, type BookingRecord } from '@/lib/bookings';
+import { getOrCreateFeed } from '@/lib/calendar';
 import { listBrands } from '@/lib/brands/brands';
 import { torontoDateOf } from '@/lib/schedule-views';
 
@@ -69,6 +70,10 @@ export default async function PlaySchedulePage() {
         )}
       </header>
 
+      {session.familyId && (
+        <FamilySync familyId={session.familyId} clerkId={session.userId!} />
+      )}
+
       {familyBookings.length > 0 && (
         <section className="flex flex-col gap-4">
           <h2 className="text-2xl">Your family</h2>
@@ -126,5 +131,28 @@ export default async function PlaySchedulePage() {
         ))}
       </section>
     </main>
+  );
+}
+
+
+/** Tokened ICS subscription for the household's own schedule. */
+async function FamilySync({ familyId, clerkId }: { familyId: number; clerkId: string }) {
+  const feed = await getOrCreateFeed('family', clerkId, familyId);
+  const { headers } = await import('next/headers');
+  const host = headers().get('host') ?? 'play.athleteinstitute.ca';
+  const proto = host.includes('localhost') ? 'http' : 'https';
+  const url = `${proto}://${host}/api/calendar/${feed.token}`;
+  return (
+    <section className="card flex flex-wrap items-center gap-3 p-4">
+      <div className="min-w-52 flex-1">
+        <p className="text-sm font-bold text-ink">Sync to your calendar</p>
+        <p className="text-sm text-silver">
+          Subscribe once and your family&apos;s bookings stay up to date in
+          Google, Apple or Outlook.
+        </p>
+      </div>
+      <a href={url.replace(/^https?/, 'webcal')} className="btn-gold btn-sm">Open in calendar app</a>
+      <a href={url} className="btn-ghost btn-sm" download>.ics</a>
+    </section>
   );
 }
