@@ -35,6 +35,18 @@ const SOURCE_LABEL: Record<string, string> = {
 /** 12-hour axis label: 7 -> 7 AM, 12 -> 12 PM, 13 -> 1 PM. */
 const fmtHour = (h: number) => `${((h + 11) % 12) + 1} ${h < 12 ? 'AM' : 'PM'}`;
 
+/** Selection runs on 30-minute slots (2 per hour from the axis start). */
+const SLOTS_PER_HOUR = 2;
+const slotLabel = (slot: number) => {
+  const h = DAY_AXIS.startHour + Math.floor(slot / SLOTS_PER_HOUR);
+  const m = slot % SLOTS_PER_HOUR ? '30' : '00';
+  return `${((h + 11) % 12) + 1}:${m} ${h < 12 ? 'AM' : 'PM'}`;
+};
+const slotToHHMM = (slot: number) => {
+  const h = DAY_AXIS.startHour + Math.floor(slot / SLOTS_PER_HOUR);
+  return `${String(h).padStart(2, '0')}:${slot % SLOTS_PER_HOUR ? '30' : '00'}`;
+};
+
 const LANE_HEIGHT = 28;
 const MIN_ROW = 44;
 const BAR_H = 24;
@@ -110,10 +122,9 @@ function hourRanges(hoursSel: number[]): Array<{ from: number; to: number }> {
   return ranges;
 }
 
-/** Same, as HH:MM strings for the wizard URL. */
-function hoursToRanges(hoursSel: number[]): Array<{ start: string; end: string }> {
-  const hh = (n: number) => `${String(n).padStart(2, '0')}:00`;
-  return hourRanges(hoursSel).map((r) => ({ start: hh(r.from), end: hh(r.to) }));
+/** Same, as HH:MM strings for the wizard URL (slot units). */
+function hoursToRanges(slotsSel: number[]): Array<{ start: string; end: string }> {
+  return hourRanges(slotsSel).map((r) => ({ start: slotToHHMM(r.from), end: slotToHHMM(r.to) }));
 }
 
 export function DayGantt({ groups, dateISO, nowFrac, bookMode = false, bookIntent = 'book' }: { groups: GanttGroup[]; dateISO: string; nowFrac: number | null; bookMode?: boolean; bookIntent?: 'book' | 'quote' }) {
@@ -158,6 +169,7 @@ export function DayGantt({ groups, dateISO, nowFrac, bookMode = false, bookInten
     { length: DAY_AXIS.endHour - DAY_AXIS.startHour },
     (_, i) => DAY_AXIS.startHour + i,
   );
+  const slotCount = hours.length * SLOTS_PER_HOUR;
 
   const toggleFacility = (facilityId: number) => {
     const next = new Set(facSel);
@@ -257,15 +269,53 @@ export function DayGantt({ groups, dateISO, nowFrac, bookMode = false, bookInten
             return (
               <div key={g.parentId} className="flex border-b border-hairline last:border-0">
                 {/* col 1: parent. In book mode, clicking selects the WHOLE
-                    facility (booking the Dome occupies all its courts). */}
-                <div
-                  className={`w-28 shrink-0 border-r border-hairline px-3 py-3 text-[12px] font-bold ${bookMode ? 'cursor-pointer' : ''}`}
-                  style={bookMode && facSel.has(g.parentId) ? { backgroundColor: 'var(--accent)', color: '#fff' } : undefined}
-                  onClick={bookMode ? () => toggleFacility(g.parentId) : undefined}
-                  title={bookMode ? `Select all of ${g.parent} (occupies every space inside it)` : undefined}
-                >
-                  <span className={bookMode && facSel.has(g.parentId) ? '' : 'text-ink'}>{g.parent}</span>
-                </div>
+                    facility (booking the Dome occupies all its courts). It
+                    also lights up when every child row is engaged - selecting
+                    something on Courts 1, 2 AND 3 means the full Dome. */}
+                {(() => {
+                  const engaged = (id: number) => facSel.has(id) || hoursByFacility.has(id);
+                  const allChildren = g.rows.length > 0 && g.rows.every((r) => engaged(r.facilityId));
+                  const lit = bookMode && (facSel.has(g.parentId) || allChildren);
+                  return (
+                    <div
+                      className={`w-28 shrink-0 border-r border-hairline px-3 py-3 text-[12px] font-bold ${bookMode ? 'cursor-pointer' : ''}`}
+                      style={lit ? { backgroundColor: 'var(--accent)', color: '#fff' } : undefined}
+                      onClick={
+                        bookMode
+                          ? () => {
+                              if (!facSel.has(g.parentId) && allChildren) {
+                                // Lit via fully-engaged children: click clears them all.
+                                setCellSel((prev) => {
+                                  const next = new Set(prev);
+                                  for (const k of prev) {
+                                    const fid = Number(k.split(':')[0]);
+                                    if (g.rows.some((r) => r.facilityId === fid)) next.delete(k);
+                                  }
+                                  return next;
+                                });
+                                setFacSel((prev) => {
+                                  const next = new Set(prev);
+                                  for (const r of g.rows) next.delete(r.facilityId);
+                                  return next;
+                                });
+                              } else {
+                                toggleFacility(g.parentId);
+                              }
+                            }
+                          : undefined
+                      }
+                      title={
+                        bookMode
+                          ? allChildren && !facSel.has(g.parentId)
+                            ? `Every space in ${g.parent} is selected - click to clear`
+                            : `Select all of ${g.parent} (occupies every space inside it)`
+                          : undefined
+                      }
+                    >
+                      <span className={lit ? '' : 'text-ink'}>{g.parent}</span>
+                    </div>
+                  );
+                })()}
 
                 {/* col 2: child labels, heights mirroring the tracks. In book
                     mode a label is a facility multi-select toggle. */}
@@ -276,9 +326,14 @@ export function DayGantt({ groups, dateISO, nowFrac, bookMode = false, bookInten
                       className={`px-3 py-3 label text-[10px] ${i > 0 ? 'border-t border-hairline' : ''} ${bookMode ? 'cursor-pointer' : ''}`}
                       style={{
                         height: rowHeights[i],
+                        // Lit when selected directly, via time blocks, or because
+                        // the WHOLE parent facility is selected (it occupies
+                        // every court inside it).
                         ...(bookMode && (facSel.has(r.facilityId) || hoursByFacility.has(r.facilityId))
                           ? { backgroundColor: 'var(--accent)', color: '#fff' }
-                          : {}),
+                          : bookMode && facSel.has(g.parentId)
+                            ? { backgroundColor: 'color-mix(in srgb, var(--accent) 55%, transparent)', color: '#fff' }
+                            : {}),
                       }}
                       onClick={
                         bookMode
@@ -301,7 +356,9 @@ export function DayGantt({ groups, dateISO, nowFrac, bookMode = false, bookInten
                         bookMode
                           ? hoursByFacility.has(r.facilityId)
                             ? 'Selected via time blocks - click to clear this row'
-                            : 'Select this facility (set dates & times in the next step)'
+                            : facSel.has(g.parentId)
+                              ? `Included in the ${g.parent} selection`
+                              : 'Select this facility (set dates & times in the next step)'
                           : undefined
                       }
                     >
@@ -312,12 +369,19 @@ export function DayGantt({ groups, dateISO, nowFrac, bookMode = false, bookInten
 
                 {/* time area: stacked tracks + group-spanning whole blocks */}
                 <div className="relative flex-1" style={{ height: groupHeight }}>
-                  {/* hour gridlines across the whole group */}
+                  {/* hour gridlines across the whole group + dotted half-hours */}
                   {hours.map((h, i) => (
                     <div
                       key={h}
                       className="absolute bottom-0 top-0 border-l border-hairline"
                       style={{ left: `${(i / hours.length) * 100}%` }}
+                    />
+                  ))}
+                  {hours.map((h, i) => (
+                    <div
+                      key={`half-${h}`}
+                      className="absolute bottom-0 top-0 border-l border-dotted border-hairline"
+                      style={{ left: `${((i + 0.5) / hours.length) * 100}%` }}
                     />
                   ))}
                   {nowFrac !== null && (
@@ -342,36 +406,36 @@ export function DayGantt({ groups, dateISO, nowFrac, bookMode = false, bookInten
                             key={`sel-${rg.from}`}
                             className="pointer-events-none absolute bottom-0 top-0 z-20 border"
                             style={{
-                              left: `${((rg.from - DAY_AXIS.startHour) / hours.length) * 100}%`,
-                              width: `${((rg.to - rg.from) / hours.length) * 100}%`,
+                              left: `${(rg.from / slotCount) * 100}%`,
+                              width: `${((rg.to - rg.from) / slotCount) * 100}%`,
                               backgroundColor: 'var(--accent)',
                               opacity: 0.4,
                               borderColor: 'var(--accent)',
                             }}
                           />
                         ))}
-                        {/* invisible hour click/drag targets on top */}
-                        {bookMode && hours.map((h, hi) => {
-                          const selected = cellSel.has(`${r.facilityId}:${h}`);
+                        {/* invisible 30-minute click/drag targets on top */}
+                        {bookMode && Array.from({ length: slotCount }, (_, sl) => {
+                          const selected = cellSel.has(`${r.facilityId}:${sl}`);
                           return (
                             <div
-                              key={h}
+                              key={sl}
                               className="absolute bottom-0 top-0 z-30 cursor-pointer select-none"
                               style={{
-                                left: `${(hi / hours.length) * 100}%`,
-                                width: `${(1 / hours.length) * 100}%`,
+                                left: `${(sl / slotCount) * 100}%`,
+                                width: `${(1 / slotCount) * 100}%`,
                               }}
                               onMouseDown={(e) => {
                                 e.preventDefault();
                                 const mode = selected ? 'remove' : 'add';
                                 const base = new Set(cellSel);
-                                setDrag({ mode, anchorFid: r.facilityId, anchorHour: h, base });
-                                rectSelect(mode, base, r.facilityId, h, r.facilityId, h);
+                                setDrag({ mode, anchorFid: r.facilityId, anchorHour: sl, base });
+                                rectSelect(mode, base, r.facilityId, sl, r.facilityId, sl);
                               }}
                               onMouseEnter={() => {
-                                if (drag) rectSelect(drag.mode, drag.base, drag.anchorFid, drag.anchorHour, r.facilityId, h);
+                                if (drag) rectSelect(drag.mode, drag.base, drag.anchorFid, drag.anchorHour, r.facilityId, sl);
                               }}
-                              title={`${r.child} · ${fmtHour(h)}–${fmtHour(h + 1)}`}
+                              title={`${r.child} · ${slotLabel(sl)}–${slotLabel(sl + 1)}`}
                             />
                           );
                         })}
