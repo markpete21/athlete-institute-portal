@@ -92,6 +92,10 @@
     font-family: var(--font-display);
   }
   .input:focus { border-color: var(--accent, #9e8959); }
+  /* Platform-wide required-field feedback: once the user has interacted (or a
+     submit was attempted), an unmet `required`/pattern turns the field red.
+     Custom JS flows replicate this with an inline border (see the wizard). */
+  .input:user-invalid { border-color: #b4483c; }
 
   .field-label {
     @apply mb-1.5 block font-mono text-[11px] font-medium uppercase tracking-[0.14em] text-silver;

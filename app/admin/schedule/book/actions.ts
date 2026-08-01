@@ -164,3 +164,17 @@ export async function bookWizardAction(payload: WizardPayload): Promise<WizardRe
     warningCount,
   };
 }
+
+/** Quick-add an organization mid-wizard (rep = invoicing contact, no account needed). */
+export async function quickAddOrgAction(input: {
+  name: string;
+  repName?: string;
+  repEmail?: string;
+  repPhone?: string;
+}): Promise<{ id: number; name: string }> {
+  const session = await getPortalSession();
+  if (!session.isStaff) throw new Error('Staff only.');
+  const { quickAddOrganization } = await import('@/lib/booking-config');
+  const org = await quickAddOrganization(input, session.userId!);
+  return { id: org.id, name: org.name };
+}

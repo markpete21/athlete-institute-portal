@@ -6,6 +6,7 @@ import { listBookings, type BookingRecord } from '@/lib/bookings';
 import { findConflictPairs } from '@/lib/conflicts';
 import { listLocations } from '@/lib/locations';
 import { resolveLocationId, type FacilityRow } from '@/lib/facilities';
+import { DateJump } from '@/components/schedule/DateJump';
 import { DayGantt } from '@/components/schedule/DayGantt';
 import {
   DAY_AXIS,
@@ -176,10 +177,7 @@ export default async function SchedulePage({
         </div>
         <div className="flex items-center gap-2">
           <Link href={qs({ date: addDaysISO(date, -step) })} className="btn-ghost btn-sm">←</Link>
-          <span className="mono whitespace-nowrap text-sm text-ink">
-            {new Date(`${date}T12:00:00Z`).toLocaleDateString('en-CA', { weekday: 'short', month: 'short', day: 'numeric' })}
-            <span className="ml-2 text-silver">{date}</span>
-          </span>
+          <DateJump date={date} baseQuery={qs({}).split('?')[1] ?? ''} />
           <Link href={qs({ date: addDaysISO(date, step) })} className="btn-ghost btn-sm">→</Link>
           <span className="w-2" />
           {(['day', 'week', 'month'] as const).map((v) => (

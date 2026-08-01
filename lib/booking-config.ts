@@ -75,3 +75,48 @@ export async function upsertBusinessUnit(
   if (error) throw new Error(`business unit save failed: ${error.message}`);
   await audit({ actorId: actorClerkId, action: 'business-unit.saved', target: `business-unit:${input.id ?? name}`, meta: { name, active: input.active } });
 }
+
+export interface OrganizationOption {
+  id: number;
+  name: string;
+  rep_name: string | null;
+  rep_email: string | null;
+}
+
+export async function listOrganizations(): Promise<OrganizationOption[]> {
+  const { data, error } = await supabaseAdmin()
+    .from('organizations')
+    .select('id, name, rep_name, rep_email')
+    .eq('status', 'active')
+    .order('name');
+  if (error) throw new Error(`organizations read failed: ${error.message}`);
+  return (data ?? []) as OrganizationOption[];
+}
+
+/**
+ * Quick-add an organization mid-booking: name + representative (used for
+ * quotes/invoicing - the rep needs no account). Clerk workspace optional and
+ * absent here; one can be attached later if the org gets portal access.
+ */
+export async function quickAddOrganization(
+  input: { name: string; repName?: string | null; repEmail?: string | null; repPhone?: string | null },
+  actorClerkId: string,
+): Promise<OrganizationOption> {
+  const name = input.name.trim();
+  if (!name) throw new Error('Organization name required.');
+  const { data, error } = await supabaseAdmin()
+    .from('organizations')
+    .insert({
+      name,
+      rep_name: input.repName?.trim() || null,
+      rep_email: input.repEmail?.trim() || null,
+      rep_phone: input.repPhone?.trim() || null,
+      billing_email: input.repEmail?.trim() || null,
+      created_by: actorClerkId,
+    })
+    .select('id, name, rep_name, rep_email')
+    .single();
+  if (error) throw new Error(`organization create failed: ${error.message}`);
+  await audit({ actorId: actorClerkId, action: 'organization.quick-added', target: `organization:${data.id}`, meta: { name } });
+  return data as OrganizationOption;
+}

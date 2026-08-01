@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { DAY_AXIS, type GanttBar, type GanttGroup } from '@/lib/schedule-views';
 
@@ -31,6 +31,9 @@ const SOURCE_LABEL: Record<string, string> = {
   rental: 'Rental',
   internal: 'Internal',
 };
+
+/** 12-hour axis label: 7 -> 7 AM, 12 -> 12 PM, 13 -> 1 PM. */
+const fmtHour = (h: number) => `${((h + 11) % 12) + 1} ${h < 12 ? 'AM' : 'PM'}`;
 
 const LANE_HEIGHT = 28;
 const MIN_ROW = 44;
@@ -113,18 +116,29 @@ export function DayGantt({ groups, dateISO, nowFrac, bookMode = false, bookInten
   // Booking selection: individual hour cells per facility, and/or whole facilities.
   const [cellSel, setCellSel] = useState<Set<string>>(new Set()); // `${facilityId}:${hour}`
   const [facSel, setFacSel] = useState<Set<number>>(new Set());
+  // Click-and-drag paints cells: the first cell decides add vs remove.
+  const [dragMode, setDragMode] = useState<'add' | 'remove' | null>(null);
+  useEffect(() => {
+    if (!dragMode) return;
+    const up = () => setDragMode(null);
+    window.addEventListener('mouseup', up);
+    return () => window.removeEventListener('mouseup', up);
+  }, [dragMode]);
+
+  const paintCell = (facilityId: number, hour: number, mode: 'add' | 'remove') => {
+    const key = `${facilityId}:${hour}`;
+    setCellSel((prev) => {
+      const next = new Set(prev);
+      if (mode === 'add') next.add(key);
+      else next.delete(key);
+      return next;
+    });
+  };
   const hours = Array.from(
     { length: DAY_AXIS.endHour - DAY_AXIS.startHour },
     (_, i) => DAY_AXIS.startHour + i,
   );
 
-  const toggleCell = (facilityId: number, hour: number) => {
-    const key = `${facilityId}:${hour}`;
-    const next = new Set(cellSel);
-    if (next.has(key)) next.delete(key);
-    else next.add(key);
-    setCellSel(next);
-  };
   const toggleFacility = (facilityId: number) => {
     const next = new Set(facSel);
     if (next.has(facilityId)) next.delete(facilityId);
@@ -192,7 +206,7 @@ export function DayGantt({ groups, dateISO, nowFrac, bookMode = false, bookInten
                   className="absolute top-2 mono text-[10px] text-silver"
                   style={{ left: `${(i / hours.length) * 100}%`, paddingLeft: 3 }}
                 >
-                  {h}:00
+                  {fmtHour(h)}
                 </span>
               ))}
             </div>
@@ -215,9 +229,15 @@ export function DayGantt({ groups, dateISO, nowFrac, bookMode = false, bookInten
 
             return (
               <div key={g.parentId} className="flex border-b border-hairline last:border-0">
-                {/* col 1: parent */}
-                <div className="w-28 shrink-0 border-r border-hairline px-3 py-3 text-[12px] font-bold text-ink">
-                  {g.parent}
+                {/* col 1: parent. In book mode, clicking selects the WHOLE
+                    facility (booking the Dome occupies all its courts). */}
+                <div
+                  className={`w-28 shrink-0 border-r border-hairline px-3 py-3 text-[12px] font-bold ${bookMode ? 'cursor-pointer' : ''}`}
+                  style={bookMode && facSel.has(g.parentId) ? { backgroundColor: 'var(--accent)', color: '#fff' } : undefined}
+                  onClick={bookMode ? () => toggleFacility(g.parentId) : undefined}
+                  title={bookMode ? `Select all of ${g.parent} (occupies every space inside it)` : undefined}
+                >
+                  <span className={bookMode && facSel.has(g.parentId) ? '' : 'text-ink'}>{g.parent}</span>
                 </div>
 
                 {/* col 2: child labels, heights mirroring the tracks. In book
@@ -273,15 +293,23 @@ export function DayGantt({ groups, dateISO, nowFrac, bookMode = false, bookInten
                           return (
                             <div
                               key={h}
-                              className="absolute bottom-0 top-0 z-30 cursor-pointer"
+                              className="absolute bottom-0 top-0 z-30 cursor-pointer select-none"
                               style={{
                                 left: `${(hi / hours.length) * 100}%`,
                                 width: `${(1 / hours.length) * 100}%`,
                                 backgroundColor: selected ? 'var(--accent)' : 'transparent',
                                 opacity: selected ? 0.45 : 1,
                               }}
-                              onClick={() => toggleCell(r.facilityId, h)}
-                              title={`${r.child} · ${h}:00–${h + 1}:00`}
+                              onMouseDown={(e) => {
+                                e.preventDefault();
+                                const mode = selected ? 'remove' : 'add';
+                                setDragMode(mode);
+                                paintCell(r.facilityId, h, mode);
+                              }}
+                              onMouseEnter={() => {
+                                if (dragMode) paintCell(r.facilityId, h, dragMode);
+                              }}
+                              title={`${r.child} · ${fmtHour(h)}–${fmtHour(h + 1)}`}
                             />
                           );
                         })}

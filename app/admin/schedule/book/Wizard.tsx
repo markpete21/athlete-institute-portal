@@ -2,7 +2,12 @@
 
 import { useMemo, useState } from 'react';
 import Link from 'next/link';
-import { bookWizardAction, type WizardPayload, type WizardResult } from './actions';
+import { Modal } from '@/components/ui/Modal';
+import { bookWizardAction, quickAddOrgAction, type WizardPayload, type WizardResult } from './actions';
+
+/** Required-field feedback: red border once a submit/continue was attempted. */
+const invalid = (bad: boolean): React.CSSProperties | undefined =>
+  bad ? { borderColor: '#b4483c' } : undefined;
 
 /**
  * The guided booking flow. Steps adapt to the selection:
@@ -93,6 +98,12 @@ export function Wizard({
   const [bookingType, setBookingType] = useState('');
   const [businessUnitId, setBusinessUnitId] = useState<string>('');
   const [organizationId, setOrganizationId] = useState<string>('');
+  const [orgs, setOrgs] = useState(organizations);
+  const [orgModal, setOrgModal] = useState(false);
+  const [orgDraft, setOrgDraft] = useState({ name: '', repName: '', repEmail: '', repPhone: '' });
+  const [orgError, setOrgError] = useState<string | null>(null);
+  const [orgSaving, setOrgSaving] = useState(false);
+  const [attempted, setAttempted] = useState<Record<number, boolean>>({});
   const [contactName, setContactName] = useState('');
   const [contactEmail, setContactEmail] = useState('');
   const [contactPhone, setContactPhone] = useState('');
@@ -134,8 +145,8 @@ export function Wizard({
   const missingRates = kind === 'rental' && lines.some((l) => lineRate(l) == null);
 
   const steps = kind === 'internal'
-    ? ['When & where', 'What', 'Extras', 'Review']
-    : ['When & where', 'What', 'Fees', 'Extras', 'Review'];
+    ? ['When & where', 'Who & What', 'Extras', 'Review']
+    : ['When & where', 'Who & What', 'Fees', 'Extras', 'Review'];
   const stepName = steps[step - 1];
 
   const facilityOptions = facilities.map((f) => (
@@ -238,11 +249,13 @@ export function Wizard({
                 <div>
                   <label className="field-label">Start</label>
                   <input type="time" className="input h-9 text-sm" value={l.start}
+                    style={invalid(!!attempted[1] && !/^\d{2}:\d{2}$/.test(l.start))}
                     onChange={(e) => setLines(lines.map((x, j) => (j === i ? { ...x, start: e.target.value } : x)))} />
                 </div>
                 <div>
                   <label className="field-label">End</label>
                   <input type="time" className="input h-9 text-sm" value={l.end}
+                    style={invalid(!!attempted[1] && (!/^\d{2}:\d{2}$/.test(l.end) || (!!l.start && !!l.end && l.end <= l.start)))}
                     onChange={(e) => setLines(lines.map((x, j) => (j === i ? { ...x, end: e.target.value } : x)))} />
                 </div>
                 <button
@@ -265,15 +278,22 @@ export function Wizard({
               + Add another facility / time
             </button>
           </div>
+          {attempted[1] && !linesValid && (
+            <p className="text-sm text-neg">Every line needs a facility, date, and a start before its end — the highlighted fields are missing or wrong.</p>
+          )}
           <div className="flex justify-end">
-            <button type="button" className="btn-gold btn-sm" disabled={!linesValid} onClick={() => setStep(step + 1)}>
+            <button
+              type="button"
+              className="btn-gold btn-sm"
+              onClick={() => (linesValid ? setStep(step + 1) : setAttempted({ ...attempted, 1: true }))}
+            >
               Continue
             </button>
           </div>
         </section>
       )}
 
-      {stepName === 'What' && (
+      {stepName === 'Who & What' && (
         <section className="card flex flex-col gap-4 p-6">
           <h2 className="text-2xl">{intent === 'quote' ? 'Who is the quote for?' : 'What kind of booking?'}</h2>
           <div className="grid gap-3 sm:grid-cols-2">
@@ -295,8 +315,8 @@ export function Wizard({
 
           {kind === 'internal' ? (
             <div>
-              <label className="field-label" htmlFor="bu">Brand / business unit</label>
-              <select id="bu" className="input" value={businessUnitId} onChange={(e) => setBusinessUnitId(e.target.value)}>
+              <label className="field-label" htmlFor="bu">Business unit</label>
+              <select id="bu" className="input" value={businessUnitId} style={invalid(!!attempted[2] && businessUnitId === '')} onChange={(e) => setBusinessUnitId(e.target.value)}>
                 <option value="">Select…</option>
                 {businessUnits.map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}
               </select>
@@ -305,10 +325,15 @@ export function Wizard({
             <div className="grid gap-3 sm:grid-cols-2">
               <div>
                 <label className="field-label" htmlFor="org">Organization (optional)</label>
-                <select id="org" className="input" value={organizationId} onChange={(e) => setOrganizationId(e.target.value)}>
-                  <option value="">—</option>
-                  {organizations.map((o) => <option key={o.id} value={o.id}>{o.name}</option>)}
-                </select>
+                <div className="flex gap-2">
+                  <select id="org" className="input" value={organizationId} onChange={(e) => setOrganizationId(e.target.value)}>
+                    <option value="">—</option>
+                    {orgs.map((o) => <option key={o.id} value={o.id}>{o.name}</option>)}
+                  </select>
+                  <button type="button" className="btn-ghost btn-sm shrink-0" onClick={() => { setOrgError(null); setOrgModal(true); }}>
+                    + Quick add
+                  </button>
+                </div>
               </div>
               <div>
                 <label className="field-label" htmlFor="cn">Contact name</label>
@@ -326,7 +351,7 @@ export function Wizard({
           )}
 
           <div>
-            <span className="field-label">Type</span>
+            <span className="field-label" style={attempted[2] && !bookingType ? { color: '#b4483c' } : undefined}>Type</span>
             <div className="flex flex-wrap gap-1.5">
               {bookingTypes.filter((bt) => bt.appliesTo === 'both' || bt.appliesTo === kind).map((bt) => bt.name).map((t) => (
                 <button
@@ -346,14 +371,26 @@ export function Wizard({
             <label className="field-label" htmlFor="title">Title (shows on the schedule)</label>
             <input
               id="title" className="input" value={title} required
+              style={invalid(!!attempted[2] && title.trim() === '')}
               placeholder={kind === 'internal' ? 'Bears U14 Rep - Practice' : 'Spring Tournament - XYZ Basketball'}
               onChange={(e) => setTitle(e.target.value)}
             />
           </div>
 
+          {attempted[2] && !whoValid && (
+            <p className="text-sm text-neg">
+              Fill the highlighted fields{kind === 'internal' && businessUnitId === '' ? ' (business unit required)' : ''}{!bookingType ? ' and pick a type' : ''}.
+            </p>
+          )}
           <div className="flex justify-between">
             <button type="button" className="btn-ghost btn-sm" onClick={() => setStep(step - 1)}>Back</button>
-            <button type="button" className="btn-gold btn-sm" disabled={!whoValid} onClick={() => setStep(step + 1)}>Continue</button>
+            <button
+              type="button"
+              className="btn-gold btn-sm"
+              onClick={() => (whoValid ? setStep(step + 1) : setAttempted({ ...attempted, 2: true }))}
+            >
+              Continue
+            </button>
           </div>
         </section>
       )}
@@ -495,12 +532,80 @@ export function Wizard({
             </div>
           </div>
 
+          {attempted[4] && !blocksValid && (
+            <p className="text-sm text-neg">Each blocked facility needs a date and a start before its end.</p>
+          )}
           <div className="flex justify-between">
             <button type="button" className="btn-ghost btn-sm" onClick={() => setStep(step - 1)}>Back</button>
-            <button type="button" className="btn-gold btn-sm" disabled={!blocksValid} onClick={() => setStep(step + 1)}>Continue</button>
+            <button
+              type="button"
+              className="btn-gold btn-sm"
+              onClick={() => (blocksValid ? setStep(step + 1) : setAttempted({ ...attempted, 4: true }))}
+            >
+              Continue
+            </button>
           </div>
         </section>
       )}
+
+      <Modal open={orgModal} onClose={() => setOrgModal(false)} title="Quick add organization">
+        <div className="flex flex-col gap-3">
+          <div>
+            <label className="field-label" htmlFor="qa-name">Organization name</label>
+            <input id="qa-name" className="input" value={orgDraft.name} required
+              style={invalid(!!orgError && orgDraft.name.trim() === '')}
+              onChange={(e) => setOrgDraft({ ...orgDraft, name: e.target.value })} />
+          </div>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div>
+              <label className="field-label" htmlFor="qa-rep">Representative name</label>
+              <input id="qa-rep" className="input" value={orgDraft.repName}
+                onChange={(e) => setOrgDraft({ ...orgDraft, repName: e.target.value })} />
+            </div>
+            <div>
+              <label className="field-label" htmlFor="qa-email">Rep email (invoicing)</label>
+              <input id="qa-email" type="email" className="input" value={orgDraft.repEmail}
+                onChange={(e) => setOrgDraft({ ...orgDraft, repEmail: e.target.value })} />
+            </div>
+          </div>
+          <div className="max-w-56">
+            <label className="field-label" htmlFor="qa-phone">Rep phone</label>
+            <input id="qa-phone" className="input" value={orgDraft.repPhone}
+              onChange={(e) => setOrgDraft({ ...orgDraft, repPhone: e.target.value })} />
+          </div>
+          <p className="text-sm text-silver">
+            The representative needs no account — name and email drive quotes
+            and invoicing. An account can be linked to them later.
+          </p>
+          {orgError && <p className="text-sm text-neg">{orgError}</p>}
+          <div className="flex justify-end gap-2">
+            <button type="button" className="btn-ghost btn-sm" onClick={() => setOrgModal(false)}>Cancel</button>
+            <button
+              type="button" className="btn-gold btn-sm" disabled={orgSaving}
+              onClick={async () => {
+                if (!orgDraft.name.trim()) { setOrgError('Organization name is required.'); return; }
+                setOrgSaving(true);
+                setOrgError(null);
+                try {
+                  const org = await quickAddOrgAction(orgDraft);
+                  setOrgs([...orgs, org].sort((a, b) => a.name.localeCompare(b.name)));
+                  setOrganizationId(String(org.id));
+                  if (!contactName && orgDraft.repName) setContactName(orgDraft.repName);
+                  if (!contactEmail && orgDraft.repEmail) setContactEmail(orgDraft.repEmail);
+                  setOrgDraft({ name: '', repName: '', repEmail: '', repPhone: '' });
+                  setOrgModal(false);
+                } catch (e) {
+                  setOrgError(e instanceof Error ? e.message : String(e));
+                } finally {
+                  setOrgSaving(false);
+                }
+              }}
+            >
+              {orgSaving ? 'Adding…' : 'Add organization'}
+            </button>
+          </div>
+        </div>
+      </Modal>
 
       {stepName === 'Review' && (
         <section className="card flex flex-col gap-4 p-6">

@@ -9,7 +9,7 @@
 export type ModuleKey =
   | 'programs' | 'camps' | 'club' | 'academy' | 'competitive'
   | 'schedule' | 'facilities' | 'conflicts' | 'rentals' | 'displays'
-  | 'staff' | 'roles' | 'waivers' | 'import' | 'brands'
+  | 'accounts' | 'staff' | 'roles' | 'waivers' | 'import' | 'brands'
   | 'comms' | 'feedback' | 'points' | 'promotions' | 'gallery'
   | 'reports' | 'retention' | 'dunning' | 'assist';
 
@@ -75,6 +75,9 @@ export const MODULES: ModuleDef[] = [
     { label: 'All displays', href: '/displays' },
   ] },
 
+  { key: 'accounts', label: 'Accounts', group: 'People & Staff', href: '/accounts', actions: [
+    { label: 'All accounts', href: '/accounts' },
+  ] },
   { key: 'staff', label: 'Staff', group: 'People & Staff', href: '/staff', actions: [
     { label: 'Staff records', href: '/staff' },
     { label: 'Permissions', href: '/staff/permissions' },
