@@ -3,6 +3,7 @@
 import { useMemo, useState } from 'react';
 import Link from 'next/link';
 import { Modal } from '@/components/ui/Modal';
+import { DatesPicker } from './DatesPicker';
 import { bookWizardAction, quickAddOrgAction, type WizardPayload, type WizardResult } from './actions';
 
 /** Required-field feedback: red border once a submit/continue was attempted. */
@@ -119,6 +120,7 @@ export function Wizard({
   const [orgError, setOrgError] = useState<string | null>(null);
   const [orgSaving, setOrgSaving] = useState(false);
   const [attempted, setAttempted] = useState<Record<number, boolean>>({});
+  const [pickerLine, setPickerLine] = useState<number | null>(null);
   const [contactName, setContactName] = useState('');
   const [contactEmail, setContactEmail] = useState('');
   const [contactPhone, setContactPhone] = useState('');
@@ -326,21 +328,14 @@ export function Wizard({
                         </button>
                       </span>
                     ))}
-                    <input
-                      type="date" className="input h-8 w-40 text-sm"
+                    <button
+                      type="button"
+                      className="btn-ghost btn-sm"
                       style={invalid(!!attempted[1] && l.repeatDates.length === 0)}
-                      onChange={(e) => {
-                        const d = e.target.value;
-                        if (!/^\d{4}-\d{2}-\d{2}$/.test(d)) return;
-                        setLines(lines.map((x, j) =>
-                          j === i && d !== x.date && !x.repeatDates.includes(d)
-                            ? { ...x, repeatDates: [...x.repeatDates, d].sort() }
-                            : x,
-                        ));
-                        e.target.value = '';
-                      }}
-                    />
-                    <span className="text-[11px] text-silver">pick a date to add it</span>
+                      onClick={() => setPickerLine(i)}
+                    >
+                      {l.repeatDates.length ? 'Edit dates…' : 'Pick dates…'}
+                    </button>
                   </div>
                 )}
                 {lineOccurrences(l) > 1 && (
@@ -634,6 +629,18 @@ export function Wizard({
             </button>
           </div>
         </section>
+      )}
+
+      {pickerLine !== null && lines[pickerLine] && (
+        <DatesPicker
+          open
+          onClose={() => setPickerLine(null)}
+          initial={lines[pickerLine].repeatDates}
+          baseDate={lines[pickerLine].date}
+          onSubmit={(dates) =>
+            setLines(lines.map((x, j) => (j === pickerLine ? { ...x, repeatDates: dates.filter((d) => d !== x.date) } : x)))
+          }
+        />
       )}
 
       <Modal open={orgModal} onClose={() => setOrgModal(false)} title="Quick add organization">
