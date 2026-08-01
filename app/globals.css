@@ -412,7 +412,7 @@
 @media (prefers-reduced-motion: reduce) { .ps-ball { animation: none; } }
 
 /* --- brand logo tiles --- */
-.ps-brands { display: flex; align-items: center; justify-content: flex-start; gap: 12px; min-width: 0; }
+.ps-brands { display: flex; align-items: center; justify-content: flex-start; gap: 12px; min-width: 0; margin-left: 10px; }
 .ps-bwrap { position: relative; }
 .ps-btile {
   width: 58px; height: 58px; display: flex; align-items: center; justify-content: center; padding: 5px;

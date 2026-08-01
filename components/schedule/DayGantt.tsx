@@ -98,8 +98,8 @@ function HoverCard({ hover }: { hover: Hover }) {
   );
 }
 
-/** Merge a facility's selected hours into contiguous HH:MM ranges. */
-function hoursToRanges(hoursSel: number[]): Array<{ start: string; end: string }> {
+/** Merge selected hours into contiguous [from, to) hour ranges. */
+function hourRanges(hoursSel: number[]): Array<{ from: number; to: number }> {
   const sorted = [...hoursSel].sort((a, b) => a - b);
   const ranges: Array<{ from: number; to: number }> = [];
   for (const h of sorted) {
@@ -107,8 +107,13 @@ function hoursToRanges(hoursSel: number[]): Array<{ start: string; end: string }
     if (last && last.to === h) last.to = h + 1;
     else ranges.push({ from: h, to: h + 1 });
   }
+  return ranges;
+}
+
+/** Same, as HH:MM strings for the wizard URL. */
+function hoursToRanges(hoursSel: number[]): Array<{ start: string; end: string }> {
   const hh = (n: number) => `${String(n).padStart(2, '0')}:00`;
-  return ranges.map((r) => ({ start: hh(r.from), end: hh(r.to) }));
+  return hourRanges(hoursSel).map((r) => ({ start: hh(r.from), end: hh(r.to) }));
 }
 
 export function DayGantt({ groups, dateISO, nowFrac, bookMode = false, bookIntent = 'book' }: { groups: GanttGroup[]; dateISO: string; nowFrac: number | null; bookMode?: boolean; bookIntent?: 'book' | 'quote' }) {
@@ -116,23 +121,38 @@ export function DayGantt({ groups, dateISO, nowFrac, bookMode = false, bookInten
   // Booking selection: individual hour cells per facility, and/or whole facilities.
   const [cellSel, setCellSel] = useState<Set<string>>(new Set()); // `${facilityId}:${hour}`
   const [facSel, setFacSel] = useState<Set<number>>(new Set());
-  // Click-and-drag paints cells: the first cell decides add vs remove.
-  const [dragMode, setDragMode] = useState<'add' | 'remove' | null>(null);
+  // Click-and-drag selects like a spreadsheet: the anchor cell decides add vs
+  // remove, and dragging paints the whole rectangle between the anchor and the
+  // current cell (no gaps even on fast mouse movement).
+  const [drag, setDrag] = useState<{
+    mode: 'add' | 'remove';
+    anchorFid: number;
+    anchorHour: number;
+    base: Set<string>;
+  } | null>(null);
   useEffect(() => {
-    if (!dragMode) return;
-    const up = () => setDragMode(null);
+    if (!drag) return;
+    const up = () => setDrag(null);
     window.addEventListener('mouseup', up);
     return () => window.removeEventListener('mouseup', up);
-  }, [dragMode]);
+  }, [drag]);
 
-  const paintCell = (facilityId: number, hour: number, mode: 'add' | 'remove') => {
-    const key = `${facilityId}:${hour}`;
-    setCellSel((prev) => {
-      const next = new Set(prev);
-      if (mode === 'add') next.add(key);
-      else next.delete(key);
-      return next;
-    });
+  // Visible row order (for the rectangle's vertical span).
+  const visibleRowIds = groups.flatMap((g) => (g.rows.length ? g.rows.map((r) => r.facilityId) : [g.parentId]));
+  const rowIndex = new Map(visibleRowIds.map((id, i) => [id, i]));
+
+  const rectSelect = (mode: 'add' | 'remove', base: Set<string>, aFid: number, aHour: number, fid: number, hour: number) => {
+    const next = new Set(base);
+    const [r1, r2] = [rowIndex.get(aFid) ?? 0, rowIndex.get(fid) ?? 0].sort((x, y) => x - y);
+    const [h1, h2] = [aHour, hour].sort((x, y) => x - y);
+    for (let ri = r1; ri <= r2; ri += 1) {
+      for (let h = h1; h <= h2; h += 1) {
+        const key = `${visibleRowIds[ri]}:${h}`;
+        if (mode === 'add') next.add(key);
+        else next.delete(key);
+      }
+    }
+    setCellSel(next);
   };
   const hours = Array.from(
     { length: DAY_AXIS.endHour - DAY_AXIS.startHour },
@@ -146,23 +166,30 @@ export function DayGantt({ groups, dateISO, nowFrac, bookMode = false, bookInten
     setFacSel(next);
   };
 
-  const bookHref = (() => {
-    const byFacility = new Map<number, number[]>();
+  // Selected hours per facility; contiguous hours merge into ONE block.
+  const hoursByFacility = (() => {
+    const m = new Map<number, number[]>();
     for (const key of cellSel) {
       const [fid, h] = key.split(':').map(Number);
-      byFacility.set(fid, [...(byFacility.get(fid) ?? []), h]);
+      m.set(fid, [...(m.get(fid) ?? []), h]);
     }
-    const slots: string[] = [];
-    for (const [fid, hs] of byFacility) {
-      for (const r of hoursToRanges(hs)) slots.push(`${fid}_${r.start}_${r.end}`);
-    }
+    return m;
+  })();
+  const mergedBlocks = [...hoursByFacility.entries()].flatMap(([fid, hs]) =>
+    hoursToRanges(hs).map((r) => ({ facilityId: fid, ...r })),
+  );
+  // A facility with time blocks IS selected - don't also send it as a
+  // times-to-be-set facility pick.
+  const facOnly = [...facSel].filter((id) => !hoursByFacility.has(id));
+
+  const bookHref = (() => {
     const p = new URLSearchParams({ date: dateISO });
-    if (slots.length) p.set('slots', slots.join(','));
-    if (facSel.size) p.set('facilities', [...facSel].join(','));
+    if (mergedBlocks.length) p.set('slots', mergedBlocks.map((b) => `${b.facilityId}_${b.start}_${b.end}`).join(','));
+    if (facOnly.length) p.set('facilities', facOnly.join(','));
     if (bookIntent === 'quote') p.set('intent', 'quote');
     return `/schedule/book?${p.toString()}`;
   })();
-  const selectionCount = cellSel.size + facSel.size;
+  const selectionCount = mergedBlocks.length + facOnly.length;
 
   const enter = (bar: GanttBar) => (e: React.MouseEvent) => {
     const r = (e.currentTarget as HTMLElement).getBoundingClientRect();
@@ -249,12 +276,34 @@ export function DayGantt({ groups, dateISO, nowFrac, bookMode = false, bookInten
                       className={`px-3 py-3 label text-[10px] ${i > 0 ? 'border-t border-hairline' : ''} ${bookMode ? 'cursor-pointer' : ''}`}
                       style={{
                         height: rowHeights[i],
-                        ...(bookMode && facSel.has(r.facilityId)
+                        ...(bookMode && (facSel.has(r.facilityId) || hoursByFacility.has(r.facilityId))
                           ? { backgroundColor: 'var(--accent)', color: '#fff' }
                           : {}),
                       }}
-                      onClick={bookMode ? () => toggleFacility(r.facilityId) : undefined}
-                      title={bookMode ? 'Select this facility (set dates & times in the next step)' : undefined}
+                      onClick={
+                        bookMode
+                          ? () => {
+                              if (hoursByFacility.has(r.facilityId)) {
+                                // Row has time blocks: the label click clears them.
+                                setCellSel((prev) => {
+                                  const next = new Set(prev);
+                                  for (const k of prev) if (k.startsWith(`${r.facilityId}:`)) next.delete(k);
+                                  return next;
+                                });
+                                setFacSel((prev) => { const n = new Set(prev); n.delete(r.facilityId); return n; });
+                              } else {
+                                toggleFacility(r.facilityId);
+                              }
+                            }
+                          : undefined
+                      }
+                      title={
+                        bookMode
+                          ? hoursByFacility.has(r.facilityId)
+                            ? 'Selected via time blocks - click to clear this row'
+                            : 'Select this facility (set dates & times in the next step)'
+                          : undefined
+                      }
                     >
                       {r.child}
                     </div>
@@ -287,7 +336,21 @@ export function DayGantt({ groups, dateISO, nowFrac, bookMode = false, bookInten
                         className={`absolute inset-x-0 ${ri > 0 ? 'border-t border-hairline' : ''}`}
                         style={{ top, height: rowHeights[ri] }}
                       >
-                        {/* book mode: clickable hour cells under the bars */}
+                        {/* book mode: contiguous selection renders as ONE block */}
+                        {bookMode && hourRanges(hoursByFacility.get(r.facilityId) ?? []).map((rg) => (
+                          <div
+                            key={`sel-${rg.from}`}
+                            className="pointer-events-none absolute bottom-0 top-0 z-20 border"
+                            style={{
+                              left: `${((rg.from - DAY_AXIS.startHour) / hours.length) * 100}%`,
+                              width: `${((rg.to - rg.from) / hours.length) * 100}%`,
+                              backgroundColor: 'var(--accent)',
+                              opacity: 0.4,
+                              borderColor: 'var(--accent)',
+                            }}
+                          />
+                        ))}
+                        {/* invisible hour click/drag targets on top */}
                         {bookMode && hours.map((h, hi) => {
                           const selected = cellSel.has(`${r.facilityId}:${h}`);
                           return (
@@ -297,17 +360,16 @@ export function DayGantt({ groups, dateISO, nowFrac, bookMode = false, bookInten
                               style={{
                                 left: `${(hi / hours.length) * 100}%`,
                                 width: `${(1 / hours.length) * 100}%`,
-                                backgroundColor: selected ? 'var(--accent)' : 'transparent',
-                                opacity: selected ? 0.45 : 1,
                               }}
                               onMouseDown={(e) => {
                                 e.preventDefault();
                                 const mode = selected ? 'remove' : 'add';
-                                setDragMode(mode);
-                                paintCell(r.facilityId, h, mode);
+                                const base = new Set(cellSel);
+                                setDrag({ mode, anchorFid: r.facilityId, anchorHour: h, base });
+                                rectSelect(mode, base, r.facilityId, h, r.facilityId, h);
                               }}
                               onMouseEnter={() => {
-                                if (dragMode) paintCell(r.facilityId, h, dragMode);
+                                if (drag) rectSelect(drag.mode, drag.base, drag.anchorFid, drag.anchorHour, r.facilityId, h);
                               }}
                               title={`${r.child} · ${fmtHour(h)}–${fmtHour(h + 1)}`}
                             />
@@ -402,9 +464,9 @@ export function DayGantt({ groups, dateISO, nowFrac, bookMode = false, bookInten
         <div className="fixed inset-x-0 bottom-0 z-40 border-t border-hairline bg-paper px-6 py-3">
           <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-3">
             <span className="font-mono text-[11px] uppercase tracking-[0.12em] text-silver">
-              {cellSel.size > 0 && `${cellSel.size} time block${cellSel.size === 1 ? '' : 's'}`}
-              {cellSel.size > 0 && facSel.size > 0 && ' · '}
-              {facSel.size > 0 && `${facSel.size} facilit${facSel.size === 1 ? 'y' : 'ies'} (times next step)`}
+              {mergedBlocks.length > 0 && `${mergedBlocks.length} time block${mergedBlocks.length === 1 ? '' : 's'}`}
+              {mergedBlocks.length > 0 && facOnly.length > 0 && ' · '}
+              {facOnly.length > 0 && `${facOnly.length} facilit${facOnly.length === 1 ? 'y' : 'ies'} (times next step)`}
               {selectionCount === 0 && 'Click time blocks on the grid, or facility names on the left'}
             </span>
             <div className="ml-auto flex items-center gap-2">
