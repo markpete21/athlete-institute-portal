@@ -1,7 +1,14 @@
 import { buildTree, flattenTree, type FacilityNode } from '@ai/foundation';
 import { supabaseAdmin } from '@ai/foundation/supabase';
+import { listBookingTypes, listBusinessUnits } from '@/lib/booking-config';
 import { listAddons, listRates } from '@/lib/rentals/rates';
-import { saveAddonAction, savePublicOpenAction, saveRateAction } from './actions';
+import {
+  saveAddonAction,
+  saveBookingTypeAction,
+  saveBusinessUnitAction,
+  savePublicOpenAction,
+  saveRateAction,
+} from './actions';
 
 export const dynamic = 'force-dynamic';
 
@@ -13,13 +20,15 @@ const dollars = (cents: number | null) => (cents == null ? '' : (cents / 100).to
  * library, and the public-open self-serve flags.
  */
 export default async function RentalSettingsPage() {
-  const [{ data: facRows }, rates, addons] = await Promise.all([
+  const [{ data: facRows }, rates, addons, units, types] = await Promise.all([
     supabaseAdmin()
       .from('facilities')
       .select('id, parent_id, name, label, sort_order, bookable, deleted_at, public_open')
       .is('deleted_at', null),
     listRates(),
     listAddons(true),
+    listBusinessUnits(true),
+    listBookingTypes(true),
   ]);
   const tree = (facRows ?? []) as Array<FacilityNode & { public_open: boolean }>;
   const ordered = flattenTree(buildTree(tree)) as Array<FacilityNode & { public_open?: boolean; depth: number }>;
@@ -138,6 +147,86 @@ export default async function RentalSettingsPage() {
           <label className="flex items-center gap-1 pb-2 font-mono text-[11px] uppercase tracking-[0.1em] text-silver">
             <input type="checkbox" name="active" defaultChecked /> active
           </label>
+          <button type="submit" className="btn-gold btn-sm">Add</button>
+        </form>
+      </section>
+
+      <section className="flex flex-col gap-3">
+        <div>
+          <h2 className="text-2xl">Business units</h2>
+          <p className="text-sm text-silver">
+            The brands/teams that own internal ($0) bookings. Inactive units
+            stay on old records but disappear from the booking wizard.
+          </p>
+        </div>
+        {units.map((u) => (
+          <form key={u.id} action={saveBusinessUnitAction} className="card flex flex-wrap items-end gap-3 p-3">
+            <input type="hidden" name="id" value={u.id} />
+            <div className="min-w-56 flex-1">
+              <label className="field-label">Name</label>
+              <input name="name" defaultValue={u.name} className="input h-9 text-sm" />
+            </div>
+            <label className="flex items-center gap-1 pb-2 font-mono text-[11px] uppercase tracking-[0.1em] text-silver">
+              <input type="checkbox" name="active" defaultChecked={u.active} /> active
+            </label>
+            <button type="submit" className="btn-ghost btn-sm">Save</button>
+          </form>
+        ))}
+        <form action={saveBusinessUnitAction} className="card flex flex-wrap items-end gap-3 p-3">
+          <div className="min-w-56 flex-1">
+            <label className="field-label">New business unit</label>
+            <input name="name" required placeholder="Name" className="input h-9 text-sm" />
+          </div>
+          <button type="submit" className="btn-gold btn-sm">Add</button>
+        </form>
+      </section>
+
+      <section className="flex flex-col gap-3">
+        <div>
+          <h2 className="text-2xl">Booking types</h2>
+          <p className="text-sm text-silver">
+            The type chips offered when booking. &quot;Applies to&quot; decides
+            whether a type shows for internal bookings, rentals, or both.
+          </p>
+        </div>
+        {types.map((t) => (
+          <form key={t.id} action={saveBookingTypeAction} className="card flex flex-wrap items-end gap-3 p-3">
+            <input type="hidden" name="id" value={t.id} />
+            <div className="min-w-44 flex-1">
+              <label className="field-label">Name</label>
+              <input name="name" defaultValue={t.name} className="input h-9 text-sm" />
+            </div>
+            <div>
+              <label className="field-label">Applies to</label>
+              <select name="appliesTo" defaultValue={t.applies_to} className="input h-9 text-sm">
+                <option value="both">Both</option>
+                <option value="internal">Internal</option>
+                <option value="rental">Rental</option>
+              </select>
+            </div>
+            <div>
+              <label className="field-label">Order</label>
+              <input name="sortOrder" type="number" defaultValue={t.sort_order} className="input h-9 w-20 text-sm" />
+            </div>
+            <label className="flex items-center gap-1 pb-2 font-mono text-[11px] uppercase tracking-[0.1em] text-silver">
+              <input type="checkbox" name="active" defaultChecked={t.active} /> active
+            </label>
+            <button type="submit" className="btn-ghost btn-sm">Save</button>
+          </form>
+        ))}
+        <form action={saveBookingTypeAction} className="card flex flex-wrap items-end gap-3 p-3">
+          <div className="min-w-44 flex-1">
+            <label className="field-label">New type</label>
+            <input name="name" required placeholder="Name" className="input h-9 text-sm" />
+          </div>
+          <div>
+            <label className="field-label">Applies to</label>
+            <select name="appliesTo" defaultValue="both" className="input h-9 text-sm">
+              <option value="both">Both</option>
+              <option value="internal">Internal</option>
+              <option value="rental">Rental</option>
+            </select>
+          </div>
           <button type="submit" className="btn-gold btn-sm">Add</button>
         </form>
       </section>

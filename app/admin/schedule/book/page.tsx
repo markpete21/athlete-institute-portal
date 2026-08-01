@@ -1,5 +1,6 @@
 import { ancestorIds, buildTree, flattenTree } from '@ai/foundation';
 import { supabaseAdmin } from '@ai/foundation/supabase';
+import { listBookingTypes, listBusinessUnits } from '@/lib/booking-config';
 import { listAddons, listRates, resolveRate } from '@/lib/rentals/rates';
 import { torontoDateOf } from '@/lib/schedule-views';
 import { Wizard, type WizardFacility } from './Wizard';
@@ -15,16 +16,18 @@ export const dynamic = 'force-dynamic';
 export default async function BookPage({
   searchParams,
 }: {
-  searchParams: { date?: string; slots?: string; facilities?: string };
+  searchParams: { date?: string; slots?: string; facilities?: string; intent?: string };
 }) {
   const db = supabaseAdmin();
-  const [{ data: facRows }, { data: unitRows }, { data: orgRows }, rates, addons] = await Promise.all([
+  const [{ data: facRows }, units, { data: orgRows }, rates, addons, types] = await Promise.all([
     db.from('facilities').select('id, parent_id, name, label, sort_order, bookable, deleted_at').is('deleted_at', null),
-    db.from('business_units').select('id, name').eq('active', true).order('name'),
+    listBusinessUnits(),
     db.from('organizations').select('id, name').eq('status', 'active').order('name'),
     listRates(),
     listAddons(),
+    listBookingTypes(),
   ]);
+  const intent = searchParams.intent === 'quote' ? 'quote' : 'book';
 
   const tree = (facRows ?? []) as Parameters<typeof buildTree>[0];
   const ordered = flattenTree(buildTree(tree));
@@ -66,15 +69,20 @@ export default async function BookPage({
       <header className="flex flex-col gap-2 border-b border-hairline pb-5">
         <p className="label text-[11px]">Admin · Master schedule</p>
         <h1 className="text-4xl">
-          Book<span style={{ color: 'var(--accent)' }}>.</span>
+          {intent === 'quote' ? 'Quote' : 'Book'}<span style={{ color: 'var(--accent)' }}>.</span>
         </h1>
+        {intent === 'quote' && (
+          <p className="text-body">A quote holds the slots tentatively until the customer confirms.</p>
+        )}
       </header>
 
       <Wizard
         facilities={facilities}
-        businessUnits={(unitRows ?? []) as Array<{ id: number; name: string }>}
+        businessUnits={units.map((u) => ({ id: u.id, name: u.name }))}
         organizations={(orgRows ?? []) as Array<{ id: number; name: string }>}
         addons={addons.map((a) => ({ id: a.id, name: a.name, pricingMode: a.pricing_mode, priceCents: a.default_price_cents }))}
+        bookingTypes={types.map((t) => ({ name: t.name, appliesTo: t.applies_to }))}
+        intent={intent}
         defaultDate={date}
         prefillSlots={slots}
         prefillFacilities={preFacilities}

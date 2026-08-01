@@ -38,15 +38,6 @@ interface BlockDraft {
   end: string;
 }
 
-const INTERNAL_TYPES = [
-  'practice', 'program', 'training', 'game', 'tournament', 'event', 'camp',
-  'clinic', 'open gym', 'tryouts', 'showcase', 'meeting', 'maintenance', 'media', 'other',
-];
-const RENTAL_TYPES = [
-  'practice', 'camp', 'tournament', 'league', 'clinic', 'event', 'game',
-  'birthday party', 'corporate', 'school', 'media', 'other',
-];
-
 const cad = (cents: number) => `$${(cents / 100).toFixed(2)}`;
 
 function hoursBetween(start: string, end: string): number {
@@ -60,6 +51,8 @@ export function Wizard({
   businessUnits,
   organizations,
   addons,
+  bookingTypes,
+  intent,
   defaultDate,
   prefillSlots,
   prefillFacilities,
@@ -68,6 +61,10 @@ export function Wizard({
   businessUnits: Array<{ id: number; name: string }>;
   organizations: Array<{ id: number; name: string }>;
   addons: Array<{ id: number; name: string; pricingMode: 'flat' | 'per_unit' | 'per_hour'; priceCents: number }>;
+  /** Admin-managed type chips (Rentals > Settings). */
+  bookingTypes: Array<{ name: string; appliesTo: 'internal' | 'rental' | 'both' }>;
+  /** book = concrete/confirmed; quote = tentative hold (rental only). */
+  intent: 'book' | 'quote';
   defaultDate: string;
   prefillSlots: Array<{ facilityId: number; start: string; end: string }>;
   prefillFacilities: number[];
@@ -90,7 +87,8 @@ export function Wizard({
       : [{ facilityId: facilities[0]?.id ?? 0, date: defaultDate, start: '', end: '', rateMode: 'hourly', rateOverride: '' }];
   });
 
-  const [kind, setKind] = useState<'internal' | 'rental'>('internal');
+  // A quote is by definition a priced customer hold - internal is not offered.
+  const [kind, setKind] = useState<'internal' | 'rental'>(intent === 'quote' ? 'rental' : 'internal');
   const [title, setTitle] = useState('');
   const [bookingType, setBookingType] = useState('');
   const [businessUnitId, setBusinessUnitId] = useState<string>('');
@@ -149,6 +147,7 @@ export function Wizard({
     setError(null);
     const payload: WizardPayload = {
       kind,
+      intent,
       title,
       bookingType,
       businessUnitId: businessUnitId ? Number(businessUnitId) : null,
@@ -181,7 +180,8 @@ export function Wizard({
         <p className="text-body">
           {result.lineCount} facility line{result.lineCount === 1 ? '' : 's'}
           {result.blockCount > 0 ? ` + ${result.blockCount} blocked facilit${result.blockCount === 1 ? 'y' : 'ies'}` : ''}
-          {kind === 'rental' ? ' held as a tentative quote.' : ' confirmed.'}
+          {kind === 'rental' && intent === 'quote' ? ' held as a tentative quote.' : ' confirmed.'}
+          {kind === 'rental' && intent === 'book' && ' Set up the payment schedule on the rental screen.'}
         </p>
         {result.conflictCount > 0 && (
           <p className="font-mono text-[11px] uppercase tracking-[0.12em]" style={{ color: '#b4483c' }}>
@@ -190,7 +190,7 @@ export function Wizard({
         )}
         <div className="flex flex-wrap gap-2">
           <Link href={`/rentals/${result.rentalId}`} className="btn-gold btn-sm">
-            {kind === 'rental' ? 'Open quote' : 'Open booking record'}
+            {kind === 'rental' ? (intent === 'quote' ? 'Open quote' : 'Open rental record') : 'Open booking record'}
           </Link>
           <Link href={`/schedule?view=day&date=${lines[0]?.date ?? defaultDate}`} className="btn-ghost btn-sm">Back to schedule</Link>
           {result.conflictCount > 0 && <Link href="/conflicts" className="btn-ghost btn-sm text-neg">Conflicts queue</Link>}
@@ -275,9 +275,9 @@ export function Wizard({
 
       {stepName === 'What' && (
         <section className="card flex flex-col gap-4 p-6">
-          <h2 className="text-2xl">What kind of booking?</h2>
+          <h2 className="text-2xl">{intent === 'quote' ? 'Who is the quote for?' : 'What kind of booking?'}</h2>
           <div className="grid gap-3 sm:grid-cols-2">
-            {(['internal', 'rental'] as const).map((k) => (
+            {(intent === 'quote' ? (['rental'] as const) : (['internal', 'rental'] as const)).map((k) => (
               <button
                 key={k}
                 type="button"
@@ -328,7 +328,7 @@ export function Wizard({
           <div>
             <span className="field-label">Type</span>
             <div className="flex flex-wrap gap-1.5">
-              {(kind === 'internal' ? INTERNAL_TYPES : RENTAL_TYPES).map((t) => (
+              {bookingTypes.filter((bt) => bt.appliesTo === 'both' || bt.appliesTo === kind).map((bt) => bt.name).map((t) => (
                 <button
                   key={t}
                   type="button"
@@ -538,14 +538,16 @@ export function Wizard({
           </dl>
           <p className="text-sm text-silver">
             {kind === 'rental'
-              ? 'Lines are created as a tentative quote that holds the slots; any collision lands in the conflicts queue for you to resolve.'
+              ? intent === 'quote'
+                ? 'Lines are created as a tentative quote that holds the slots; any collision lands in the conflicts queue for you to resolve.'
+                : 'Lines are booked CONFIRMED; the rental record carries the fees, and any collision lands in the conflicts queue.'
               : 'Lines are confirmed immediately at $0; any collision lands in the conflicts queue for you to resolve.'}
           </p>
           {error && <p className="text-sm text-neg">{error}</p>}
           <div className="flex justify-between">
             <button type="button" className="btn-ghost btn-sm" onClick={() => setStep(step - 1)}>Back</button>
             <button type="button" className="btn-gold" disabled={submitting} onClick={submit}>
-              {submitting ? 'Booking…' : kind === 'rental' ? 'Create quote & hold slots' : 'Book it'}
+              {submitting ? 'Booking…' : kind === 'rental' && intent === 'quote' ? 'Create quote & hold slots' : 'Book it'}
             </button>
           </div>
         </section>

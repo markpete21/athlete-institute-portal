@@ -211,6 +211,8 @@ export async function addRentalLine(input: {
   endsAt: string;
   rateCentsOverride?: number;
   seriesId?: number | null;
+  /** Concrete booking: the line's slot is CONFIRMED instead of a quote hold. */
+  confirm?: boolean;
   actorClerkId: string;
 }): Promise<{ line: RentalLine } & AvailabilityReport> {
   const db = supabaseAdmin();
@@ -232,13 +234,14 @@ export async function addRentalLine(input: {
     : input.rateCentsOverride ?? resolveRate(rates, chain, input.rateMode);
   if (rate == null) throw new Error(`No ${input.rateMode} rate configured for "${facility.name}" (set one in Rental settings or override).`);
 
-  // The quote HOLDS the slot: tentative booking through the Module 2 contract.
+  // The quote HOLDS the slot (tentative); internal and explicitly-confirmed
+  // lines land solid. All through the Module 2 contract.
   const created = await createBooking({
     facilityId: input.facilityId,
     startsAt: input.startsAt,
     endsAt: input.endsAt,
     source: 'rental',
-    status: rental.is_internal ? 'confirmed' : 'tentative',
+    status: rental.is_internal || input.confirm ? 'confirmed' : 'tentative',
     title: rental.title,
     isInternal: rental.is_internal,
     familyId: rental.family_id,

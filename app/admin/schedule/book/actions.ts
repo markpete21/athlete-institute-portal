@@ -35,6 +35,8 @@ export interface WizardBlock {
 
 export interface WizardPayload {
   kind: 'internal' | 'rental';
+  /** book = concrete (lines confirmed); quote = tentative hold (rental only). */
+  intent: 'book' | 'quote';
   title: string;
   bookingType: string;
   businessUnitId?: number | null;   // internal: the owning brand/business unit
@@ -81,6 +83,9 @@ export async function bookWizardAction(payload: WizardPayload): Promise<WizardRe
   payload.blocks.forEach((b, i) => assertSlot(b, `Block ${i + 1}`));
 
   const isInternal = payload.kind === 'internal';
+  if (payload.intent === 'quote' && isInternal) {
+    throw new Error('A quote is a priced hold for a customer — use a rental, or book internal directly.');
+  }
   const rental = await createRental({
     title,
     isInternal,
@@ -107,6 +112,7 @@ export async function bookWizardAction(payload: WizardPayload): Promise<WizardRe
       startsAt: torontoInstant(l.date, l.start),
       endsAt: torontoInstant(l.date, l.end),
       rateCentsOverride: isInternal ? undefined : l.unitRateCents ?? undefined,
+      confirm: payload.intent === 'book',
       actorClerkId: actor,
     });
     conflictCount += res.conflicts.length;

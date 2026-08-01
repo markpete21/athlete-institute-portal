@@ -59,3 +59,37 @@ export async function savePublicOpenAction(formData: FormData): Promise<void> {
   );
   revalidatePath('/rentals/settings');
 }
+
+export async function saveBusinessUnitAction(formData: FormData): Promise<void> {
+  const session = await requireStaff();
+  const { upsertBusinessUnit } = await import('@/lib/booking-config');
+  const idRaw = String(formData.get('id') ?? '');
+  await upsertBusinessUnit(
+    {
+      id: idRaw ? Number(idRaw) : null,
+      name: String(formData.get('name') ?? ''),
+      active: idRaw ? formData.get('active') === 'on' : undefined,
+    },
+    session.userId!,
+  );
+  revalidatePath('/rentals/settings');
+}
+
+export async function saveBookingTypeAction(formData: FormData): Promise<void> {
+  const session = await requireStaff();
+  const { upsertBookingType } = await import('@/lib/booking-config');
+  const idRaw = String(formData.get('id') ?? '');
+  const appliesTo = String(formData.get('appliesTo') ?? 'both');
+  if (!['internal', 'rental', 'both'].includes(appliesTo)) throw new Error('Invalid applies-to.');
+  await upsertBookingType(
+    {
+      id: idRaw ? Number(idRaw) : null,
+      name: String(formData.get('name') ?? ''),
+      appliesTo: appliesTo as 'internal' | 'rental' | 'both',
+      active: idRaw ? formData.get('active') === 'on' : undefined,
+      sortOrder: String(formData.get('sortOrder') ?? '') !== '' ? Number(formData.get('sortOrder')) : undefined,
+    },
+    session.userId!,
+  );
+  revalidatePath('/rentals/settings');
+}

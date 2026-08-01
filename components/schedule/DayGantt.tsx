@@ -108,7 +108,7 @@ function hoursToRanges(hoursSel: number[]): Array<{ start: string; end: string }
   return ranges.map((r) => ({ start: hh(r.from), end: hh(r.to) }));
 }
 
-export function DayGantt({ groups, dateISO, nowFrac, bookMode = false }: { groups: GanttGroup[]; dateISO: string; nowFrac: number | null; bookMode?: boolean }) {
+export function DayGantt({ groups, dateISO, nowFrac, bookMode = false, bookIntent = 'book' }: { groups: GanttGroup[]; dateISO: string; nowFrac: number | null; bookMode?: boolean; bookIntent?: 'book' | 'quote' }) {
   const [hover, setHover] = useState<Hover | null>(null);
   // Booking selection: individual hour cells per facility, and/or whole facilities.
   const [cellSel, setCellSel] = useState<Set<string>>(new Set()); // `${facilityId}:${hour}`
@@ -145,6 +145,7 @@ export function DayGantt({ groups, dateISO, nowFrac, bookMode = false }: { group
     const p = new URLSearchParams({ date: dateISO });
     if (slots.length) p.set('slots', slots.join(','));
     if (facSel.size) p.set('facilities', [...facSel].join(','));
+    if (bookIntent === 'quote') p.set('intent', 'quote');
     return `/schedule/book?${p.toString()}`;
   })();
   const selectionCount = cellSel.size + facSel.size;

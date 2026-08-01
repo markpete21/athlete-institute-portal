@@ -53,7 +53,7 @@ const fmtTime = (iso: string) =>
 export default async function SchedulePage({
   searchParams,
 }: {
-  searchParams: { view?: string; date?: string; location?: string; facilities?: string; source?: string; status?: string; internal?: string; book?: string };
+  searchParams: { view?: string; date?: string; location?: string; facilities?: string; source?: string; status?: string; internal?: string; book?: string; intent?: string };
 }) {
   const view = (['day', 'week', 'month'].includes(searchParams.view ?? '') ? searchParams.view : 'day') as ViewMode;
   const date = /^\d{4}-\d{2}-\d{2}$/.test(searchParams.date ?? '') ? searchParams.date! : torontoDateOf(new Date().toISOString());
@@ -134,6 +134,7 @@ export default async function SchedulePage({
     : depth2.map((n) => n.id);
 
   const bookMode = searchParams.book === '1';
+  const bookIntent = searchParams.intent === 'quote' ? 'quote' as const : 'book' as const;
 
   const qs = (over: Record<string, string>) => {
     const p = new URLSearchParams();
@@ -145,6 +146,7 @@ export default async function SchedulePage({
     if (searchParams.status) p.set('status', searchParams.status);
     if (searchParams.internal) p.set('internal', searchParams.internal);
     if (bookMode) p.set('book', '1');
+    if (bookMode && searchParams.intent) p.set('intent', searchParams.intent);
     for (const [k, v] of Object.entries(over)) {
       if (v === '') p.delete(k);
       else p.set(k, v);
@@ -189,16 +191,19 @@ export default async function SchedulePage({
             Conflicts{conflictedIds.size ? ` (${conflictPairs.length})` : ''}
           </Link>
           {bookMode ? (
-            <Link href={qs({ book: '' })} className="btn-ghost btn-sm">Exit booking</Link>
+            <Link href={qs({ book: '', intent: '' })} className="btn-ghost btn-sm">Exit booking</Link>
           ) : (
-            <Link href={qs({ view: 'day', book: '1' })} className="btn-gold btn-sm">Book</Link>
+            <>
+              <Link href={qs({ view: 'day', book: '1', intent: 'quote' })} className="btn-ghost btn-sm">Quote</Link>
+              <Link href={qs({ view: 'day', book: '1' })} className="btn-gold btn-sm">Book</Link>
+            </>
           )}
         </div>
       </header>
 
       {bookMode && (
         <p className="card border-l-4 p-3 text-sm text-body" style={{ borderLeftColor: 'var(--accent)' }}>
-          <b>Booking mode.</b> Click hour blocks on the grid to pick exact times,
+          <b>{bookIntent === 'quote' ? 'Quote mode — selections become a tentative hold.' : 'Booking mode.'}</b> Click hour blocks on the grid to pick exact times,
           or click facility names on the left to pick whole facilities (you set
           dates &amp; times on the next screen). Mix both freely, then Continue.
         </p>
@@ -298,7 +303,7 @@ export default async function SchedulePage({
       </div>
 
       {view === 'day' && (
-        <DayGantt groups={ganttForDay(tree, bookings, date, parentIds, conflictedIds)} dateISO={date} nowFrac={nowFrac} bookMode={bookMode} />
+        <DayGantt groups={ganttForDay(tree, bookings, date, parentIds, conflictedIds)} dateISO={date} nowFrac={nowFrac} bookMode={bookMode} bookIntent={bookIntent} />
       )}
 
       {view === 'week' && (
