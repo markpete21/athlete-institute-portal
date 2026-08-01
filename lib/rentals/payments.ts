@@ -108,12 +108,9 @@ export async function markRentalBooked(
   );
   if (iErr) throw new Error(`schedule create failed: ${iErr.message}`);
 
-  // Confirm the held bookings (quote -> confirmed on the master schedule).
-  const { data: lines } = await db.from('rental_lines').select('booking_id').eq('rental_id', rentalId);
-  const bookingIds = (lines ?? []).map((l) => l.booking_id).filter(Boolean) as number[];
-  if (bookingIds.length) {
-    await db.from('bookings').update({ status: 'confirmed' }).in('id', bookingIds);
-  }
+  // The held bookings stay TENTATIVE: paying the deposit is what turns the
+  // quote into a confirmed booking (markInstallmentPaid flips them). Wizard
+  // book-intent lines were already created confirmed and are untouched.
 
   await db.from('rentals').update({ status: 'deposit_due', booked_at: new Date().toISOString(), balance_due_date: balanceDue }).eq('id', rentalId);
   await audit({ actorId: actorClerkId, action: 'rental.booked', target: `rental:${rentalId}`, meta: { installments: schedule.length, total: rental.total_cents } });
@@ -196,9 +193,27 @@ export async function processInstallment(installmentId: number, actorClerkId: st
 
 export async function markInstallmentPaid(installmentId: number, actorClerkId: string): Promise<void> {
   const db = supabaseAdmin();
-  const { data: inst } = await db.from('rental_installments').select('rental_id').eq('id', installmentId).single();
+  const { data: inst } = await db.from('rental_installments').select('rental_id, is_deposit').eq('id', installmentId).single();
   await db.from('rental_installments').update({ status: 'paid', paid_at: new Date().toISOString(), failure_reason: null }).eq('id', installmentId);
   await audit({ actorId: actorClerkId, action: 'rental.installment.paid', target: `rental_installment:${installmentId}` });
+
+  // Deposit paid -> the quote's tentative holds become CONFIRMED bookings.
+  // Single choke point: manual record-paid, PAD charges and invoice webhooks
+  // all land here, so every payment path confirms the slots.
+  if (inst!.is_deposit) {
+    const { data: lines } = await db.from('rental_lines').select('booking_id').eq('rental_id', inst!.rental_id);
+    const bookingIds = (lines ?? []).map((l) => l.booking_id).filter(Boolean) as number[];
+    if (bookingIds.length) {
+      const { error } = await db
+        .from('bookings')
+        .update({ status: 'confirmed' })
+        .in('id', bookingIds)
+        .eq('status', 'tentative');
+      if (error) throw new Error(`booking confirm failed: ${error.message}`);
+    }
+    await audit({ actorId: actorClerkId, action: 'rental.confirmed-on-deposit', target: `rental:${inst!.rental_id}`, meta: { bookings: bookingIds.length } });
+  }
+
   await refreshRentalStatus(inst!.rental_id);
 }
 

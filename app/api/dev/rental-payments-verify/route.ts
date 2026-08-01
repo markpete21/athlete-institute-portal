@@ -55,9 +55,10 @@ export async function GET() {
       `deposit ${deposit.amount_cents}¢ due ${deposit.due_date}`,
     );
 
-    // 2. booking flips tentative -> confirmed on booking
+    // 2. mark-booked KEEPS the hold tentative - paying the deposit is what
+    //    confirms the booking (asserted in step 4a below)
     const { data: bkAfter } = await db.from('bookings').select('status').eq('id', line.line.booking_id!).single();
-    record('held booking confirmed on mark-booked', bkBefore!.status === 'tentative' && bkAfter!.status === 'confirmed', `${bkBefore!.status} -> ${bkAfter!.status}`);
+    record('hold stays tentative on mark-booked', bkBefore!.status === 'tentative' && bkAfter!.status === 'tentative', `${bkBefore!.status} -> ${bkAfter!.status}`);
 
     // 3. process deposit installment: no PAD -> invoice path (no throw), status stays pending-with-invoice
     const action = await processInstallment(deposit.id, 'system:verify');
@@ -66,6 +67,10 @@ export async function GET() {
     // 4. record deposit paid -> balance_due
     await recordManualPayment(deposit.id, 'system:verify');
     const s4 = await refreshRentalStatus(r1.id);
+
+    // 4a. deposit paid -> the held booking is now CONFIRMED
+    const { data: bkPaid } = await db.from('bookings').select('status').eq('id', line.line.booking_id!).single();
+    record('deposit paid confirms the booking', bkPaid!.status === 'confirmed', `after deposit: ${bkPaid!.status}`);
     record('deposit paid -> balance_due', s4 === 'balance_due', s4);
 
     // 5. balance failure -> overdue + staff notified
