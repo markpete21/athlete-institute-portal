@@ -57,6 +57,9 @@ export const MODULES: ModuleDef[] = [
   ] },
 
   { key: 'schedule', label: 'Schedule', group: 'Facilities & Scheduling', href: '/schedule', actions: [
+    { label: 'Book', href: '/schedule?view=day&book=1' },
+    { label: 'Quote', href: '/schedule?view=day&book=1&intent=quote' },
+    { label: 'Quote — no facility yet', href: '/schedule/book?intent=quote&nofacility=1' },
     { label: 'Day view', href: '/schedule?view=day' },
     { label: 'Week view', href: '/schedule?view=week' },
     { label: 'Month view', href: '/schedule?view=month' },

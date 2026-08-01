@@ -16,7 +16,7 @@ export const dynamic = 'force-dynamic';
 export default async function BookPage({
   searchParams,
 }: {
-  searchParams: { date?: string; slots?: string; facilities?: string; intent?: string };
+  searchParams: { date?: string; slots?: string; facilities?: string; intent?: string; nofacility?: string };
 }) {
   const db = supabaseAdmin();
   const [{ data: facRows }, units, { data: orgRows }, rates, addons, types] = await Promise.all([
@@ -28,6 +28,8 @@ export default async function BookPage({
     listBookingTypes(),
   ]);
   const intent = searchParams.intent === 'quote' ? 'quote' : 'book';
+  // Quote-only mode: start with no facility lines (assigned later on the rental).
+  const noFacility = intent === 'quote' && searchParams.nofacility === '1';
 
   const tree = (facRows ?? []) as Parameters<typeof buildTree>[0];
   const ordered = flattenTree(buildTree(tree));
@@ -83,6 +85,7 @@ export default async function BookPage({
         addons={addons.map((a) => ({ id: a.id, name: a.name, pricingMode: a.pricing_mode, priceCents: a.default_price_cents }))}
         bookingTypes={types.map((t) => ({ name: t.name, appliesTo: t.applies_to }))}
         intent={intent}
+        noFacility={noFacility}
         defaultDate={date}
         prefillSlots={slots}
         prefillFacilities={preFacilities}

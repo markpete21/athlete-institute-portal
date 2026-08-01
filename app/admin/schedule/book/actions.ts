@@ -96,7 +96,12 @@ export async function bookWizardAction(payload: WizardPayload): Promise<WizardRe
   const title = payload.title.trim();
   if (!title) throw new Error('Title is required.');
   if (!payload.bookingType) throw new Error('Booking type is required.');
-  if (payload.lines.length === 0) throw new Error('At least one facility/time line is required.');
+  // A rental QUOTE may start with no facility lines (price/terms first;
+  // facilities and dates get assigned later on the rental screen).
+  const noFacilityQuote = payload.kind === 'rental' && payload.intent === 'quote';
+  if (payload.lines.length === 0 && !noFacilityQuote) {
+    throw new Error('At least one facility/time line is required.');
+  }
   payload.lines.forEach((l, i) => {
     assertSlot(l, `Line ${i + 1}`);
     if (l.repeat?.mode === 'weekly') {

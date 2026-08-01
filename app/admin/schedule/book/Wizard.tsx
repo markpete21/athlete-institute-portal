@@ -89,6 +89,7 @@ export function Wizard({
   addons,
   bookingTypes,
   intent,
+  noFacility = false,
   defaultDate,
   prefillSlots,
   prefillFacilities,
@@ -101,6 +102,8 @@ export function Wizard({
   bookingTypes: Array<{ name: string; appliesTo: 'internal' | 'rental' | 'both' }>;
   /** book = concrete/confirmed; quote = tentative hold (rental only). */
   intent: 'book' | 'quote';
+  /** Quote-only: start with zero facility lines (assign them later). */
+  noFacility?: boolean;
   defaultDate: string;
   prefillSlots: Array<{ facilityId: number; start: string; end: string }>;
   prefillFacilities: number[];
@@ -118,9 +121,9 @@ export function Wizard({
       rateMode: 'hourly' as const, rateOverride: '', ...NO_REPEAT,
     }));
     const drafts = [...fromSlots, ...fromFacilities];
-    return drafts.length
-      ? drafts
-      : [{ facilityId: facilities[0]?.id ?? 0, date: defaultDate, start: '', end: '', rateMode: 'hourly', rateOverride: '', ...NO_REPEAT }];
+    if (drafts.length) return drafts;
+    if (noFacility) return [];
+    return [{ facilityId: facilities[0]?.id ?? 0, date: defaultDate, start: '', end: '', rateMode: 'hourly', rateOverride: '', ...NO_REPEAT }];
   });
 
   // A quote is by definition a priced customer hold - internal is not offered.
@@ -154,7 +157,8 @@ export function Wizard({
   const [result, setResult] = useState<WizardResult | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const linesValid = lines.length > 0 && lines.every(
+  const zeroLinesOk = intent === 'quote' && kind === 'rental';
+  const linesValid = (lines.length > 0 || zeroLinesOk) && lines.every(
     (l) =>
       l.facilityId && l.date && /^\d{2}:\d{2}$/.test(l.start) && /^\d{2}:\d{2}$/.test(l.end) && l.end > l.start
       && (l.repeatMode !== 'weekly' || (/^\d{4}-\d{2}-\d{2}$/.test(l.repeatUntil) && l.repeatUntil > l.date))
@@ -185,9 +189,11 @@ export function Wizard({
     : 0;
   const missingRates = kind === 'rental' && lines.some((l) => lineRate(l) == null);
 
-  const earliestDate = lines.map((l) => l.date).filter(Boolean).sort()[0] ?? todayISO();
-  // Balance default: 10 business days before the first booking, never past.
+  const earliestDate = lines.map((l) => l.date).filter(Boolean).sort()[0] ?? null;
+  // Balance default: 10 business days before the first booking (never past);
+  // with no facility attached yet, 20 business days out as a placeholder.
   const balanceDefault = (() => {
+    if (!earliestDate) return shiftBusinessDays(todayISO(), 20);
     const d = shiftBusinessDays(earliestDate, -10);
     return d < todayISO() ? todayISO() : d;
   })();
@@ -301,6 +307,12 @@ export function Wizard({
       {stepName === 'When & where' && (
         <section className="card flex flex-col gap-4 p-6">
           <h2 className="text-2xl">When &amp; where</h2>
+          {lines.length === 0 && (
+            <p className="card border-l-4 p-3 text-sm text-body" style={{ borderLeftColor: 'var(--accent)' }}>
+              <b>No facility attached.</b> This quote prices the work first —
+              assign facilities and dates any time later from the rental screen.
+            </p>
+          )}
           <div className="flex flex-col gap-2">
             {lines.map((l, i) => (
               <div key={i} className="flex flex-wrap items-end gap-2 border-b border-hairline pb-2 last:border-0">
@@ -357,7 +369,7 @@ export function Wizard({
                   type="button"
                   className="btn-ghost btn-sm text-neg"
                   onClick={() => setLines(lines.filter((_, j) => j !== i))}
-                  disabled={lines.length === 1}
+                  disabled={lines.length === 1 && !zeroLinesOk}
                 >
                   Remove
                 </button>
@@ -397,7 +409,12 @@ export function Wizard({
             <button
               type="button"
               className="btn-ghost btn-sm"
-              onClick={() => setLines([...lines, { ...lines[lines.length - 1], rateOverride: '', ...NO_REPEAT }])}
+              onClick={() => setLines([
+                ...lines,
+                lines.length
+                  ? { ...lines[lines.length - 1], rateOverride: '', ...NO_REPEAT }
+                  : { facilityId: facilities[0]?.id ?? 0, date: defaultDate, start: '', end: '', rateMode: 'hourly', rateOverride: '', ...NO_REPEAT },
+              ])}
             >
               + Add another facility / time
             </button>
@@ -787,6 +804,7 @@ export function Wizard({
             <dt className="label text-[10px]">Type</dt><dd>{bookingType}</dd>
             <dt className="label text-[10px]">Lines</dt>
             <dd className="flex flex-col gap-0.5">
+              {lines.length === 0 && <span className="text-xs text-silver">No facility yet — assign on the rental screen.</span>}
               {lines.map((l, i) => (
                 <span key={i} className="mono text-xs">
                   {facById.get(l.facilityId)?.name} · {l.date} {l.start}–{l.end}
