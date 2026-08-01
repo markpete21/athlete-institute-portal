@@ -54,7 +54,7 @@ const fmtTime = (iso: string) =>
 export default async function SchedulePage({
   searchParams,
 }: {
-  searchParams: { view?: string; date?: string; location?: string; facilities?: string; source?: string; status?: string; internal?: string; book?: string; intent?: string };
+  searchParams: { view?: string; date?: string; location?: string; facilities?: string; source?: string; status?: string; internal?: string; book?: string; intent?: string; hide?: string };
 }) {
   const view = (['day', 'week', 'month'].includes(searchParams.view ?? '') ? searchParams.view : 'day') as ViewMode;
   const date = /^\d{4}-\d{2}-\d{2}$/.test(searchParams.date ?? '') ? searchParams.date! : torontoDateOf(new Date().toISOString());
@@ -135,6 +135,9 @@ export default async function SchedulePage({
     : depth2.map((n) => n.id);
 
   const bookMode = searchParams.book === '1';
+  // Hide-unbooked collapses empty facility rows; booking mode needs every row
+  // clickable, so the toggle is ignored while selecting.
+  const hideUnbooked = searchParams.hide === '1' && !bookMode;
   const bookIntent = searchParams.intent === 'quote' ? 'quote' as const : 'book' as const;
 
   const qs = (over: Record<string, string>) => {
@@ -146,6 +149,7 @@ export default async function SchedulePage({
     if (searchParams.source) p.set('source', searchParams.source);
     if (searchParams.status) p.set('status', searchParams.status);
     if (searchParams.internal) p.set('internal', searchParams.internal);
+    if (searchParams.hide === '1') p.set('hide', '1');
     if (bookMode) p.set('book', '1');
     if (bookMode && searchParams.intent) p.set('intent', searchParams.intent);
     for (const [k, v] of Object.entries(over)) {
@@ -188,6 +192,15 @@ export default async function SchedulePage({
           <Link href="/conflicts" className="btn-ghost btn-sm">
             Conflicts{conflictedIds.size ? ` (${conflictPairs.length})` : ''}
           </Link>
+          {view === 'day' && !bookMode && (
+            <Link
+              href={qs({ hide: hideUnbooked ? '' : '1' })}
+              className={hideUnbooked ? 'btn-gold btn-sm' : 'btn-ghost btn-sm'}
+              title="Collapse facilities with no bookings on this day"
+            >
+              {hideUnbooked ? 'Show all' : 'Hide unbooked'}
+            </Link>
+          )}
           <Link href="/schedule/calendar" className="btn-ghost btn-sm" title="Subscribe your calendar to this schedule">Sync</Link>
           {bookMode ? (
             <Link href={qs({ book: '', intent: '' })} className="btn-ghost btn-sm">Exit booking</Link>
@@ -301,9 +314,15 @@ export default async function SchedulePage({
         </form>
       </div>
 
-      {view === 'day' && (
-        <DayGantt groups={ganttForDay(tree, bookings, date, parentIds, conflictedIds)} dateISO={date} nowFrac={nowFrac} bookMode={bookMode} bookIntent={bookIntent} />
-      )}
+      {view === 'day' && (() => {
+        let groups = ganttForDay(tree, bookings, date, parentIds, conflictedIds);
+        if (hideUnbooked) {
+          groups = groups
+            .map((g) => ({ ...g, rows: g.rows.filter((r) => r.bars.length > 0) }))
+            .filter((g) => g.rows.length > 0 || g.wholeBars.length > 0);
+        }
+        return <DayGantt groups={groups} dateISO={date} nowFrac={nowFrac} bookMode={bookMode} bookIntent={bookIntent} />;
+      })()}
 
       {view === 'week' && (
         <div className="grid gap-3 md:grid-cols-7">
