@@ -38,9 +38,11 @@ interface LineDraft {
   repeatMode: 'none' | 'weekly' | 'dates';
   repeatUntil: string;      // weekly: last date (inclusive)
   repeatDates: string[];    // dates: extra specific dates
+  /** Add-ons for THIS block: addonId -> qty (applied to every occurrence). */
+  addons: Record<number, number>;
 }
 
-const NO_REPEAT = { repeatMode: 'none' as const, repeatUntil: '', repeatDates: [] as string[] };
+const NO_REPEAT = { repeatMode: 'none' as const, repeatUntil: '', repeatDates: [] as string[], addons: {} as Record<number, number> };
 
 /** How many bookings a line will create (weekly = same weekday, inclusive). */
 function lineOccurrences(l: LineDraft): number {
@@ -183,8 +185,18 @@ export function Wizard({
     if (rate == null) return null;
     return l.rateMode === 'hourly' ? Math.round(rate * hoursBetween(l.start, l.end)) : rate;
   };
+  // Mirror of the server's addonTotalCents: per_hour prices off the block's
+  // hours (qty ignored), per_unit multiplies, flat is flat.
+  const lineAddonTotal = (l: LineDraft): number =>
+    addons.reduce((sum, a) => {
+      const qty = l.addons[a.id] ?? 0;
+      if (qty <= 0) return sum;
+      if (a.pricingMode === 'flat') return sum + a.priceCents;
+      if (a.pricingMode === 'per_unit') return sum + a.priceCents * qty;
+      return sum + Math.round(a.priceCents * hoursBetween(l.start, l.end));
+    }, 0);
   const feesTotal = kind === 'rental'
-    ? lines.reduce((sum, l) => sum + (lineTotal(l) ?? 0) * lineOccurrences(l), 0)
+    ? lines.reduce((sum, l) => sum + ((lineTotal(l) ?? 0) + lineAddonTotal(l)) * lineOccurrences(l), 0)
       + addons.reduce((sum, a) => sum + (addonQty[a.id] ?? 0) * a.priceCents, 0)
     : 0;
   const missingRates = kind === 'rental' && lines.some((l) => lineRate(l) == null);
@@ -237,6 +249,7 @@ export function Wizard({
             : l.repeatMode === 'dates'
               ? { mode: 'dates' as const, dates: l.repeatDates }
               : undefined,
+        addons: Object.entries(l.addons).map(([id, qty]) => ({ addonId: Number(id), qty })).filter((a) => a.qty > 0),
       })),
       addons: Object.entries(addonQty).map(([id, qty]) => ({ addonId: Number(id), qty })).filter((a) => a.qty > 0),
       blocks,
@@ -576,6 +589,42 @@ export function Wizard({
                         : cad(total)
                       : <span className="text-neg">no rate</span>}
                   </span>
+
+                  {addons.length > 0 && (
+                    <details className="w-full pl-1">
+                      <summary className="cursor-pointer font-mono text-[10px] uppercase tracking-[0.12em] text-silver">
+                        Add-ons for this block
+                        {lineAddonTotal(l) > 0 && (
+                          <span className="ml-2 normal-case tracking-normal" style={{ color: 'var(--accent)' }}>
+                            {cad(lineAddonTotal(l))}
+                            {lineOccurrences(l) > 1 ? ` × ${lineOccurrences(l)} = ${cad(lineAddonTotal(l) * lineOccurrences(l))}` : ''}
+                          </span>
+                        )}
+                      </summary>
+                      <div className="flex flex-col gap-1.5 pt-2">
+                        {addons.map((a) => (
+                          <div key={a.id} className="flex items-center gap-3 text-sm">
+                            <span className="min-w-44 flex-1">
+                              {a.name} <span className="text-silver">({cad(a.priceCents)} {a.pricingMode.replace('_', ' ')})</span>
+                            </span>
+                            <input
+                              type="number" min={0} className="input h-8 w-20 text-sm"
+                              value={l.addons[a.id] ?? 0}
+                              onChange={(e) =>
+                                setLines(lines.map((x, j) =>
+                                  j === i ? { ...x, addons: { ...x.addons, [a.id]: Math.max(0, Number(e.target.value)) } } : x,
+                                ))
+                              }
+                            />
+                          </div>
+                        ))}
+                        <p className="text-xs text-silver">
+                          Attached to this time block{lineOccurrences(l) > 1 ? ' — applied to every occurrence' : ''};
+                          per-hour add-ons price off the block&apos;s hours.
+                        </p>
+                      </div>
+                    </details>
+                  )}
                 </div>
               );
             })}
@@ -583,7 +632,7 @@ export function Wizard({
 
           {addons.length > 0 && (
             <div className="flex flex-col gap-2 border-t border-hairline pt-3">
-              <span className="field-label">Add-ons</span>
+              <span className="field-label">General add-ons (whole quote)</span>
               {addons.map((a) => (
                 <div key={a.id} className="flex items-center gap-3 text-sm">
                   <span className="min-w-44 flex-1">{a.name} <span className="text-silver">({cad(a.priceCents)} {a.pricingMode.replace('_', ' ')})</span></span>
@@ -810,7 +859,8 @@ export function Wizard({
                   {facById.get(l.facilityId)?.name} · {l.date} {l.start}–{l.end}
                   {l.repeatMode === 'weekly' ? ` · weekly until ${l.repeatUntil} (${lineOccurrences(l)}×)` : ''}
                   {l.repeatMode === 'dates' ? ` · +${l.repeatDates.length} more date${l.repeatDates.length === 1 ? '' : 's'}` : ''}
-                  {kind === 'rental' && lineTotal(l) != null ? ` · ${cad(lineTotal(l)! * lineOccurrences(l))}` : ''}
+                  {kind === 'rental' && lineTotal(l) != null ? ` · ${cad((lineTotal(l)! + lineAddonTotal(l)) * lineOccurrences(l))}` : ''}
+                  {kind === 'rental' && lineAddonTotal(l) > 0 ? ' (incl. add-ons)' : ''}
                 </span>
               ))}
             </dd>

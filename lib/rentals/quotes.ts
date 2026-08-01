@@ -299,7 +299,7 @@ export async function addRecurringRentalLines(input: {
   /** Concrete booking: every occurrence lands CONFIRMED instead of held. */
   confirm?: boolean;
   actorClerkId: string;
-}): Promise<{ lineCount: number; conflictedDates: string[] }> {
+}): Promise<{ lineCount: number; conflictedDates: string[]; lineIds: number[] }> {
   const { expandRecurrence } = await import('@ai/foundation');
   const occurrences = expandRecurrence({
     pattern: input.pattern,
@@ -333,6 +333,7 @@ export async function addRecurringRentalLines(input: {
   if (error) throw new Error(`series create failed: ${error.message}`);
 
   const conflictedDates: string[] = [];
+  const lineIds: number[] = [];
   for (const occ of occurrences) {
     const res = await addRentalLine({
       rentalId: input.rentalId,
@@ -346,9 +347,10 @@ export async function addRecurringRentalLines(input: {
       actorClerkId: input.actorClerkId,
     });
     if (res.conflicts.length > 0) conflictedDates.push(occ.date);
+    lineIds.push(res.line.id);
   }
   void facility;
-  return { lineCount: occurrences.length, conflictedDates };
+  return { lineCount: occurrences.length, conflictedDates, lineIds };
 }
 
 export async function removeRentalLine(lineId: number, actorClerkId: string): Promise<void> {

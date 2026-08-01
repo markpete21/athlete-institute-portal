@@ -32,6 +32,8 @@ export interface WizardLine {
   repeat?:
     | { mode: 'weekly'; until: string }
     | { mode: 'dates'; dates: string[] };
+  /** Add-ons attached to THIS time block (repeat = attached to every occurrence). */
+  addons?: Array<{ addonId: number; qty: number }>;
 }
 
 export interface WizardBlock {
@@ -159,6 +161,8 @@ export async function bookWizardAction(payload: WizardPayload): Promise<WizardRe
   for (const l of payload.lines) {
     const override = isInternal ? undefined : l.unitRateCents ?? undefined;
 
+    const createdLineIds: number[] = [];
+
     if (l.repeat?.mode === 'weekly') {
       // Weekly series through the Module 2 recurrence engine (DST-correct,
       // per-date conflict reporting, shared booking_series).
@@ -178,25 +182,37 @@ export async function bookWizardAction(payload: WizardPayload): Promise<WizardRe
       });
       lineCount += res.lineCount;
       conflictCount += res.conflictedDates.length;
-      continue;
+      createdLineIds.push(...res.lineIds);
+    } else {
+      const dates = [l.date, ...(l.repeat?.mode === 'dates' ? l.repeat.dates : [])];
+      for (const d of dates) {
+        const res = await addRentalLine({
+          rentalId: rental.id,
+          facilityId: l.facilityId,
+          rateMode: l.rateMode,
+          startsAt: torontoInstant(d, l.start),
+          endsAt: torontoInstant(d, l.end),
+          rateCentsOverride: override,
+          confirm: payload.intent === 'book',
+          actorClerkId: actor,
+        });
+        lineCount += 1;
+        conflictCount += res.conflicts.length;
+        warningCount += res.warnings.length + res.closures.length;
+        if (res.line.booking_id) lineBookingIds.push(res.line.booking_id);
+        createdLineIds.push(res.line.id);
+      }
     }
 
-    const dates = [l.date, ...(l.repeat?.mode === 'dates' ? l.repeat.dates : [])];
-    for (const d of dates) {
-      const res = await addRentalLine({
-        rentalId: rental.id,
-        facilityId: l.facilityId,
-        rateMode: l.rateMode,
-        startsAt: torontoInstant(d, l.start),
-        endsAt: torontoInstant(d, l.end),
-        rateCentsOverride: override,
-        confirm: payload.intent === 'book',
-        actorClerkId: actor,
-      });
-      lineCount += 1;
-      conflictCount += res.conflicts.length;
-      warningCount += res.warnings.length + res.closures.length;
-      if (res.line.booking_id) lineBookingIds.push(res.line.booking_id);
+    // Block-attached add-ons land on EVERY occurrence of the block (equipment
+    // and services are needed each session; per_hour prices off line hours).
+    if (!isInternal) {
+      for (const a of l.addons ?? []) {
+        if (a.qty <= 0) continue;
+        for (const lineId of createdLineIds) {
+          await addRentalAddon({ rentalId: rental.id, addonId: a.addonId, lineId, qty: a.qty, actorClerkId: actor });
+        }
+      }
     }
   }
 
