@@ -53,6 +53,11 @@ export interface WizardPayload {
   contactEmail?: string;
   contactPhone?: string;
   depositPct?: number;
+  /** Payment schedule (rental): deposit due + balance due (Toronto dates). */
+  depositDue?: string;
+  balanceDue?: string;
+  /** Email the customer their quote/invoice link after creating. */
+  sendInvoice?: boolean;
   notes?: string;
   showPublic?: boolean;
   lines: WizardLine[];
@@ -66,6 +71,11 @@ export interface WizardResult {
   blockCount: number;
   conflictCount: number;
   warningCount: number;
+  /** Payment schedule outcome (rental + book): 'scheduled' or the reason it was skipped. */
+  scheduleNote?: string;
+  /** Invoice/quote email outcome. */
+  sendNote?: string;
+  quoteUrl?: string;
 }
 
 const DATE = /^\d{4}-\d{2}-\d{2}$/;
@@ -119,6 +129,22 @@ export async function bookWizardAction(payload: WizardPayload): Promise<WizardRe
     depositPct: payload.depositPct ?? 25,
     actorClerkId: actor,
   });
+
+  // Persist the intended payment schedule on the rental (quotes carry it
+  // until they're booked; book-intent uses it immediately below).
+  if (!isInternal && (payload.depositDue || payload.balanceDue)) {
+    if (payload.depositDue && !DATE.test(payload.depositDue)) throw new Error('Invalid deposit due date.');
+    if (payload.balanceDue && !DATE.test(payload.balanceDue)) throw new Error('Invalid balance due date.');
+    const { supabaseAdmin } = await import('@ai/foundation/supabase');
+    const { error: dErr } = await supabaseAdmin()
+      .from('rentals')
+      .update({
+        deposit_due_date: payload.depositDue ?? null,
+        balance_due_date: payload.balanceDue ?? null,
+      })
+      .eq('id', rental.id);
+    if (dErr) throw new Error(`schedule dates save failed: ${dErr.message}`);
+  }
 
   let conflictCount = 0;
   let warningCount = 0;
@@ -201,16 +227,44 @@ export async function bookWizardAction(payload: WizardPayload): Promise<WizardRe
     warningCount += res.warnings.length + res.closures.length;
   }
 
+  // Concrete rental bookings start their payment schedule immediately
+  // (installments from the stored dates; Stripe invoices go out per due date).
+  let scheduleNote: string | undefined;
+  if (!isInternal && payload.intent === 'book') {
+    try {
+      const { markRentalBooked } = await import('@/lib/rentals/payments');
+      const res = await markRentalBooked(rental.id, actor);
+      scheduleNote = `scheduled (${res.installments.length} installments)`;
+    } catch (e) {
+      scheduleNote = `not scheduled: ${e instanceof Error ? e.message : String(e)}`;
+    }
+  }
+
+  let sendNote: string | undefined;
+  if (!isInternal && payload.sendInvoice) {
+    try {
+      const { emailQuoteLink } = await import('@/lib/rentals/quotes');
+      const res = await emailQuoteLink(rental.id, actor);
+      sendNote = res.ok ? `sent to ${payload.contactEmail}` : `send failed: ${res.detail}`;
+    } catch (e) {
+      sendNote = `send failed: ${e instanceof Error ? e.message : String(e)}`;
+    }
+  }
+
   revalidatePath('/schedule');
   revalidatePath('/conflicts');
   revalidatePath('/rentals');
 
+  const playBase = process.env.NEXT_PUBLIC_PLAY_URL ?? 'https://play.athleteinstitute.ca';
   return {
     rentalId: rental.id,
     lineCount,
     blockCount: payload.blocks.length,
     conflictCount,
     warningCount,
+    scheduleNote,
+    sendNote,
+    quoteUrl: isInternal ? undefined : `${playBase}/quote/${rental.quote_token}`,
   };
 }
 

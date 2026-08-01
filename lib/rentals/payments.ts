@@ -75,7 +75,7 @@ export async function markRentalBooked(
   const db = supabaseAdmin();
   const { data: rental, error } = await db
     .from('rentals')
-    .select('id, status, is_internal, total_cents, deposit_pct, waiver_id')
+    .select('id, status, is_internal, total_cents, deposit_pct, waiver_id, deposit_due_date, balance_due_date')
     .eq('id', rentalId)
     .single();
   if (error) throw new Error(error.message);
@@ -90,10 +90,17 @@ export async function markRentalBooked(
   }
 
   const today = torontoToday();
-  const balanceDue = opts.balanceDueDate ?? addMonthsISO(today, 1);
+  const balanceDue = opts.balanceDueDate ?? rental.balance_due_date ?? addMonthsISO(today, 1);
+  // Priority: explicit plan > dates stored on the rental (the booking wizard
+  // writes deposit_due_date/balance_due_date at quote time) > defaults.
   const schedule = opts.plan
     ? buildPlanSchedule(rental.total_cents, opts.plan)
-    : buildDefaultSchedule(rental.total_cents, rental.deposit_pct, today, balanceDue);
+    : rental.deposit_due_date
+      ? buildPlanSchedule(rental.total_cents, [
+          { label: `Deposit (${rental.deposit_pct}%)`, pct: rental.deposit_pct, dueDate: rental.deposit_due_date },
+          { label: 'Balance', pct: 100 - rental.deposit_pct, dueDate: balanceDue },
+        ])
+      : buildDefaultSchedule(rental.total_cents, rental.deposit_pct, today, balanceDue);
 
   // Persist installments.
   const { error: iErr } = await db.from('rental_installments').insert(

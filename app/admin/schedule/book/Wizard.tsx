@@ -61,6 +61,21 @@ interface BlockDraft {
 
 const cad = (cents: number) => `$${(cents / 100).toFixed(2)}`;
 
+// Business-day walking (weekends skipped) for the payment-schedule defaults.
+const shiftBusinessDays = (iso: string, n: number): string => {
+  const d = new Date(`${iso}T12:00:00Z`);
+  const step = n < 0 ? -1 : 1;
+  let left = Math.abs(n);
+  while (left > 0) {
+    d.setUTCDate(d.getUTCDate() + step);
+    const wd = d.getUTCDay();
+    if (wd !== 0 && wd !== 6) left -= 1;
+  }
+  return d.toISOString().slice(0, 10);
+};
+const todayISO = () => new Date().toISOString().slice(0, 10);
+const HST = 0.13;
+
 function hoursBetween(start: string, end: string): number {
   const [sh, sm] = start.split(':').map(Number);
   const [eh, em] = end.split(':').map(Number);
@@ -125,6 +140,12 @@ export function Wizard({
   const [contactEmail, setContactEmail] = useState('');
   const [contactPhone, setContactPhone] = useState('');
   const [depositPct, setDepositPct] = useState('25');
+  // Payment schedule defaults: deposit 5 business days out; balance 10
+  // business days before the earliest booked date (never in the past).
+  const [depositDue, setDepositDue] = useState(() => shiftBusinessDays(todayISO(), 5));
+  const [balanceDue, setBalanceDue] = useState('');
+  const [balanceTouched, setBalanceTouched] = useState(false);
+  const [sendInvoice, setSendInvoice] = useState(true);
   const [addonQty, setAddonQty] = useState<Record<number, number>>({});
   const [notes, setNotes] = useState('');
   const [showPublic, setShowPublic] = useState(false);
@@ -164,9 +185,19 @@ export function Wizard({
     : 0;
   const missingRates = kind === 'rental' && lines.some((l) => lineRate(l) == null);
 
+  const earliestDate = lines.map((l) => l.date).filter(Boolean).sort()[0] ?? todayISO();
+  // Balance default: 10 business days before the first booking, never past.
+  const balanceDefault = (() => {
+    const d = shiftBusinessDays(earliestDate, -10);
+    return d < todayISO() ? todayISO() : d;
+  })();
+  const effBalanceDue = balanceTouched && balanceDue ? balanceDue : balanceDefault;
+  const totalWithTax = Math.round(feesTotal * (1 + HST));
+  const depositCents = Math.round((totalWithTax * (Number(depositPct) || 25)) / 100);
+
   const steps = kind === 'internal'
     ? ['When & where', 'Who & What', 'Extras', 'Review']
-    : ['When & where', 'Who & What', 'Fees', 'Extras', 'Review'];
+    : ['When & where', 'Who & What', 'Fees', 'Extras', 'Review & send'];
   const stepName = steps[step - 1];
 
   const facilityOptions = facilities.map((f) => (
@@ -185,6 +216,9 @@ export function Wizard({
       organizationId: organizationId ? Number(organizationId) : null,
       contactName, contactEmail, contactPhone,
       depositPct: Number(depositPct) || 25,
+      depositDue: kind === 'rental' ? depositDue : undefined,
+      balanceDue: kind === 'rental' ? effBalanceDue : undefined,
+      sendInvoice: kind === 'rental' && sendInvoice && contactEmail.trim() !== '',
       notes,
       showPublic,
       lines: lines.map((l) => ({
@@ -223,6 +257,19 @@ export function Wizard({
         {result.conflictCount > 0 && (
           <p className="font-mono text-[11px] uppercase tracking-[0.12em]" style={{ color: '#b4483c' }}>
             {result.conflictCount} conflict{result.conflictCount === 1 ? '' : 's'} flagged — resolve in the queue.
+          </p>
+        )}
+        {result.scheduleNote && (
+          <p className="font-mono text-[11px] uppercase tracking-[0.12em] text-silver">Payments: {result.scheduleNote}</p>
+        )}
+        {result.sendNote && (
+          <p className="font-mono text-[11px] uppercase tracking-[0.12em]" style={{ color: result.sendNote.startsWith('sent') ? 'var(--accent)' : '#b4483c' }}>
+            Invoice: {result.sendNote}
+          </p>
+        )}
+        {result.quoteUrl && (
+          <p className="text-sm text-body">
+            Customer link (view &amp; pay): <code className="mono break-all text-xs">{result.quoteUrl}</code>
           </p>
         )}
         <div className="flex flex-wrap gap-2">
@@ -534,8 +581,39 @@ export function Wizard({
           )}
 
           <p className="mono border-t border-hairline pt-3 text-right text-sm">
-            Subtotal {cad(feesTotal)} <span className="text-silver">(taxes on the quote)</span>
+            Subtotal {cad(feesTotal)} <span className="text-silver">· with HST {cad(totalWithTax)}</span>
           </p>
+
+          <div className="flex flex-col gap-2 border-t border-hairline pt-3">
+            <span className="field-label">Payment schedule</span>
+            <div className="flex flex-wrap items-end gap-3">
+              <div className="w-24">
+                <label className="field-label" htmlFor="dep-pct">Deposit %</label>
+                <input id="dep-pct" type="number" min={0} max={100} className="input h-9 text-sm"
+                  value={depositPct} onChange={(e) => setDepositPct(e.target.value)} />
+              </div>
+              <div>
+                <label className="field-label" htmlFor="dep-due">Deposit due</label>
+                <input id="dep-due" type="date" className="input h-9 text-sm"
+                  value={depositDue} onChange={(e) => setDepositDue(e.target.value)} />
+              </div>
+              <span className="mono pb-2 text-sm text-body">{cad(depositCents)}</span>
+              <div>
+                <label className="field-label" htmlFor="bal-due">Balance due</label>
+                <input id="bal-due" type="date" className="input h-9 text-sm"
+                  value={effBalanceDue}
+                  onChange={(e) => { setBalanceTouched(true); setBalanceDue(e.target.value); }} />
+              </div>
+              <span className="mono pb-2 text-sm text-body">{cad(Math.max(0, totalWithTax - depositCents))}</span>
+            </div>
+            <p className="text-sm text-silver">
+              Defaults: {Number(depositPct) || 25}% deposit due 5 business days from
+              today, balance due 10 business days before the first booking.
+              {intent === 'quote'
+                ? ' The schedule activates when the quote is marked booked.'
+                : ' Installments are created on booking; invoices with a payment link go out on each due date.'}
+            </p>
+          </div>
           {missingRates && (
             <p className="text-sm text-neg">A line has no configured rate — set an override or add a rate card in Rental settings.</p>
           )}
@@ -558,12 +636,6 @@ export function Wizard({
             <input type="checkbox" checked={showPublic} onChange={(e) => setShowPublic(e.target.checked)} />
             Show on the public schedule
           </label>
-          {kind === 'rental' && (
-            <div className="max-w-40">
-              <label className="field-label" htmlFor="dep">Deposit %</label>
-              <input id="dep" type="number" min={0} max={100} className="input h-9 text-sm" value={depositPct} onChange={(e) => setDepositPct(e.target.value)} />
-            </div>
-          )}
 
           <div className="flex flex-col gap-2 border-t border-hairline pt-3">
             <span className="field-label">Block other facilities during this booking</span>
@@ -702,9 +774,9 @@ export function Wizard({
         </div>
       </Modal>
 
-      {stepName === 'Review' && (
+      {(stepName === 'Review' || stepName === 'Review & send') && (
         <section className="card flex flex-col gap-4 p-6">
-          <h2 className="text-2xl">Review</h2>
+          <h2 className="text-2xl">{stepName}</h2>
           <dl className="grid gap-x-6 gap-y-1 text-sm sm:grid-cols-[auto_1fr]">
             <dt className="label text-[10px]">Title</dt><dd className="font-bold text-ink">{title}</dd>
             <dt className="label text-[10px]">Kind</dt>
@@ -734,7 +806,16 @@ export function Wizard({
                 </dd>
               </>
             )}
-            {kind === 'rental' && <><dt className="label text-[10px]">Subtotal</dt><dd className="mono">{cad(feesTotal)}</dd></>}
+            {kind === 'rental' && <><dt className="label text-[10px]">Total</dt><dd className="mono">{cad(totalWithTax)} incl. HST</dd></>}
+            {kind === 'rental' && (
+              <>
+                <dt className="label text-[10px]">Payments</dt>
+                <dd className="flex flex-col gap-0.5">
+                  <span className="mono text-xs">Deposit ({Number(depositPct) || 25}%) {cad(depositCents)} · due {depositDue}</span>
+                  <span className="mono text-xs">Balance {cad(Math.max(0, totalWithTax - depositCents))} · due {effBalanceDue}</span>
+                </dd>
+              </>
+            )}
             {showPublic && <><dt className="label text-[10px]">Public</dt><dd>Shows on the public schedule</dd></>}
             {notes && <><dt className="label text-[10px]">Notes</dt><dd>{notes}</dd></>}
           </dl>
@@ -745,11 +826,25 @@ export function Wizard({
                 : 'Lines are booked CONFIRMED; the rental record carries the fees, and any collision lands in the conflicts queue.'
               : 'Lines are confirmed immediately at $0; any collision lands in the conflicts queue for you to resolve.'}
           </p>
+          {kind === 'rental' && (
+            <label className="flex items-center gap-2 border-t border-hairline pt-3 font-mono text-[11px] uppercase tracking-[0.1em] text-silver">
+              <input type="checkbox" checked={sendInvoice} onChange={(e) => setSendInvoice(e.target.checked)} />
+              Email the {intent === 'quote' ? 'quote' : 'invoice'} with a link to view &amp; pay
+              {contactEmail.trim() ? ` → ${contactEmail}` : ''}
+            </label>
+          )}
+          {kind === 'rental' && sendInvoice && !contactEmail.trim() && (
+            <p className="text-sm text-neg">No contact email set (step 2) — nothing can be sent.</p>
+          )}
           {error && <p className="text-sm text-neg">{error}</p>}
           <div className="flex justify-between">
             <button type="button" className="btn-ghost btn-sm" onClick={() => setStep(step - 1)}>Back</button>
             <button type="button" className="btn-gold" disabled={submitting} onClick={submit}>
-              {submitting ? 'Booking…' : kind === 'rental' && intent === 'quote' ? 'Create quote & hold slots' : 'Book it'}
+              {submitting
+                ? 'Booking…'
+                : kind === 'rental' && intent === 'quote'
+                  ? sendInvoice && contactEmail.trim() ? 'Create quote & send' : 'Create quote & hold slots'
+                  : kind === 'rental' && sendInvoice && contactEmail.trim() ? 'Book & send invoice' : 'Book it'}
             </button>
           </div>
         </section>
