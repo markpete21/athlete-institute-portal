@@ -95,12 +95,59 @@ function HoverCard({ hover }: { hover: Hover }) {
   );
 }
 
-export function DayGantt({ groups, dateISO, nowFrac }: { groups: GanttGroup[]; dateISO: string; nowFrac: number | null }) {
+/** Merge a facility's selected hours into contiguous HH:MM ranges. */
+function hoursToRanges(hoursSel: number[]): Array<{ start: string; end: string }> {
+  const sorted = [...hoursSel].sort((a, b) => a - b);
+  const ranges: Array<{ from: number; to: number }> = [];
+  for (const h of sorted) {
+    const last = ranges[ranges.length - 1];
+    if (last && last.to === h) last.to = h + 1;
+    else ranges.push({ from: h, to: h + 1 });
+  }
+  const hh = (n: number) => `${String(n).padStart(2, '0')}:00`;
+  return ranges.map((r) => ({ start: hh(r.from), end: hh(r.to) }));
+}
+
+export function DayGantt({ groups, dateISO, nowFrac, bookMode = false }: { groups: GanttGroup[]; dateISO: string; nowFrac: number | null; bookMode?: boolean }) {
   const [hover, setHover] = useState<Hover | null>(null);
+  // Booking selection: individual hour cells per facility, and/or whole facilities.
+  const [cellSel, setCellSel] = useState<Set<string>>(new Set()); // `${facilityId}:${hour}`
+  const [facSel, setFacSel] = useState<Set<number>>(new Set());
   const hours = Array.from(
     { length: DAY_AXIS.endHour - DAY_AXIS.startHour },
     (_, i) => DAY_AXIS.startHour + i,
   );
+
+  const toggleCell = (facilityId: number, hour: number) => {
+    const key = `${facilityId}:${hour}`;
+    const next = new Set(cellSel);
+    if (next.has(key)) next.delete(key);
+    else next.add(key);
+    setCellSel(next);
+  };
+  const toggleFacility = (facilityId: number) => {
+    const next = new Set(facSel);
+    if (next.has(facilityId)) next.delete(facilityId);
+    else next.add(facilityId);
+    setFacSel(next);
+  };
+
+  const bookHref = (() => {
+    const byFacility = new Map<number, number[]>();
+    for (const key of cellSel) {
+      const [fid, h] = key.split(':').map(Number);
+      byFacility.set(fid, [...(byFacility.get(fid) ?? []), h]);
+    }
+    const slots: string[] = [];
+    for (const [fid, hs] of byFacility) {
+      for (const r of hoursToRanges(hs)) slots.push(`${fid}_${r.start}_${r.end}`);
+    }
+    const p = new URLSearchParams({ date: dateISO });
+    if (slots.length) p.set('slots', slots.join(','));
+    if (facSel.size) p.set('facilities', [...facSel].join(','));
+    return `/schedule/book?${p.toString()}`;
+  })();
+  const selectionCount = cellSel.size + facSel.size;
 
   const enter = (bar: GanttBar) => (e: React.MouseEvent) => {
     const r = (e.currentTarget as HTMLElement).getBoundingClientRect();
@@ -111,7 +158,9 @@ export function DayGantt({ groups, dateISO, nowFrac }: { groups: GanttGroup[]; d
   const barStyle = (b: GanttBar): React.CSSProperties => ({
     left: `${b.start * 100}%`,
     width: `${Math.max(0.015, b.end - b.start) * 100}%`,
-    backgroundColor: SOURCE_COLOR[b.source] ?? 'var(--accent)',
+    // Internal bookings read as internal even when they were created through
+    // the rental machinery (the wizard's $0 path sets source='rental').
+    backgroundColor: b.isInternal ? SOURCE_COLOR.internal : SOURCE_COLOR[b.source] ?? 'var(--accent)',
     opacity: b.status === 'tentative' ? 0.55 : 1,
     outline: b.conflicted ? '2px solid #b4483c' : undefined,
     outlineOffset: b.conflicted ? 1 : undefined,
@@ -170,13 +219,21 @@ export function DayGantt({ groups, dateISO, nowFrac }: { groups: GanttGroup[]; d
                   {g.parent}
                 </div>
 
-                {/* col 2: child labels, heights mirroring the tracks */}
+                {/* col 2: child labels, heights mirroring the tracks. In book
+                    mode a label is a facility multi-select toggle. */}
                 <div className="w-36 shrink-0 border-r border-hairline">
                   {rows.map((r, i) => (
                     <div
                       key={r.facilityId}
-                      className={`px-3 py-3 label text-[10px] ${i > 0 ? 'border-t border-hairline' : ''}`}
-                      style={{ height: rowHeights[i] }}
+                      className={`px-3 py-3 label text-[10px] ${i > 0 ? 'border-t border-hairline' : ''} ${bookMode ? 'cursor-pointer' : ''}`}
+                      style={{
+                        height: rowHeights[i],
+                        ...(bookMode && facSel.has(r.facilityId)
+                          ? { backgroundColor: 'var(--accent)', color: '#fff' }
+                          : {}),
+                      }}
+                      onClick={bookMode ? () => toggleFacility(r.facilityId) : undefined}
+                      title={bookMode ? 'Select this facility (set dates & times in the next step)' : undefined}
                     >
                       {r.child}
                     </div>
@@ -209,6 +266,24 @@ export function DayGantt({ groups, dateISO, nowFrac }: { groups: GanttGroup[]; d
                         className={`absolute inset-x-0 ${ri > 0 ? 'border-t border-hairline' : ''}`}
                         style={{ top, height: rowHeights[ri] }}
                       >
+                        {/* book mode: clickable hour cells under the bars */}
+                        {bookMode && hours.map((h, hi) => {
+                          const selected = cellSel.has(`${r.facilityId}:${h}`);
+                          return (
+                            <div
+                              key={h}
+                              className="absolute bottom-0 top-0 z-30 cursor-pointer"
+                              style={{
+                                left: `${(hi / hours.length) * 100}%`,
+                                width: `${(1 / hours.length) * 100}%`,
+                                backgroundColor: selected ? 'var(--accent)' : 'transparent',
+                                opacity: selected ? 0.45 : 1,
+                              }}
+                              onClick={() => toggleCell(r.facilityId, h)}
+                              title={`${r.child} · ${h}:00–${h + 1}:00`}
+                            />
+                          );
+                        })}
                         {r.bars.map((b, bi) => {
                           const laneTop =
                             laneCount === 1 ? (rowHeights[ri] - BAR_H) / 2 : 4 + lanes[bi] * LANE_HEIGHT;
@@ -290,8 +365,37 @@ export function DayGantt({ groups, dateISO, nowFrac }: { groups: GanttGroup[]; d
         )}
       </div>
 
-      {hover && <HoverCard hover={hover} />}
+      {hover && !bookMode && <HoverCard hover={hover} />}
       <span className="sr-only">{dateISO}</span>
+
+      {/* booking selection bar */}
+      {bookMode && (
+        <div className="fixed inset-x-0 bottom-0 z-40 border-t border-hairline bg-paper px-6 py-3">
+          <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-3">
+            <span className="font-mono text-[11px] uppercase tracking-[0.12em] text-silver">
+              {cellSel.size > 0 && `${cellSel.size} time block${cellSel.size === 1 ? '' : 's'}`}
+              {cellSel.size > 0 && facSel.size > 0 && ' · '}
+              {facSel.size > 0 && `${facSel.size} facilit${facSel.size === 1 ? 'y' : 'ies'} (times next step)`}
+              {selectionCount === 0 && 'Click time blocks on the grid, or facility names on the left'}
+            </span>
+            <div className="ml-auto flex items-center gap-2">
+              {selectionCount > 0 && (
+                <button type="button" className="btn-ghost btn-sm" onClick={() => { setCellSel(new Set()); setFacSel(new Set()); }}>
+                  Clear
+                </button>
+              )}
+              <Link
+                href={bookHref}
+                className="btn-gold btn-sm"
+                aria-disabled={selectionCount === 0}
+                style={selectionCount === 0 ? { opacity: 0.4, pointerEvents: 'none' } : undefined}
+              >
+                Continue →
+              </Link>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

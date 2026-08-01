@@ -53,7 +53,7 @@ const fmtTime = (iso: string) =>
 export default async function SchedulePage({
   searchParams,
 }: {
-  searchParams: { view?: string; date?: string; location?: string; facilities?: string; source?: string; status?: string; internal?: string };
+  searchParams: { view?: string; date?: string; location?: string; facilities?: string; source?: string; status?: string; internal?: string; book?: string };
 }) {
   const view = (['day', 'week', 'month'].includes(searchParams.view ?? '') ? searchParams.view : 'day') as ViewMode;
   const date = /^\d{4}-\d{2}-\d{2}$/.test(searchParams.date ?? '') ? searchParams.date! : torontoDateOf(new Date().toISOString());
@@ -133,6 +133,8 @@ export default async function SchedulePage({
         .map((p) => p.id)
     : depth2.map((n) => n.id);
 
+  const bookMode = searchParams.book === '1';
+
   const qs = (over: Record<string, string>) => {
     const p = new URLSearchParams();
     p.set('view', over.view ?? view);
@@ -142,7 +144,11 @@ export default async function SchedulePage({
     if (searchParams.source) p.set('source', searchParams.source);
     if (searchParams.status) p.set('status', searchParams.status);
     if (searchParams.internal) p.set('internal', searchParams.internal);
-    for (const [k, v] of Object.entries(over)) p.set(k, v);
+    if (bookMode) p.set('book', '1');
+    for (const [k, v] of Object.entries(over)) {
+      if (v === '') p.delete(k);
+      else p.set(k, v);
+    }
     return `/schedule?${p.toString()}`;
   };
 
@@ -182,8 +188,21 @@ export default async function SchedulePage({
           <Link href="/conflicts" className="btn-ghost btn-sm">
             Conflicts{conflictedIds.size ? ` (${conflictPairs.length})` : ''}
           </Link>
+          {bookMode ? (
+            <Link href={qs({ book: '' })} className="btn-ghost btn-sm">Exit booking</Link>
+          ) : (
+            <Link href={qs({ view: 'day', book: '1' })} className="btn-gold btn-sm">Book</Link>
+          )}
         </div>
       </header>
+
+      {bookMode && (
+        <p className="card border-l-4 p-3 text-sm text-body" style={{ borderLeftColor: 'var(--accent)' }}>
+          <b>Booking mode.</b> Click hour blocks on the grid to pick exact times,
+          or click facility names on the left to pick whole facilities (you set
+          dates &amp; times on the next screen). Mix both freely, then Continue.
+        </p>
+      )}
 
       {/* Filters - location first, then facility (spec ordering) */}
       <form method="get" action="/schedule" className="card flex flex-wrap items-end gap-3 p-4">
@@ -279,7 +298,7 @@ export default async function SchedulePage({
       </div>
 
       {view === 'day' && (
-        <DayGantt groups={ganttForDay(tree, bookings, date, parentIds, conflictedIds)} dateISO={date} nowFrac={nowFrac} />
+        <DayGantt groups={ganttForDay(tree, bookings, date, parentIds, conflictedIds)} dateISO={date} nowFrac={nowFrac} bookMode={bookMode} />
       )}
 
       {view === 'week' && (
