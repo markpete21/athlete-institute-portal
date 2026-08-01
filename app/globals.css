@@ -380,7 +380,7 @@
 }
 .ps-topbar-in {
   max-width: 1180px; margin: 0 auto; padding: 0 20px; min-height: 70px;
-  display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 18px;
+  display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 18px;
 }
 .ps-brand { flex: 0 0 auto; font-size: 25px; font-weight: 800; letter-spacing: -0.02em; text-decoration: none; white-space: nowrap; }
 .ps-play { color: var(--ps-red); font-weight: 900; }
@@ -412,7 +412,7 @@
 @media (prefers-reduced-motion: reduce) { .ps-ball { animation: none; } }
 
 /* --- brand logo tiles --- */
-.ps-brands { display: flex; align-items: center; justify-content: center; gap: 12px; min-width: 0; }
+.ps-brands { display: flex; align-items: center; justify-content: flex-start; gap: 12px; min-width: 0; }
 .ps-bwrap { position: relative; }
 .ps-btile {
   width: 58px; height: 58px; display: flex; align-items: center; justify-content: center; padding: 5px;
@@ -421,8 +421,8 @@
 }
 .ps-btile img { max-width: 100%; max-height: 100%; object-fit: contain; }
 .ps-btile:hover { background: rgba(255, 255, 255, 0.09); }
-.ps-btile:hover, .ps-bwrap.open .ps-btile { border-color: var(--bc); transform: translateY(-1px); }
-.ps-bwrap.open .ps-btile { box-shadow: 0 0 0 1px var(--bc) inset; }
+.ps-btile:hover { border-color: color-mix(in srgb, var(--bc) 55%, transparent); transform: translateY(-1px); }
+.ps-bwrap.open .ps-btile { border-color: var(--bc); transform: translateY(-1px); }
 .ps-mono-mark { font-weight: 800; font-size: 17px; letter-spacing: -0.02em; }
 
 /* light hover pill (a dark tooltip would vanish on the dark header) */
