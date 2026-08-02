@@ -3,6 +3,7 @@ import { headers } from 'next/headers';
 import { ClerkProvider } from '@clerk/nextjs';
 import { brandCssVars, DEFAULT_BRAND } from '@ai/foundation';
 import './globals.css';
+import './print.css';
 
 export const metadata: Metadata = {
   title: 'Athlete Institute Portal',

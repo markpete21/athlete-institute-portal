@@ -18,6 +18,7 @@ import {
   recordPaymentAction,
   removeAddonAction,
   removeLineAction,
+  updateRentalDetailsAction,
 } from '../actions';
 
 export const dynamic = 'force-dynamic';
@@ -34,7 +35,7 @@ export default async function RentalBuilderPage({ params }: { params: { id: stri
   const rental = await getRental(Number(params.id));
   if (!rental) notFound();
 
-  const [{ data: facRows }, addons, conflictPairs, { data: installments }, waivers, waiverSig] = await Promise.all([
+  const [{ data: facRows }, addons, conflictPairs, { data: installments }, waivers, waiverSig, { data: organizations }] = await Promise.all([
     supabaseAdmin().from('facilities').select('id, parent_id, name, label, sort_order, bookable, deleted_at').is('deleted_at', null),
     listAddons(),
     findConflictPairs(new Date().toISOString(), new Date(Date.now() + 365 * 86400_000).toISOString()),
@@ -43,6 +44,7 @@ export default async function RentalBuilderPage({ params }: { params: { id: stri
     (rental as { waiver_id?: number | null }).waiver_id
       ? signatureFor('rental', rental.id, (rental as { waiver_id: number }).waiver_id)
       : Promise.resolve(null),
+    supabaseAdmin().from('organizations').select('id, name').eq('status', 'active').order('name'),
   ]);
   const attachedWaiverId = (rental as { waiver_id?: number | null }).waiver_id ?? null;
   const ordered = flattenTree(buildTree((facRows ?? []) as FacilityNode[]));
@@ -66,7 +68,18 @@ export default async function RentalBuilderPage({ params }: { params: { id: stri
             {rental.contact_name && <span className="tag">{rental.contact_name}</span>}
           </div>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
+          <Link href={`/rentals/${rental.id}/document?type=quote`} className="btn-ghost btn-sm">
+            Quote PDF
+          </Link>
+          <Link href={`/rentals/${rental.id}/document?type=agreement`} className="btn-ghost btn-sm">
+            Agreement PDF
+          </Link>
+          {(installments ?? []).length > 0 && (
+            <Link href={`/rentals/${rental.id}/document?type=invoice`} className="btn-ghost btn-sm">
+              Invoice PDF
+            </Link>
+          )}
           <a href={`${playBase}/quote/${rental.quote_token}`} target="_blank" className="btn-ghost btn-sm">
             Online quote ↗
           </a>
@@ -78,6 +91,72 @@ export default async function RentalBuilderPage({ params }: { params: { id: stri
           )}
         </div>
       </header>
+
+      {/* Header details were captured once at creation and then frozen; a
+          typo'd email meant rebuilding the quote. */}
+      {rental.status !== 'cancelled' && (
+        <details className="card p-5">
+          <summary className="cursor-pointer text-2xl">Edit details</summary>
+          <form action={updateRentalDetailsAction} className="mt-4 grid gap-3 sm:grid-cols-3">
+            <input type="hidden" name="rentalId" value={rental.id} />
+            <div className="sm:col-span-2">
+              <label className="field-label" htmlFor="ed-title">Title</label>
+              <input id="ed-title" name="title" defaultValue={rental.title} required className="input" />
+            </div>
+            <div>
+              <label className="field-label" htmlFor="ed-type">Type</label>
+              <select id="ed-type" name="bookingType" defaultValue={rental.booking_type ?? ''} className="input">
+                <option value="">—</option>
+                {['camp', 'event', 'tournament', 'league', 'clinic', 'other'].map((t) => (
+                  <option key={t} value={t} className="capitalize">{t}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="field-label" htmlFor="ed-org">Organization</label>
+              <select id="ed-org" name="organizationId" defaultValue={rental.organization_id ?? ''} className="input">
+                <option value="">— none —</option>
+                {(organizations ?? []).map((o) => (
+                  <option key={o.id} value={o.id}>{o.name}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="field-label" htmlFor="ed-name">Contact name</label>
+              <input id="ed-name" name="contactName" defaultValue={rental.contact_name ?? ''} className="input" />
+            </div>
+            <div>
+              <label className="field-label" htmlFor="ed-email">Contact email</label>
+              <input id="ed-email" type="email" name="contactEmail" defaultValue={rental.contact_email ?? ''} className="input" />
+            </div>
+            <div>
+              <label className="field-label" htmlFor="ed-phone">Contact phone</label>
+              <input id="ed-phone" name="contactPhone" defaultValue={rental.contact_phone ?? ''} className="input" />
+            </div>
+            <div>
+              <label className="field-label" htmlFor="ed-deposit">Deposit %</label>
+              <input
+                id="ed-deposit" type="number" name="depositPct" min={0} max={100}
+                defaultValue={rental.deposit_pct} className="input"
+              />
+            </div>
+            <div className="sm:col-span-3">
+              <label className="field-label" htmlFor="ed-notes">Notes</label>
+              <textarea id="ed-notes" name="notes" defaultValue={rental.notes ?? ''} className="input min-h-16" />
+            </div>
+            <div className="sm:col-span-3 flex items-center gap-3">
+              <button type="submit" className="btn-gold btn-sm">Save details</button>
+              {(installments ?? []).length > 0 && (
+                <span className="text-sm text-silver">
+                  Changing the deposit % re-totals the quote but leaves the
+                  existing payment schedule alone — money already invoiced is
+                  not restated.
+                </span>
+              )}
+            </div>
+          </form>
+        </details>
+      )}
 
       <section className="flex flex-col gap-3">
         <h2 className="text-2xl">Date/time blocks</h2>

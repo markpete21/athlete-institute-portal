@@ -1,0 +1,48 @@
+/* ---------------------------------------------------------------------------
+   Printable rental documents (/rentals/[id]/document)
+
+   The document must come off the printer as a clean sheet of paper, not as a
+   screenshot of the admin console. At print time every piece of app chrome is
+   removed: the AdminShell rail, the favourites bar and the pinned-program
+   stats band all disappear, the shell's grid collapses so the sheet is not
+   inset by a now-invisible sidebar, and the page reflows to full width.
+
+   .doc-noprint marks in-page controls (Back, document tabs, the Print button
+   and the how-to line) that belong on screen only.
+--------------------------------------------------------------------------- */
+@media print {
+  .doc-noprint { display: none !important; }
+
+  /* Collapse the shell so the document isn't offset by the hidden rail. */
+  .admin-shell { display: block !important; }
+  .ash-rail,
+  .ash-topbar,
+  .ash-infobar { display: none !important; }
+  .ash-main { display: block !important; }
+  .ash-content { padding: 0 !important; margin: 0 !important; }
+
+  .doc-page {
+    max-width: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  /* Hairlines and the gold rule must survive the browser's default
+     "don't print backgrounds" behaviour. */
+  .doc-sheet,
+  .doc-sheet * {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  .doc-sheet { font-size: 11pt; }
+  .doc-sheet table { width: 100%; border-collapse: collapse; }
+  .doc-sheet thead { display: table-header-group; }   /* repeat headers per page */
+  .doc-sheet tr,
+  .doc-sheet section { break-inside: avoid; }
+  .doc-sheet footer { break-inside: avoid; }
+
+  a[href]::after { content: none !important; }        /* no URL footnotes */
+
+  @page { margin: 16mm; }
+}

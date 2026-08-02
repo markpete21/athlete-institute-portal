@@ -71,7 +71,10 @@ export const MODULES: ModuleDef[] = [
     { label: 'Open conflicts', href: '/conflicts' },
   ] },
   { key: 'rentals', label: 'Rentals', group: 'Facilities & Scheduling', href: '/rentals', actions: [
-    { label: 'Quotes & agreements', href: '/rentals' },
+    { label: 'Find a quote or rental', href: '/rentals' },
+    { label: 'Unpaid & overdue', href: '/rentals?owing=1' },
+    { label: 'Invoices', href: '/rentals/invoices' },
+    { label: 'Overdue invoices', href: '/rentals/invoices?status=overdue' },
     { label: 'Rates & settings', href: '/rentals/settings' },
   ] },
   { key: 'displays', label: 'TV Displays', group: 'Facilities & Scheduling', href: '/displays', actions: [

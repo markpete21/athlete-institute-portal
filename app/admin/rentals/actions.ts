@@ -10,6 +10,7 @@ import {
   emailQuoteLink,
   removeRentalAddon,
   removeRentalLine,
+  updateRentalDetails,
 } from '@/lib/rentals/quotes';
 
 async function requireStaff() {
@@ -130,4 +131,34 @@ export async function cancelRentalAction(formData: FormData): Promise<void> {
   const { cancelRental } = await import('@/lib/rentals/payments');
   await cancelRental(rentalId, session.userId!, String(formData.get('reason') ?? '') || undefined);
   revalidatePath(`/rentals/${rentalId}`);
+}
+
+/**
+ * Edit a rental's header details. Nothing could change these after creation,
+ * so a wrong contact email meant rebuilding the quote from scratch.
+ */
+export async function updateRentalDetailsAction(formData: FormData): Promise<void> {
+  const session = await requireStaff();
+  const rentalId = Number(formData.get('rentalId'));
+  if (!rentalId) throw new Error('Rental id required.');
+
+  const orgRaw = String(formData.get('organizationId') ?? '');
+  await updateRentalDetails(
+    rentalId,
+    {
+      title: String(formData.get('title') ?? ''),
+      bookingType: String(formData.get('bookingType') ?? '') || null,
+      organizationId: orgRaw === '' ? null : Number(orgRaw),
+      contactName: String(formData.get('contactName') ?? ''),
+      contactEmail: String(formData.get('contactEmail') ?? ''),
+      contactPhone: String(formData.get('contactPhone') ?? ''),
+      notes: String(formData.get('notes') ?? ''),
+      depositPct: Number(formData.get('depositPct')),
+    },
+    session.userId!,
+  );
+
+  revalidatePath(`/rentals/${rentalId}`);
+  revalidatePath('/rentals');
+  revalidatePath('/rentals/invoices');
 }

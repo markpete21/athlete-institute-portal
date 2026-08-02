@@ -22,3 +22,6 @@ build/
 .vercel
 __compiled__/
 .env*
+
+# scratch build dirs from NEXT_DIST_DIR
+.next-*/

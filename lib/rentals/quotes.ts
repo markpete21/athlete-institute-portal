@@ -154,6 +154,73 @@ async function recomputeTotals(rentalId: number): Promise<void> {
   if (error) throw new Error(`rollup persist failed: ${error.message}`);
 }
 
+/**
+ * Edit the header details of an existing rental. The wizard and the create
+ * form captured these once and nothing could change them afterwards, so a
+ * typo'd contact email meant rebuilding the quote from scratch.
+ *
+ * Changing deposit_pct re-rolls the totals, but deliberately does NOT rewrite
+ * an instalment schedule that already exists - money already invoiced or
+ * charged is not something a percentage tweak should silently restate.
+ */
+export async function updateRentalDetails(
+  id: number,
+  patch: {
+    title?: string;
+    bookingType?: string | null;
+    organizationId?: number | null;
+    contactName?: string | null;
+    contactEmail?: string | null;
+    contactPhone?: string | null;
+    notes?: string | null;
+    depositPct?: number;
+  },
+  actorClerkId: string,
+): Promise<{ depositChanged: boolean; scheduleExists: boolean }> {
+  const db = supabaseAdmin();
+  const { data: cur, error: e0 } = await db
+    .from('rentals')
+    .select('id, status, deposit_pct')
+    .eq('id', id)
+    .maybeSingle();
+  if (e0) throw new Error(`rental read failed: ${e0.message}`);
+  if (!cur) throw new Error('Rental not found.');
+  if (cur.status === 'cancelled') throw new Error('This rental is cancelled and cannot be edited.');
+
+  if (patch.depositPct !== undefined) {
+    if (!Number.isInteger(patch.depositPct) || patch.depositPct < 0 || patch.depositPct > 100) {
+      throw new Error('Deposit must be a whole percentage between 0 and 100.');
+    }
+  }
+  if (patch.title !== undefined && !patch.title.trim()) throw new Error('Title is required.');
+
+  const row: Record<string, unknown> = {};
+  if (patch.title !== undefined) row.title = patch.title.trim();
+  if (patch.bookingType !== undefined) row.booking_type = patch.bookingType || null;
+  if (patch.organizationId !== undefined) row.organization_id = patch.organizationId;
+  if (patch.contactName !== undefined) row.contact_name = patch.contactName?.trim() || null;
+  if (patch.contactEmail !== undefined) row.contact_email = patch.contactEmail?.trim() || null;
+  if (patch.contactPhone !== undefined) row.contact_phone = patch.contactPhone?.trim() || null;
+  if (patch.notes !== undefined) row.notes = patch.notes?.trim() || null;
+  if (patch.depositPct !== undefined) row.deposit_pct = patch.depositPct;
+
+  if (Object.keys(row).length === 0) return { depositChanged: false, scheduleExists: false };
+
+  const { error } = await db.from('rentals').update(row).eq('id', id);
+  if (error) throw new Error(`rental update failed: ${error.message}`);
+
+  const depositChanged = patch.depositPct !== undefined && patch.depositPct !== cur.deposit_pct;
+  if (depositChanged) await recomputeTotals(id);
+
+  const { count } = await db
+    .from('rental_installments')
+    .select('id', { count: 'exact', head: true })
+    .eq('rental_id', id);
+
+  await audit({ actorId: actorClerkId, action: 'rental.details-updated', target: `rental:${id}`, meta: { ...patch } });
+  return { depositChanged, scheduleExists: (count ?? 0) > 0 };
+}
+
 export interface CreateRentalInput {
   title: string;
   isInternal?: boolean;
