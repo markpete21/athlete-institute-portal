@@ -662,6 +662,9 @@
   background-color: #171613;
   background-image: radial-gradient(rgba(184, 158, 109, 0.2) 1px, transparent 1.4px);
   background-size: 13px 13px; background-position: -3px -3px;
+  /* dark ground: the Compete bracket's hairlines must relight, same as the
+     topbar — ink-on-near-black left the ball floating with no bracket */
+  --pw-bracket-line: #8c877c;
 }
 
 /* Compete inverts the Play lockup: gold word, red ball. Same everything else. */
