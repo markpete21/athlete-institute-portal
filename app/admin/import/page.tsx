@@ -1,5 +1,5 @@
 import { supabaseAdmin } from '@ai/foundation/supabase';
-import { commitJobAction, resolveRowAction, sendClaimEmailsAction, uploadCsvAction } from './actions';
+import { abandonJobAction, commitJobAction, resolveRowAction, sendClaimEmailsAction, uploadCsvAction } from './actions';
 
 export const dynamic = 'force-dynamic';
 
@@ -19,7 +19,7 @@ interface StagedRow {
  * Upload a CSV → review flagged duplicates (merge/keep/skip) → commit →
  * send claim emails. See docs/playbook-import.md for the CSV schema.
  */
-export default async function ImportAdminPage() {
+export default async function ImportAdminPage({ searchParams }: { searchParams: { job?: string } }) {
   const db = supabaseAdmin();
   const { data: jobs } = await db
     .from('import_jobs')
@@ -27,7 +27,10 @@ export default async function ImportAdminPage() {
     .order('id', { ascending: false })
     .limit(10);
 
-  const staged = ((jobs ?? []) as JobRow[]).find((j) => j.status === 'staged');
+  // Several staged jobs can coexist (re-uploads while reviewing) — review the
+  // one picked via ?job=, defaulting to the newest staged.
+  const stagedJobs = ((jobs ?? []) as JobRow[]).filter((j) => j.status === 'staged');
+  const staged = stagedJobs.find((j) => j.id === Number(searchParams.job)) ?? stagedJobs[0];
   let dupeRows: StagedRow[] = [];
   if (staged) {
     const { data } = await db
@@ -107,10 +110,24 @@ export default async function ImportAdminPage() {
             </div>
           ))}
 
-          <form action={commitJobAction}>
-            <input type="hidden" name="jobId" value={staged.id} />
-            <button type="submit" className="btn-gold">Commit import</button>
-          </form>
+          <div className="flex items-center gap-3">
+            <form action={commitJobAction}>
+              <input type="hidden" name="jobId" value={staged.id} />
+              <button type="submit" className="btn-gold">Commit import</button>
+            </form>
+            <form action={abandonJobAction}>
+              <input type="hidden" name="jobId" value={staged.id} />
+              <button type="submit" className="btn-ghost">Abandon this upload</button>
+            </form>
+            {stagedJobs.length > 1 && (
+              <span className="text-sm text-silver">
+                {stagedJobs.length} staged uploads — reviewing #{staged.id}.{' '}
+                {stagedJobs.filter((j) => j.id !== staged.id).map((j) => (
+                  <a key={j.id} href={`/import?job=${j.id}`} className="underline hover:text-ink">review #{j.id}</a>
+                ))}
+              </span>
+            )}
+          </div>
         </section>
       )}
 

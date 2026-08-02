@@ -15,13 +15,14 @@ export interface Profile {
   email: string | null;
   first_name: string | null;
   last_name: string | null;
+  phone: string | null;
   user_type: 'customer' | 'organization' | 'tenant' | 'staff';
   status: 'active' | 'suspended' | 'archived';
   settings: Record<string, unknown>;
   family_id: number | null;
 }
 
-const COLS = 'id, clerk_user_id, email, first_name, last_name, user_type, status, settings, family_id';
+const COLS = 'id, clerk_user_id, email, first_name, last_name, phone, user_type, status, settings, family_id';
 
 /** Mirror the signed-in Clerk user into profiles and return the row. */
 export async function getOrCreateProfile(): Promise<Profile> {
@@ -36,22 +37,42 @@ export async function getOrCreateProfile(): Promise<Profile> {
   const db = supabaseAdmin();
   const { data: known } = await db
     .from('profiles')
-    .select('id')
+    .select(`${COLS}, claim_token`)
     .eq('clerk_user_id', user.id)
     .maybeSingle();
 
-  if (!known && email) {
-    // Claim flow: adopt an imported-but-unclaimed profile with this email.
-    const { adoptUnclaimedProfile } = await import('@/lib/import/playbook');
-    await adoptUnclaimedProfile(user.id, email);
+  // A merged account is a pointer, not a person: staff folded this profile
+  // into a survivor (lib/accounts/merge.ts), so the old login lands on the
+  // merged account instead of resurrecting an archived shell. Checked BEFORE
+  // the upsert so the shell's freed email is never re-claimed. One hop only.
+  const mergedInto = (known?.settings as Record<string, unknown> | null)?.merged_into;
+  if (typeof mergedInto === 'number') {
+    const { data: survivor } = await db.from('profiles').select(COLS).eq('id', mergedInto).maybeSingle();
+    if (survivor) return survivor as Profile;
+  }
+
+  if (!known) {
+    // Claim flow, strongest signal first: a claim TOKEN from the import's
+    // /sign-up?claim= link (parked in a cookie by middleware) adopts the
+    // imported profile even when the sign-up email differs from the one on
+    // file. Falls back to exact-email adoption.
+    const { adoptUnclaimedProfile, adoptUnclaimedProfileByToken } = await import('@/lib/import/playbook');
+    let adopted: number | null = null;
+    try {
+      const { cookies } = await import('next/headers');
+      const token = cookies().get('ai_claim_token')?.value;
+      if (token) adopted = await adoptUnclaimedProfileByToken(user.id, token);
+    } catch { /* no request scope (e.g. verify routes) — email adoption below */ }
+    if (!adopted && email) adopted = await adoptUnclaimedProfile(user.id, email);
 
     // Re-link flow: a profile may already exist for this VERIFIED email under a
     // different clerk_user_id - e.g. the dev→prod Clerk instance switch, or a
     // returning user who re-signed-up. `profiles.email` is unique, so a plain
     // insert would 500; the same verified email is the same person, so adopt
     // that row (Clerk verifies primary-email ownership). Unverified emails are
-    // never re-linked (guards against email-squatting).
-    if (emailVerified) {
+    // never re-linked (guards against email-squatting). Skipped when a token
+    // adoption just bound this Clerk id — two rows must not share it.
+    if (!adopted && email && emailVerified) {
       const { data: byEmail } = await db
         .from('profiles')
         .select('id, clerk_user_id')

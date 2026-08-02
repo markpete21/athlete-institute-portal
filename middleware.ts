@@ -53,7 +53,24 @@ export default clerkMiddleware(async (auth, req) => {
   requestHeaders.set('x-portal-path', pathname);
 
   if (isExempt(pathname)) {
-    return NextResponse.next({ request: { headers: requestHeaders } });
+    const res = NextResponse.next({ request: { headers: requestHeaders } });
+    // Account-claim flow: /sign-up?claim=<token> (from the import's claim
+    // email). The token is parked in a short-lived cookie so that after Clerk
+    // finishes sign-up — with WHATEVER email the user chose — the first
+    // getOrCreateProfile() can adopt the imported profile by token.
+    if (pathname.startsWith('/sign-up')) {
+      const claim = req.nextUrl.searchParams.get('claim');
+      if (claim && /^[a-f0-9-]{16,64}$/i.test(claim)) {
+        res.cookies.set('ai_claim_token', claim, {
+          httpOnly: true,
+          sameSite: 'lax',
+          secure: process.env.NODE_ENV === 'production',
+          maxAge: 3600,
+          path: '/',
+        });
+      }
+    }
+    return res;
   }
 
   // Admin host: require a signed-in session before serving anything. The

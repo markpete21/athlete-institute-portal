@@ -62,7 +62,7 @@ export async function GET() {
     record('review: duplicate merged away', true, `row ${dupe.row_num} merged into row ${keep.row_num}`);
 
     // 3. commit → 4 households, 9 members, 5 unclaimed profiles
-    const committed = await commitImportJob(jobId, 'system:verify', 'http://play.localhost:3101');
+    const committed = await commitImportJob(jobId, 'system:verify');
     record(
       'commit: households/members/profiles',
       committed.familiesMade === 4 && committed.membersMade === 9 && committed.profilesMade === 5,

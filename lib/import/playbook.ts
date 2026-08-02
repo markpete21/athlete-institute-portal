@@ -99,7 +99,12 @@ export function stageRows(csvText: string): { rows: StagedRow[]; dupeGroups: num
     };
   });
 
-  // Group duplicates: email exact → name+address fuzzy.
+  // Group duplicates: email exact → name+address fuzzy. BLOCKED, not
+  // all-pairs: the fuzzy rule requires an identical normalized address, so
+  // rows are bucketed by address and only compared within a bucket. At the
+  // real Playbook size (~7,000 rows) all-pairs Levenshtein was ~24M
+  // comparisons in one server action — a function-timeout waiting to happen;
+  // blocking makes it linear plus household-sized quadratics.
   let nextGroup = 1;
   const groupOf = new Map<number, number>(); // row index -> group
   const assign = (a: number, b: number) => {
@@ -108,14 +113,27 @@ export function stageRows(csvText: string): { rows: StagedRow[]; dupeGroups: num
     groupOf.set(b, g);
   };
 
+  const byEmail = new Map<string, number>(); // email -> first row index
+  const byAddress = new Map<string, number[]>(); // normalized address -> row indices
   for (let i = 0; i < staged.length; i++) {
-    for (let j = i + 1; j < staged.length; j++) {
-      const A = staged[i], B = staged[j];
-      if (A.email && B.email && A.email === B.email) { assign(i, j); continue; }
-      const nameA = norm(`${A.first_name} ${A.last_name}`);
-      const nameB = norm(`${B.first_name} ${B.last_name}`);
-      const addrSame = !!A.address && norm(A.address) === norm(B.address);
-      if (nameA && nameB && addrSame && levenshtein(nameA, nameB) <= 2) assign(i, j);
+    const r = staged[i];
+    if (r.email) {
+      const first = byEmail.get(r.email);
+      if (first !== undefined) assign(first, i);
+      else byEmail.set(r.email, i);
+    }
+    const addr = norm(r.address);
+    if (addr) {
+      const bucket = byAddress.get(addr) ?? [];
+      const nameI = norm(`${r.first_name} ${r.last_name}`);
+      if (nameI) {
+        for (const j of bucket) {
+          const nameJ = norm(`${staged[j].first_name} ${staged[j].last_name}`);
+          if (nameJ && levenshtein(nameI, nameJ) <= 2) assign(j, i);
+        }
+      }
+      bucket.push(i);
+      byAddress.set(addr, bucket);
     }
   }
   groupOf.forEach((g, idx) => { staged[idx].dupe_group = g; });
@@ -161,7 +179,7 @@ export async function resolveRow(rowId: number, resolution: 'new' | 'merge' | 's
  * via notify() (skipped while Resend is keyless). Idempotent guard: job must
  * be 'staged'.
  */
-export async function commitImportJob(jobId: number, actorClerkId: string, appUrl: string) {
+export async function commitImportJob(jobId: number, actorClerkId: string) {
   const db = supabaseAdmin();
   const { data: job, error: jErr } = await db
     .from('import_jobs').select('id, status').eq('id', jobId).single();
@@ -177,7 +195,23 @@ export async function commitImportJob(jobId: number, actorClerkId: string, appUr
   const rows = (rowsRaw ?? []) as ImportRow[];
 
   const kept = rows.filter((r) => r.resolution === 'new');
-  let familiesMade = 0, membersMade = 0, profilesMade = 0;
+  let familiesMade = 0, membersMade = 0, profilesMade = 0, fieldsMerged = 0;
+
+  // Field-level merge: a row resolved 'merge' is not just dropped — any data
+  // it carries that its target row LACKS (phone, dob, address, email, …)
+  // folds into the target before materializing, so "merge" never loses data.
+  const MERGE_FIELDS = ['first_name', 'last_name', 'email', 'phone', 'address', 'city', 'postal', 'dob'] as const;
+  const keptById = new Map(kept.map((r) => [r.id, r]));
+  for (const r of rows.filter((x) => x.resolution === 'merge' && x.merge_into)) {
+    const target = keptById.get(r.merge_into!);
+    if (!target) continue;
+    for (const f of MERGE_FIELDS) {
+      if (!target[f] && r[f]) {
+        target[f] = r[f];
+        fieldsMerged++;
+      }
+    }
+  }
 
   // Households: group kept rows by household_key (rows without one become
   // single-member households).
@@ -255,10 +289,21 @@ export async function commitImportJob(jobId: number, actorClerkId: string, appUr
     actorId: actorClerkId,
     action: 'import.committed',
     target: `import_job:${jobId}`,
-    meta: { familiesMade, membersMade, profilesMade },
+    meta: { familiesMade, membersMade, profilesMade, fieldsMerged },
   });
 
-  return { familiesMade, membersMade, profilesMade };
+  return { familiesMade, membersMade, profilesMade, fieldsMerged };
+}
+
+/** Discard a staged job without committing (review dead ends, re-uploads). */
+export async function abandonImportJob(jobId: number, actorClerkId: string): Promise<void> {
+  const db = supabaseAdmin();
+  const { data: job, error } = await db.from('import_jobs').select('status').eq('id', jobId).single();
+  if (error) throw new Error(error.message);
+  if (job.status !== 'staged') throw new Error(`Job is ${job.status}, not staged.`);
+  const { error: e2 } = await db.from('import_jobs').update({ status: 'abandoned' }).eq('id', jobId);
+  if (e2) throw new Error(`abandon failed: ${e2.message}`);
+  await audit({ actorId: actorClerkId, action: 'import.abandoned', target: `import_job:${jobId}` });
 }
 
 /** Send (or re-send) claim emails for a committed job's unclaimed profiles. */
@@ -295,6 +340,37 @@ export async function sendClaimEmails(jobId: number, appUrl: string) {
  * profile with the same email is adopted by the new Clerk identity instead of
  * creating a duplicate.
  */
+/**
+ * Token adoption: the claim-email link (/sign-up?claim=<token>) parks the
+ * token in a cookie (middleware), so the imported profile is adopted even
+ * when the user signs up with a DIFFERENT email than the one on file. The
+ * Clerk mirror upsert that follows refreshes the row's email to the one they
+ * actually signed up with.
+ */
+export async function adoptUnclaimedProfileByToken(clerkUserId: string, token: string): Promise<number | null> {
+  const db = supabaseAdmin();
+  const { data: unclaimed } = await db
+    .from('profiles')
+    .select('id, email')
+    .eq('claim_token', token)
+    .like('clerk_user_id', 'unclaimed:%')
+    .maybeSingle();
+  if (!unclaimed) return null;
+
+  const { error } = await db
+    .from('profiles')
+    .update({ clerk_user_id: clerkUserId, claimed_at: new Date().toISOString() })
+    .eq('id', unclaimed.id);
+  if (error) throw new Error(`claim adoption failed: ${error.message}`);
+  await audit({
+    actorId: clerkUserId,
+    action: 'profile.claimed',
+    target: `profile:${unclaimed.id}`,
+    meta: { via: 'token', imported_email: unclaimed.email },
+  });
+  return unclaimed.id;
+}
+
 export async function adoptUnclaimedProfile(clerkUserId: string, email: string): Promise<number | null> {
   const db = supabaseAdmin();
   const { data: unclaimed } = await db

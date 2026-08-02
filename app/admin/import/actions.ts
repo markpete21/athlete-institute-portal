@@ -2,7 +2,7 @@
 
 import { revalidatePath } from 'next/cache';
 import { getPortalSession } from '@/lib/auth';
-import { commitImportJob, createImportJob, resolveRow, sendClaimEmails } from '@/lib/import/playbook';
+import { abandonImportJob, commitImportJob, createImportJob, resolveRow, sendClaimEmails } from '@/lib/import/playbook';
 
 async function requireStaff() {
   const session = await getPortalSession();
@@ -32,8 +32,14 @@ export async function resolveRowAction(formData: FormData): Promise<void> {
 export async function commitJobAction(formData: FormData): Promise<void> {
   const session = await requireStaff();
   const jobId = Number(formData.get('jobId'));
-  const appUrl = process.env.NEXT_PUBLIC_PLAY_URL ?? 'https://play.athleteinstitute.ca';
-  await commitImportJob(jobId, session.userId!, appUrl);
+  await commitImportJob(jobId, session.userId!);
+  revalidatePath('/import');
+}
+
+export async function abandonJobAction(formData: FormData): Promise<void> {
+  const session = await requireStaff();
+  const jobId = Number(formData.get('jobId'));
+  await abandonImportJob(jobId, session.userId!);
   revalidatePath('/import');
 }
 
