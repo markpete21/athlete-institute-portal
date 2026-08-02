@@ -172,18 +172,8 @@
 .ash-ball {
   color: var(--accent); display: inline-block; transform-origin: bottom center;
   font-size: 1.22em; margin-left: 2px;
-  animation: ash-dribble 1.7s ease-in-out infinite;
-}
-/* peak aligns the dot's ink-top with the cap height of the P/l */
-@keyframes ash-dribble {
-  0%   { transform: translateY(0)       scaleY(1); }
-  12%  { transform: translateY(-13.1px) scaleY(1.06); }
-  24%  { transform: translateY(0)       scaleY(0.86); }
-  30%  { transform: translateY(0)       scaleY(1); }
-  42%  { transform: translateY(-5.3px); }
-  52%  { transform: translateY(0)       scaleY(0.93); }
-  58%  { transform: translateY(0)       scaleY(1); }
-  100% { transform: translateY(0); }
+  /* Same dribble as the shared lockup (@keyframes pw-dribble below). */
+  animation: pw-dribble 1.8s infinite;
 }
 @media (prefers-reduced-motion: reduce) { .ash-ball { animation: none; } }
 
@@ -397,17 +387,9 @@
 }
 .ps-ball {
   color: var(--accent); display: inline-block; transform-origin: bottom center;
-  font-size: 1.22em; margin-left: 0; animation: ps-dribble 1.7s ease-in-out infinite;
-}
-@keyframes ps-dribble {
-  0%   { transform: translateY(0)       scaleY(1); }
-  12%  { transform: translateY(-12.1px) scaleY(1.06); }
-  24%  { transform: translateY(0)       scaleY(0.86); }
-  30%  { transform: translateY(0)       scaleY(1); }
-  42%  { transform: translateY(-4.9px); }
-  52%  { transform: translateY(0)       scaleY(0.93); }
-  58%  { transform: translateY(0)       scaleY(1); }
-  100% { transform: translateY(0); }
+  font-size: 1.22em; margin-left: 0;
+  /* Same dribble as the shared lockup (@keyframes pw-dribble below). */
+  animation: pw-dribble 1.8s infinite;
 }
 @media (prefers-reduced-motion: reduce) { .ps-ball { animation: none; } }
 
@@ -629,23 +611,24 @@
 .pw-ball {
   color: var(--accent, #9e8959); display: inline-block; transform-origin: bottom center;
   font-size: 1.22em; margin-left: 0;
-  animation: pw-dribble 1.7s ease-in-out infinite;
+  animation: pw-dribble 1.8s infinite;
 }
-/* Peak puts the BOTTOM of the ball on the top of the "Pl"; the second bounce
-   reaches half that height. Both in the ball's own em (it renders at 1.22em):
-   cap height 0.7275em of the lockup + the dot's 0.0127em below the baseline
-   = 0.7404em of the lockup, which is 0.607em at 1.22 — and half is 0.303em.
-   Gravity easing per leg — ease-out rising, ease-in falling — with squash only
-   during ground contact and no holds between bounces, so the two dribbles read
-   as one continuous motion before the rest beat. */
+/* THE Play dribble — the hub's play-icon.svg motion beat for beat: a full
+   bounce to the cap height of "Pl", a second bounce at about a third, a flat
+   squash on each impact (bottom pinned to the baseline), looping with no
+   rest. Timing functions are the icon's keySplines. Heights in the ball's
+   own em (it renders at 1.22em of the lockup): cap height 0.7404 lockup-em
+   = 0.607em; the icon's second bounce is 33/93 of that = 0.215em. */
 @keyframes pw-dribble {
-  0%   { transform: translateY(0)        scaleY(1);    animation-timing-function: cubic-bezier(0.215, 0.61, 0.355, 1); }
-  13%  { transform: translateY(-0.607em) scaleY(1);    animation-timing-function: cubic-bezier(0.55, 0.055, 0.675, 0.19); }
-  25%  { transform: translateY(0)        scaleY(0.92); animation-timing-function: cubic-bezier(0.215, 0.61, 0.355, 1); }
-  35%  { transform: translateY(-0.303em) scaleY(1);    animation-timing-function: cubic-bezier(0.55, 0.055, 0.675, 0.19); }
-  44%  { transform: translateY(0)        scaleY(0.95); }
-  50%  { transform: translateY(0)        scaleY(1); }
-  100% { transform: translateY(0)        scaleY(1); }
+  0%   { transform: translateY(0)        scale(1.36, 0.64); animation-timing-function: cubic-bezier(0.3, 0, 0.6, 1); }
+  7%   { transform: translateY(0)        scale(1, 1);       animation-timing-function: cubic-bezier(0, 0, 0.2, 1); }
+  32%  { transform: translateY(-0.607em) scale(1, 1);       animation-timing-function: cubic-bezier(0.4, 0, 1, 1); }
+  55%  { transform: translateY(0)        scale(1, 1);       animation-timing-function: cubic-bezier(0.5, 0, 1, 1); }
+  60%  { transform: translateY(0)        scale(1.21, 0.79); animation-timing-function: cubic-bezier(0.3, 0, 0.6, 1); }
+  65%  { transform: translateY(0)        scale(1, 1);       animation-timing-function: cubic-bezier(0, 0, 0.2, 1); }
+  82%  { transform: translateY(-0.215em) scale(1, 1);       animation-timing-function: cubic-bezier(0.4, 0, 1, 1); }
+  96%  { transform: translateY(0)        scale(1, 1);       animation-timing-function: cubic-bezier(0.5, 0, 1, 1); }
+  100% { transform: translateY(0)        scale(1.36, 0.64); }
 }
 @media (prefers-reduced-motion: reduce) { .pw-ball { animation: none; } }
 .pw-qual {

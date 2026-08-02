@@ -5,7 +5,8 @@ import Link from 'next/link';
  * shell, auth pages, and the exported SVG in the brand manifest).
  *
  *   Play  = Inter 900, All Canadian red (#D2232A)
- *   .     = gold, dribbling (respects prefers-reduced-motion)
+ *   .     = gold ball dribbling on the baseline — the hub play-icon's motion,
+ *           beat for beat (respects prefers-reduced-motion)
  *   APP / ADMIN    = JetBrains Mono, uppercase, tracked, silver — the house
  *                    label treatment, so the qualifier never competes with the
  *                    product name.

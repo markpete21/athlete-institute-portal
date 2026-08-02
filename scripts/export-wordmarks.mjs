@@ -58,31 +58,30 @@ function bracket(x0, ballFill, onDark) {
 }
 
 /**
- * Play's period DRIBBLES — the same motion as .pw-ball / @keyframes pw-dribble in
- * globals.css: up to the cap height of the "Pl", squash on the landing, a second
- * bounce at half height, then rest. 1.7s loop, SMIL so it animates as an <img>.
+ * Play's period is the hub play-icon's bouncing BALL, beat for beat: a full
+ * bounce to the cap height of "Pl", a second bounce at about a third, a flat
+ * squash on each impact (bottom pinned to the baseline), looping with no rest.
+ * 1.8s loop, SMIL so it animates as an <img>. Same motion as @keyframes
+ * pw-dribble in globals.css.
  *
- * The CSS moves the ball in its OWN em (it renders at 1.22em of the lockup), so
- * -0.607em / -0.303em become -29.6 / -14.8 at this 48.8px period. Two nested
- * <g>s: the outer one travels, the inner one squashes about the baseline — one
- * animateTransform each, so neither has to be additive.
+ * Values are the hub icon's 124px geometry scaled to this 40px word (x 0.3226);
+ * the ellipse replaces the period glyph, centred where its ink would be
+ * (x + 8.2), bottom on the 40px baseline.
  */
 function dribble(x, ballFill) {
-  const keys = '0;0.12;0.24;0.3;0.42;0.52;0.58;1';
-  const rise = [0, -29.6, 0, 0, -14.8, 0, 0, 0].map((v) => `0 ${v}`).join(';');
-  const squash = [1, 1.06, 0.86, 1, 1, 0.93, 1, 1].map((v) => `1 ${v}`).join(';');
-  // ease-in-out per interval, matching the CSS timing function.
-  const ease = new Array(keys.split(';').length - 1).fill('0.42 0 0.58 1').join(';');
-  const anim = (type, values) =>
-    `<animateTransform attributeName="transform" type="${type}" values="${values}"` +
-    ` keyTimes="${keys}" calcMode="spline" keySplines="${ease}" dur="1.7s" repeatCount="indefinite"/>`;
-  return `<g transform="translate(${x},40)">
-    <g>${anim('translate', rise)}
-      <g>${anim('scale', squash)}
-        <text class="pw-w" x="0" y="0" font-size="48.8" font-weight="900" fill="${ballFill}">.</text>
-      </g>
-    </g>
-  </g>`;
+  const keys = '0;0.07;0.32;0.55;0.60;0.65;0.82;0.96;1';
+  const spl = [
+    '0.3 0 0.6 1', '0 0 0.2 1', '0.4 0 1 1', '0.5 0 1 1',
+    '0.3 0 0.6 1', '0 0 0.2 1', '0.4 0 1 1', '0.5 0 1 1',
+  ].join(';');
+  const anim = (name, values) =>
+    `<animate attributeName="${name}" values="${values}" keyTimes="${keys}"` +
+    ` calcMode="spline" keySplines="${spl}" dur="1.8s" repeatCount="indefinite"/>`;
+  return `<ellipse cx="${(x + 8.2).toFixed(1)}" cy="35.5" rx="4.5" ry="4.5" fill="${ballFill}">
+    ${anim('cy', '37.1;35.5;5.5;35.5;36.5;35.5;24.8;35.5;37.1')}
+    ${anim('rx', '6.1;4.5;4.5;4.5;5.5;4.5;4.5;4.5;6.1')}
+    ${anim('ry', '2.9;4.5;4.5;4.5;3.5;4.5;4.5;4.5;2.9')}
+  </ellipse>`;
 }
 
 /** One lockup as SVG. `onDark` picks the qualifier colour that reads on the ground. */
