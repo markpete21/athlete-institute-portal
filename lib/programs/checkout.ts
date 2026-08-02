@@ -86,6 +86,8 @@ export function buildPriceLines(regs: RegRow[], today: string, scholarshipByReg:
 export interface CheckoutContext {
   promoCents?: number;
   staffCreditCents?: number;
+  /** Resolve + apply the household's staff season credit automatically. */
+  useStaffCredit?: boolean;
   useCreditOnAccount?: boolean;
   usePlayPoints?: boolean;
   scholarshipByReg?: Record<number, number>;
@@ -93,6 +95,31 @@ export interface CheckoutContext {
 
 export interface PriceQuote extends PriceResult {
   earnablePoints: number; // points that WOULD be earned (1 per $1 eligible spend)
+  /** Whose staff-credit account funds staffCreditUsedCents (null = none). */
+  staffProfileId: number | null;
+}
+
+/**
+ * The household's spendable staff credit: a staff-type profile in the family
+ * with staff discounts enabled. Reading the account IS the season top-up
+ * (ensureSeasonCredit lazily resets the balance to cap on rollover).
+ */
+async function resolveStaffCredit(familyId: number): Promise<{ profileId: number; balanceCents: number } | null> {
+  const db = supabaseAdmin();
+  const { data: staffProfiles } = await db
+    .from('profiles')
+    .select('id, settings')
+    .eq('family_id', familyId)
+    .eq('user_type', 'staff')
+    .eq('status', 'active');
+  for (const p of staffProfiles ?? []) {
+    const settings = (p.settings ?? {}) as { staffDiscountsEnabled?: boolean };
+    if (settings.staffDiscountsEnabled === false) continue; // default is enabled
+    const { ensureSeasonCredit } = await import('@/lib/credits');
+    const state = await ensureSeasonCredit(p.id);
+    if (state.balanceCents > 0) return { profileId: p.id, balanceCents: state.balanceCents };
+  }
+  return null;
 }
 
 /** Price a set of registrations WITHOUT persisting (the checkout preview). */
@@ -109,9 +136,19 @@ export async function quoteCheckout(registrationIds: number[], ctx: CheckoutCont
     playPoints = ctx.usePlayPoints ? fam!.play_points_balance : 0;
   }
 
+  let staffCreditCents = ctx.staffCreditCents ?? 0;
+  let staffProfileId: number | null = null;
+  if (ctx.useStaffCredit && family && !staffCreditCents) {
+    const staff = await resolveStaffCredit(family);
+    if (staff) {
+      staffCreditCents = staff.balanceCents;
+      staffProfileId = staff.profileId;
+    }
+  }
+
   const lines = buildPriceLines(regs, today, ctx.scholarshipByReg);
   const result = price(lines, {
-    staffCreditCents: ctx.staffCreditCents ?? 0,
+    staffCreditCents,
     promoCents: ctx.promoCents ?? 0,
     creditOnAccountCents: creditOnAccount,
     playPoints,
@@ -122,7 +159,7 @@ export async function quoteCheckout(registrationIds: number[], ctx: CheckoutCont
   const eligibleSpend = result.lines
     .filter((l) => l.kind === 'program' && !excluded.has((l.programType ?? '')))
     .reduce((a, l) => a + l.totalCents, 0);
-  return { ...result, earnablePoints: Math.floor(eligibleSpend / 100) };
+  return { ...result, earnablePoints: Math.floor(eligibleSpend / 100), staffProfileId };
 }
 
 export interface OrderAddonInput {
@@ -154,6 +191,18 @@ export async function placeProgramOrder(input: PlaceOrderInput): Promise<{ order
   const regs = await loadRegs(input.registrationIds);
   if (regs.length === 0) throw new Error('No registrations to check out.');
   const familyId = regs.find((r) => r.family_id)?.family_id ?? null;
+
+  // Account-status gate: a suspended/archived actor cannot place NEW orders
+  // (they can still pay what they owe — /account/pay has no such gate). Staff
+  // are exempt so the front desk can transact on a family's behalf.
+  const { data: actor } = await db
+    .from('profiles')
+    .select('status, user_type')
+    .eq('clerk_user_id', input.actorClerkId)
+    .maybeSingle();
+  if (actor && actor.user_type !== 'staff' && actor.status !== 'active') {
+    throw new Error('This account cannot register right now — please contact the front desk.');
+  }
 
   // Waiver gate (Stage 6): every distinct program's attached waiver must be
   // signed by the family (one per family per program, 1-yr validity).
@@ -197,6 +246,12 @@ export async function placeProgramOrder(input: PlaceOrderInput): Promise<{ order
       input.addons!.map((x) => ({ order_id: orderId, registration_id: x.registrationId ?? null, product_id: x.productId ?? null, variant_id: x.variantId ?? null, label: x.label, price_cents: x.priceCents, qty: x.qty ?? 1 })),
     );
     if (aErr) throw new Error(`add-ons save failed: ${aErr.message}`);
+  }
+
+  // Staff credit draws down the staff member's season account (atomic RPC).
+  if (quote.staffCreditUsedCents > 0 && quote.staffProfileId) {
+    const { spendStaffCredit } = await import('@/lib/credits');
+    await spendStaffCredit(quote.staffProfileId, quote.staffCreditUsedCents, input.actorClerkId, `order:${orderId}`);
   }
 
   // Spend the household balances atomically (never overdraw - RPCs guard).
@@ -263,11 +318,26 @@ export async function recalculateOwed(orderId: number): Promise<{ owedCents: num
   return { owedCents: owed, status };
 }
 
-/** Record an installment paid (manual/e-transfer or webhook). */
+/**
+ * Record an installment paid (manual/e-transfer, webhook, or checkout-return).
+ * Idempotent — an already-paid installment is a no-op, so the webhook and the
+ * success-URL return path can both fire without double audit rows.
+ */
 export async function markProgramInstallmentPaid(installmentId: number, actorClerkId: string): Promise<void> {
   const db = supabaseAdmin();
-  const { data: inst } = await db.from('program_installments').select('order_id').eq('id', installmentId).single();
+  const { data: inst } = await db.from('program_installments').select('order_id, status').eq('id', installmentId).single();
+  if (!inst || inst.status === 'paid') return;
   await db.from('program_installments').update({ status: 'paid', paid_at: new Date().toISOString(), failure_reason: null }).eq('id', installmentId);
   await audit({ actorId: actorClerkId, action: 'program_installment.paid', target: `program_installment:${installmentId}` });
-  await recalculateOwed(inst!.order_id);
+  await recalculateOwed(inst.order_id);
+}
+
+/** Record an installment failed (webhook) — dunning (M18) sweeps these up. */
+export async function markProgramInstallmentFailed(installmentId: number, reason: string, actorClerkId: string): Promise<void> {
+  const db = supabaseAdmin();
+  const { data: inst } = await db.from('program_installments').select('order_id, status').eq('id', installmentId).single();
+  if (!inst || inst.status === 'paid') return; // never fail-over a settled payment
+  await db.from('program_installments').update({ status: 'failed', failure_reason: reason }).eq('id', installmentId);
+  await audit({ actorId: actorClerkId, action: 'program_installment.failed', target: `program_installment:${installmentId}`, meta: { reason } });
+  await recalculateOwed(inst.order_id);
 }

@@ -190,6 +190,50 @@ export async function familyProgramSignature(programId: number, hohProfileId: nu
   return (data as WaiverSignature) ?? null;
 }
 
+export interface HouseholdWaiverRow {
+  programId: number;
+  programName: string;
+  waiver: Waiver;
+  satisfied: boolean;
+  signedAt: string | null;
+}
+
+/**
+ * Every waiver the household's active registrations require, with signed
+ * status — drives /account/waivers. One row per program that has a waiver
+ * attached (registrations the household itself placed).
+ */
+export async function householdProgramWaivers(familyId: number): Promise<HouseholdWaiverRow[]> {
+  const db = supabaseAdmin();
+  const { data: regs } = await db
+    .from('registrations')
+    .select('program_id, programs(id, name, waiver_id)')
+    .eq('family_id', familyId)
+    .in('status', ['active', 'waitlisted']);
+  const programs = new Map<number, { name: string; waiverId: number }>();
+  for (const r of regs ?? []) {
+    const p = r.programs as unknown as { id: number; name: string; waiver_id: number | null } | null;
+    if (p?.waiver_id) programs.set(p.id, { name: p.name, waiverId: p.waiver_id });
+  }
+  if (!programs.size) return [];
+
+  const { data: fam } = await db.from('families').select('hoh_profile_id').eq('id', familyId).single();
+  const out: HouseholdWaiverRow[] = [];
+  for (const [programId, p] of programs) {
+    const waiver = await getWaiver(p.waiverId);
+    if (!waiver) continue;
+    const sig = fam?.hoh_profile_id
+      ? await familyProgramSignature(programId, fam.hoh_profile_id, p.waiverId)
+      : null;
+    const fresh = !!sig
+      && sig.waiver_version === waiver.version
+      && (Date.now() - Date.parse(sig.signed_at)) / 86400_000 <= WAIVER_VALIDITY_DAYS;
+    out.push({ programId, programName: p.name, waiver, satisfied: fresh, signedAt: sig?.signed_at ?? null });
+  }
+  out.sort((a, b) => Number(a.satisfied) - Number(b.satisfied) || a.programName.localeCompare(b.programName));
+  return out;
+}
+
 /**
  * Is the program's attached waiver satisfied for a family? Requires a signature
  * by the family's HoH at the current version AND within the 1-year validity.

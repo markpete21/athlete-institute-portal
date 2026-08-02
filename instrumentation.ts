@@ -30,5 +30,19 @@ export async function register() {
       const id = Number(e.metadata.installment_id);
       if (id) await markInstallmentFailed(id, e.failureMessage ?? 'payment failed', 'system:webhook');
     });
+
+    // Program payment-plan settlement: /account/pay hosted checkout carries
+    // program_installment_ids (comma-separated) on the PaymentIntent.
+    const { markProgramInstallmentFailed, markProgramInstallmentPaid } = await import('@/lib/programs/checkout');
+    const programInstallmentIds = (e: { metadata: Record<string, string> }) =>
+      (e.metadata.program_installment_ids ?? '').split(',').map(Number).filter(Boolean);
+    onBillingEvent('payment.succeeded', async (e) => {
+      for (const id of programInstallmentIds(e)) await markProgramInstallmentPaid(id, 'system:webhook');
+    });
+    onBillingEvent('payment.failed', async (e) => {
+      for (const id of programInstallmentIds(e)) {
+        await markProgramInstallmentFailed(id, e.failureMessage ?? 'payment failed', 'system:webhook');
+      }
+    });
   }
 }

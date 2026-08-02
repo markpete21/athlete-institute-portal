@@ -211,6 +211,59 @@ export async function createInvoice(input: CreateInvoiceInput): Promise<Stripe.I
 }
 
 // ---------------------------------------------------------------------------
+// Hosted checkout (Stripe-hosted payment page)
+// ---------------------------------------------------------------------------
+
+export interface HostedCheckoutInput {
+  /** Attach to an existing customer so the card can be reused later. */
+  customerId?: string | null;
+  amountCents: number;
+  /** Line shown on the Stripe page, e.g. "Payment plan installment". */
+  description: string;
+  /** Copied onto the PaymentIntent — the webhook settles from this. */
+  metadata: Record<string, string>;
+  successUrl: string;
+  cancelUrl: string;
+}
+
+/**
+ * A one-off hosted payment page (Checkout Session, mode=payment). This is the
+ * first CLIENT-facing payment surface — no Stripe.js bundle needed, Stripe
+ * hosts the card form. Card-only for now: acss_debit on Checkout needs PAD
+ * enabled on the live account (unconfirmed), and PAD's 3-5 day settlement
+ * reads badly on a "pay now" button anyway.
+ */
+export async function createHostedCheckout(input: HostedCheckoutInput): Promise<Stripe.Checkout.Session> {
+  if (!Number.isInteger(input.amountCents) || input.amountCents <= 0) {
+    throw new Error(`createHostedCheckout: bad amount ${input.amountCents}`);
+  }
+  return getStripe().checkout.sessions.create({
+    mode: 'payment',
+    customer: input.customerId ?? undefined,
+    payment_method_types: ['card'],
+    line_items: [
+      {
+        quantity: 1,
+        price_data: {
+          currency: 'cad',
+          unit_amount: input.amountCents,
+          product_data: { name: input.description },
+        },
+      },
+    ],
+    payment_intent_data: { metadata: input.metadata },
+    metadata: input.metadata,
+    success_url: input.successUrl,
+    cancel_url: input.cancelUrl,
+  });
+}
+
+/** Retrieve a Checkout Session (payment status + metadata) by id. */
+export async function getHostedCheckout(sessionId: string): Promise<Stripe.Checkout.Session> {
+  return getStripe().checkout.sessions.retrieve(sessionId);
+}
+
+// ---------------------------------------------------------------------------
 // Webhooks
 // ---------------------------------------------------------------------------
 
