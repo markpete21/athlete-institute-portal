@@ -23,7 +23,8 @@ export default async function DropInPickerPage({ params }: { params: { id: strin
   const [sessions, membersRes] = await Promise.all([
     listSessions(programId),
     session.familyId
-      ? db.from('family_members').select('id, first_name, last_name').eq('family_id', session.familyId).order('first_name')
+      // Includes dual-household children shared into this family.
+      ? db.from('family_members').select('id, first_name, last_name').or(`family_id.eq.${session.familyId},second_family_id.eq.${session.familyId}`).order('first_name')
       : Promise.resolve({ data: [] as Array<{ id: number; first_name: string; last_name: string }> }),
   ]);
   const members = membersRes.data ?? [];

@@ -22,6 +22,8 @@ export interface Member {
   colour: string;
   isAdult: boolean;
   photoUrl: string | null;
+  /** Dual-household child (lives on this roster AND another household's). */
+  shared: boolean;
 }
 
 export interface SessionRow {
@@ -108,10 +110,12 @@ export async function accountView(familyId: number | null, days = 14): Promise<A
   if (!fam) return empty;
 
   // --- members (colour-keyed, photos signed) --------------------------------
+  // Includes dependents shared into this household from another one
+  // (dual-household children read as full roster members on both sides).
   const { data: memberRows } = await db
     .from('family_members')
-    .select('id, first_name, last_name, member_role, dob, photo_url, photo_path')
-    .eq('family_id', familyId)
+    .select('id, first_name, last_name, member_role, dob, photo_url, photo_path, family_id, second_family_id')
+    .or(`family_id.eq.${familyId},second_family_id.eq.${familyId}`)
     .order('id');
   const members: Member[] = [];
   for (const [i, m] of (memberRows ?? []).entries()) {
@@ -123,15 +127,20 @@ export async function accountView(familyId: number | null, days = 14): Promise<A
       colour: colourFor(i),
       isAdult: m.member_role === 'hoh' || m.member_role === 'adult' || m.member_role === 'secondary',
       photoUrl: await memberPhoto(m),
+      shared: m.second_family_id != null,
     });
   }
   const colourByMember = new Map(members.map((m) => [m.id, m.colour]));
 
   // --- registrations (drives both the roster list and the spine) ------------
+  // Two nets: registrations this household PAID for, and registrations for a
+  // shared child that the OTHER household paid for (both parents see the
+  // child's programs; only the paying household sees the money).
+  const memberIds = members.map((m) => m.id);
   const { data: regRows } = await db
     .from('registrations')
-    .select('id, family_member_id, status, waitlist_position, season_key, program_id, programs(name, brand_key)')
-    .eq('family_id', familyId)
+    .select('id, family_member_id, family_id, status, waitlist_position, season_key, program_id, programs(name, brand_key)')
+    .or(`family_id.eq.${familyId}${memberIds.length ? `,family_member_id.in.(${memberIds.join(',')})` : ''}`)
     .in('status', ['active', 'waitlisted']);
   const registrations: RegistrationRow[] = (regRows ?? []).map((r) => {
     const p = r.programs as unknown as { name: string; brand_key: string | null } | null;
@@ -266,9 +275,11 @@ export async function accountView(familyId: number | null, days = 14): Promise<A
   }
   // waiver_signatures is keyed by (entity_type, entity_id) - not family - so ask
   // the Module 3/4 helper, which encodes the one-per-family-per-program rule.
+  // Only registrations THIS household placed need its signature — a shared
+  // child's programs paid by the other household are theirs to sign for.
   const { isProgramWaiverSatisfied } = await import('@/lib/waivers');
   let waiversSigned = true;
-  for (const pid of [...new Set((regRows ?? []).map((r) => r.program_id))]) {
+  for (const pid of [...new Set((regRows ?? []).filter((r) => r.family_id === familyId).map((r) => r.program_id))]) {
     if (!(await isProgramWaiverSatisfied(pid, familyId))) { waiversSigned = false; break; }
   }
   if (!waiversSigned) {
