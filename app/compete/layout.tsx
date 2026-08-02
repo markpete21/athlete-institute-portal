@@ -50,11 +50,12 @@ export default async function CompeteLayout({ children }: { children: React.Reac
           {/* Signed out: the real Play lockup (dribbling ball and all) reading
               LOGIN in the same mono qualifier treatment this bar uses for
               PORTAL. Sign-in is served on THIS host, so Clerk returns the
-              visitor to the standings they were reading. Signed in: their
-              initials, linking to the account over on Play. */}
+              visitor to the standings they were reading. Signed in: the same
+              lockup reads APP and jumps to their Play account (Mark's spec:
+              "Play. LOGIN" out, "Play. APP" in). */}
           {chip ? (
-            <a className="cs-me" href={`${PLAY_URL}/account`} title="Your account">
-              {chip}
+            <a className="cs-toplay" href={`${PLAY_URL}/account`} title={`Your account (${chip})`}>
+              <PlayWordmark qualifier="App" size={17} />
             </a>
           ) : (
             <Link className="cs-toplay" href="/sign-in">
