@@ -62,6 +62,10 @@ export interface WizardPayload {
   sendInvoice?: boolean;
   notes?: string;
   showPublic?: boolean;
+  /** Setup/cleanup buffers applied to every booking this wizard creates.
+      Occupied by the conflict engine; the published times are unchanged. */
+  setupMinutes?: number;
+  cleanupMinutes?: number;
   lines: WizardLine[];
   addons: Array<{ addonId: number; qty: number }>;
   blocks: WizardBlock[];
@@ -183,6 +187,9 @@ export async function bookWizardAction(payload: WizardPayload): Promise<WizardRe
       lineCount += res.lineCount;
       conflictCount += res.conflictedDates.length;
       createdLineIds.push(...res.lineIds);
+      // Recurring occurrences are bookings too: without this they'd miss the
+      // public-schedule flag and the buffers applied below.
+      lineBookingIds.push(...res.bookingIds);
     } else {
       const dates = [l.date, ...(l.repeat?.mode === 'dates' ? l.repeat.dates : [])];
       for (const d of dates) {
@@ -229,6 +236,23 @@ export async function bookWizardAction(payload: WizardPayload): Promise<WizardRe
       .update({ show_on_public_schedule: true })
       .in('id', lineBookingIds);
     if (error) throw new Error(`public flag update failed: ${error.message}`);
+  }
+
+  // Setup/cleanup buffers apply to every occurrence. Routed through
+  // updateBooking rather than a bulk UPDATE because widening the occupied
+  // window can create NEW conflicts, and those have to be counted and shown -
+  // a silent SQL write would hide them.
+  const setupMinutes = payload.setupMinutes ?? 0;
+  const cleanupMinutes = payload.cleanupMinutes ?? 0;
+  if ((setupMinutes > 0 || cleanupMinutes > 0) && lineBookingIds.length) {
+    if (![setupMinutes, cleanupMinutes].every((n) => Number.isInteger(n) && n >= 0 && n <= 480)) {
+      throw new Error('Buffers must be whole minutes between 0 and 480.');
+    }
+    const { updateBooking } = await import('@/lib/bookings');
+    for (const bookingId of lineBookingIds) {
+      const res = await updateBooking(bookingId, { setupMinutes, cleanupMinutes }, actor);
+      conflictCount += res.conflicts.length;
+    }
   }
 
   for (const b of payload.blocks) {

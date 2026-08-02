@@ -340,11 +340,12 @@ export default async function SchedulePage({
                 </Link>
                 <div className="flex flex-col gap-1.5 p-2">
                   {day.map((b) => (
-                    <div
+                    <Link
                       key={b.id}
-                      className="flex flex-col gap-0.5 border border-hairline px-2 py-1.5"
+                      href={`/schedule/booking/${b.id}`}
+                      className="flex flex-col gap-0.5 border border-hairline px-2 py-1.5 hover:bg-paper-panel"
                       style={{ borderLeft: `3px solid ${conflictedIds.has(b.id) ? '#b4483c' : SOURCE_COLOR[b.source] ?? 'var(--accent)'}` }}
-                      title={b.title}
+                      title={`${b.title} — click to edit`}
                     >
                       <span className="mono whitespace-nowrap text-[10px] tabular-nums text-silver">
                         {fmtTime(b.starts_at)} – {fmtTime(b.ends_at)}
@@ -353,7 +354,7 @@ export default async function SchedulePage({
                         {conflictedIds.has(b.id) ? '⚠ ' : ''}{b.title}
                         {b.status === 'tentative' ? ' (hold)' : ''}
                       </span>
-                    </div>
+                    </Link>
                   ))}
                   {day.length === 0 && <span className="px-1 text-[11px] text-silver">—</span>}
                 </div>
@@ -369,9 +370,14 @@ export default async function SchedulePage({
             const day = bookingsByDate(bookings).get(d) ?? [];
             const inMonth = d.slice(0, 7) === date.slice(0, 7);
             const row = (b: BookingRecord) => (
-              <p key={b.id} className={`truncate text-[10px] ${conflictedIds.has(b.id) ? 'font-bold text-neg' : 'text-ink'}`} title={b.title}>
+              <Link
+                key={b.id}
+                href={`/schedule/booking/${b.id}`}
+                className={`block truncate text-[10px] hover:underline ${conflictedIds.has(b.id) ? 'font-bold text-neg' : 'text-ink'}`}
+                title={`${b.title} — click to edit`}
+              >
                 {b.title}
-              </p>
+              </Link>
             );
             return (
               <div key={d} className={`card min-h-20 p-2 ${inMonth ? '' : 'opacity-40'}`}>

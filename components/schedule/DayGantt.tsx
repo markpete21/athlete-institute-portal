@@ -101,11 +101,12 @@ function HoverCard({ hover }: { hover: Hover }) {
           Buffers: {bar.setupMinutes}m setup · {bar.cleanupMinutes}m cleanup
         </p>
       )}
-      {bar.conflicted && (
-        <p className="mt-2 font-mono text-[10px] uppercase tracking-[0.12em]" style={{ color: '#b4483c' }}>
-          ⚠ In conflict — click to resolve
-        </p>
-      )}
+      <p
+        className="mt-2 font-mono text-[10px] uppercase tracking-[0.12em] text-silver"
+        style={bar.conflicted ? { color: '#b4483c' } : undefined}
+      >
+        {bar.conflicted ? '⚠ In conflict — click to resolve' : 'Click to edit'}
+      </p>
     </div>
   );
 }
@@ -227,6 +228,21 @@ export function DayGantt({ groups, dateISO, nowFrac, bookMode = false, bookInten
       {b.title}
     </>
   );
+
+  /**
+   * A bar links to the booking editor; a conflicted one goes to the queue
+   * instead, since resolving the clash is what you actually came to do. In
+   * booking mode nothing links — the grid is a selection surface then, and a
+   * stray click must not navigate away from a half-built selection.
+   */
+  const wrapBar = (b: GanttBar, bar: React.ReactNode) => {
+    if (bookMode) return <span key={b.bookingId}>{bar}</span>;
+    return (
+      <Link key={b.bookingId} href={b.conflicted ? '/conflicts' : `/schedule/booking/${b.bookingId}`}>
+        {bar}
+      </Link>
+    );
+  };
 
   const nonEmpty = groups.filter((g) => g.rows.length > 0 || g.wholeBars.length > 0);
 
@@ -444,7 +460,7 @@ export function DayGantt({ groups, dateISO, nowFrac, bookMode = false, bookInten
                             laneCount === 1 ? (rowHeights[ri] - BAR_H) / 2 : 4 + lanes[bi] * LANE_HEIGHT;
                           const bar = (
                             <div
-                              className="absolute flex cursor-default items-center overflow-hidden whitespace-nowrap px-2 text-[10px] font-bold uppercase tracking-wide text-white"
+                              className={`absolute flex items-center overflow-hidden whitespace-nowrap px-2 text-[10px] font-bold uppercase tracking-wide text-white ${bookMode ? 'cursor-default' : 'cursor-pointer'}`}
                               style={{ ...barStyle(b), top: laneTop, height: BAR_H }}
                               onMouseEnter={enter(b)}
                               onMouseLeave={leave}
@@ -452,11 +468,7 @@ export function DayGantt({ groups, dateISO, nowFrac, bookMode = false, bookInten
                               {barInner(b)}
                             </div>
                           );
-                          return b.conflicted ? (
-                            <Link key={b.bookingId} href="/conflicts">{bar}</Link>
-                          ) : (
-                            <span key={b.bookingId}>{bar}</span>
-                          );
+                          return wrapBar(b, bar);
                         })}
                       </div>
                     );
@@ -466,7 +478,7 @@ export function DayGantt({ groups, dateISO, nowFrac, bookMode = false, bookInten
                   {spanBars.map((b) => {
                     const bar = (
                       <div
-                        className="absolute z-20 flex cursor-default items-center justify-center overflow-hidden whitespace-nowrap border-2 border-paper px-2 text-[11px] font-bold uppercase tracking-wide text-white"
+                        className={`absolute z-20 flex items-center justify-center overflow-hidden whitespace-nowrap border-2 border-paper px-2 text-[11px] font-bold uppercase tracking-wide text-white ${bookMode ? 'cursor-default' : 'cursor-pointer'}`}
                         style={{
                           ...barStyle(b),
                           top: 3,
@@ -479,11 +491,7 @@ export function DayGantt({ groups, dateISO, nowFrac, bookMode = false, bookInten
                         {barInner(b)}
                       </div>
                     );
-                    return b.conflicted ? (
-                      <Link key={b.bookingId} href="/conflicts">{bar}</Link>
-                    ) : (
-                      <span key={b.bookingId}>{bar}</span>
-                    );
+                    return wrapBar(b, bar);
                   })}
                 </div>
               </div>

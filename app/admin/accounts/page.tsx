@@ -1,6 +1,7 @@
 import { supabaseAdmin } from '@ai/foundation/supabase';
 import { listOrganizations } from '@/lib/booking-config';
-import { ACCOUNT_TYPES, setAccountTypeAction } from './actions';
+import { setAccountTypeAction } from './actions';
+import { ACCOUNT_TYPES } from './types';
 
 export const dynamic = 'force-dynamic';
 

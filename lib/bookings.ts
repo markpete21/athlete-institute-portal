@@ -376,3 +376,18 @@ export async function listBookings(filter: ListBookingsFilter): Promise<BookingR
   if (error) throw new Error(`bookings list failed: ${error.message}`);
   return (data ?? []) as BookingRecord[];
 }
+
+/**
+ * One booking by id, for the edit screen. Unlike listBookings this DOES return
+ * canceled rows - the edit screen shows a cancelled booking read-only rather
+ * than 404ing on a link someone kept open. Null when the id doesn't exist.
+ */
+export async function getBooking(id: number): Promise<BookingRecord | null> {
+  const { data, error } = await supabaseAdmin()
+    .from('bookings')
+    .select(COLS)
+    .eq('id', id)
+    .maybeSingle();
+  if (error) throw new Error(`booking read failed: ${error.message}`);
+  return (data as BookingRecord | null) ?? null;
+}

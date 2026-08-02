@@ -2,9 +2,10 @@
  * Media / file storage (Module 0 §7) — server-only, import from
  * '@ai/foundation/storage'.
  *
- * Five private buckets; ALL access goes through signed URLs minted by server
- * code that has already applied its own authorization (Clerk session + role
- * checks). Nothing is publicly listable.
+ * Buckets are private by default: access goes through signed URLs minted by
+ * server code that has already applied its own authorization (Clerk session +
+ * role checks). The two exceptions are listed in PUBLIC_BUCKETS below — assets
+ * that must render for anonymous visitors or on unattended display boards.
  */
 
 import { supabaseAdmin } from './supabase';
@@ -12,7 +13,9 @@ import { supabaseAdmin } from './supabase';
 export const BUCKETS = {
   /** Staff bios/photos (Module 5). */
   staffPhotos: 'staff-photos',
-  /** Event/program logos (Modules 2/4/6). */
+  /** Event/program logos (Modules 2/4/6). PUBLIC — these render on the TV
+      display boards, which live at unauthenticated token URLs and stay up for
+      weeks, so a signed URL would expire mid-run and break the image. */
   eventLogos: 'event-logos',
   /** TV-display media (Module 2 /display screens). */
   displayMedia: 'display-media',
@@ -36,24 +39,43 @@ export type BucketName = (typeof BUCKETS)[BucketKey];
 const IMAGE_BUCKETS: BucketName[] = ['staff-photos', 'event-logos', 'display-media', 'product-images', 'gallery-media', 'brand-assets', 'member-photos'];
 
 /** Buckets served publicly (no signed URL). Everything else stays private. */
-const PUBLIC_BUCKETS: BucketName[] = ['brand-assets'];
+const PUBLIC_BUCKETS: BucketName[] = ['brand-assets', 'event-logos'];
 
 /**
- * Idempotently create every bucket (private). Call from a setup script or the
- * dev verify route; safe to re-run — existing buckets are left untouched.
+ * Idempotently create every bucket, and reconcile the public/private flag on
+ * ones that already exist. The reconcile step matters: a bucket created before
+ * it joined PUBLIC_BUCKETS keeps its old visibility forever otherwise, which
+ * is exactly how event-logos ended up private while the TV boards tried to
+ * render its objects over plain HTTP. Safe to re-run.
  */
-export async function ensureBuckets(): Promise<{ created: string[]; existing: string[] }> {
+export async function ensureBuckets(): Promise<{
+  created: string[];
+  existing: string[];
+  revisibled: string[];
+}> {
   const storage = supabaseAdmin().storage;
   const { data: existing, error } = await storage.listBuckets();
   if (error) throw new Error(`listBuckets failed: ${error.message}`);
-  const have = new Set((existing ?? []).map((b) => b.name));
+  const have = new Map((existing ?? []).map((b) => [b.name, b]));
 
   const created: string[] = [];
+  const revisibled: string[] = [];
   for (const name of Object.values(BUCKETS)) {
-    if (have.has(name)) continue;
+    const wantPublic = PUBLIC_BUCKETS.includes(name);
     const isImage = IMAGE_BUCKETS.includes(name);
+    const current = have.get(name);
+
+    if (current) {
+      if (current.public !== wantPublic) {
+        const { error: upErr } = await storage.updateBucket(name, { public: wantPublic });
+        if (upErr) throw new Error(`updateBucket(${name}) failed: ${upErr.message}`);
+        revisibled.push(`${name}->${wantPublic ? 'public' : 'private'}`);
+      }
+      continue;
+    }
+
     const { error: createErr } = await storage.createBucket(name, {
-      public: PUBLIC_BUCKETS.includes(name),
+      public: wantPublic,
       fileSizeLimit: isImage ? '10MB' : '25MB',
       allowedMimeTypes: isImage
         ? ['image/png', 'image/jpeg', 'image/webp', 'image/svg+xml', 'image/gif', 'video/mp4']
@@ -62,7 +84,7 @@ export async function ensureBuckets(): Promise<{ created: string[]; existing: st
     if (createErr) throw new Error(`createBucket(${name}) failed: ${createErr.message}`);
     created.push(name);
   }
-  return { created, existing: [...have] };
+  return { created, existing: [...have.keys()], revisibled };
 }
 
 /**

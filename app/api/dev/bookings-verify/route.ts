@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@ai/foundation/supabase';
-import { cancelBooking, checkAvailability, createBooking, listBookings, updateBooking } from '@/lib/bookings';
+import { BUCKETS, deleteFile, getPublicUrl, uploadFile } from '@ai/foundation/storage';
+import { cancelBooking, checkAvailability, createBooking, getBooking, listBookings, updateBooking } from '@/lib/bookings';
 
 /**
  * DEV-ONLY: the bookings API against the LIVE tree - the spec's two-baskets
@@ -87,6 +88,50 @@ export async function GET() {
     // 10. list filter shape
     const listed = await listBookings({ from: `${day}T00:00:00Z`, to: `${day}T23:59:59Z`, sources: ['internal'] });
     record('listBookings filters', listed.every((x) => x.source === 'internal'), `${listed.length} internal on ${day}`);
+
+    // ---- booking edit screen (Module 2 review) --------------------------
+    // 11. getBooking backs the edit page, and unlike listBookings it must
+    //     still return a cancelled row (the screen shows it read-only).
+    const fetched = await getBooking(a.booking.id);
+    record(
+      'getBooking returns a cancelled booking',
+      fetched?.id === a.booking.id && !!fetched?.canceled_at,
+      `id=${fetched?.id} canceled=${!!fetched?.canceled_at}`,
+    );
+    record('getBooking is null for a missing id', (await getBooking(999_999_999)) === null, 'no row -> null');
+
+    // 12. the edit screen's buffer save widens the occupied window on an
+    //     ALREADY-CREATED booking (this is what had no UI before).
+    const edit = await createBooking({
+      facilityId: court2, startsAt: iso(13), endsAt: iso(14),
+      source: 'internal', title: 'Buffer edit', actorClerkId: 'system:verify',
+    });
+    made.push(edit.booking.id);
+    const beforeBuf = await checkAvailability({ facilityId: court2, startsAt: iso(14), endsAt: iso(15) });
+    await updateBooking(edit.booking.id, { setupMinutes: 15, cleanupMinutes: 30 }, 'system:verify');
+    const afterBuf = await checkAvailability({ facilityId: court2, startsAt: iso(14), endsAt: iso(15) });
+    record(
+      'editing buffers re-occupies the adjacency',
+      beforeBuf.available && !afterBuf.available,
+      'adjacent 14:00 free before the 30m cleanup, blocked after',
+    );
+
+    // 13. the logo the TV boards render must be reachable WITHOUT a signed
+    //     URL - the boards are anonymous and run for weeks (migration 0046).
+    const { data: buckets } = await db.storage.listBuckets();
+    const logoBucket = (buckets ?? []).find((x) => x.name === BUCKETS.eventLogos);
+    record('event-logos bucket is public', logoBucket?.public === true, `public=${logoBucket?.public}`);
+
+    const probe = `booking/verify/${Date.now()}.png`;
+    const png = Buffer.from(
+      'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==',
+      'base64',
+    );
+    await uploadFile(BUCKETS.eventLogos, probe, png, { contentType: 'image/png', upsert: true });
+    const publicUrl = getPublicUrl(BUCKETS.eventLogos, probe);
+    const fetchRes = await fetch(publicUrl);
+    record('event logo loads over plain HTTP', fetchRes.ok, `GET ${fetchRes.status} (no signature)`);
+    await deleteFile(BUCKETS.eventLogos, [probe]);
   } catch (err) {
     record('UNEXPECTED ERROR', false, err instanceof Error ? err.message : String(err));
   } finally {

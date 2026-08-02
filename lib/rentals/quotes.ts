@@ -299,7 +299,15 @@ export async function addRecurringRentalLines(input: {
   /** Concrete booking: every occurrence lands CONFIRMED instead of held. */
   confirm?: boolean;
   actorClerkId: string;
-}): Promise<{ lineCount: number; conflictedDates: string[]; lineIds: number[] }> {
+}): Promise<{
+  lineCount: number;
+  conflictedDates: string[];
+  lineIds: number[];
+  /** Booking ids behind the lines, for callers applying booking-level settings
+      (public flag, buffers) to every occurrence. Empty on a quote hold that
+      produced no bookings. */
+  bookingIds: number[];
+}> {
   const { expandRecurrence } = await import('@ai/foundation');
   const occurrences = expandRecurrence({
     pattern: input.pattern,
@@ -334,6 +342,7 @@ export async function addRecurringRentalLines(input: {
 
   const conflictedDates: string[] = [];
   const lineIds: number[] = [];
+  const bookingIds: number[] = [];
   for (const occ of occurrences) {
     const res = await addRentalLine({
       rentalId: input.rentalId,
@@ -348,9 +357,10 @@ export async function addRecurringRentalLines(input: {
     });
     if (res.conflicts.length > 0) conflictedDates.push(occ.date);
     lineIds.push(res.line.id);
+    if (res.line.booking_id) bookingIds.push(res.line.booking_id);
   }
   void facility;
-  return { lineCount: occurrences.length, conflictedDates, lineIds };
+  return { lineCount: occurrences.length, conflictedDates, lineIds, bookingIds };
 }
 
 export async function removeRentalLine(lineId: number, actorClerkId: string): Promise<void> {

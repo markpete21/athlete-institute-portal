@@ -154,6 +154,8 @@ export function Wizard({
   const [addonQty, setAddonQty] = useState<Record<number, number>>({});
   const [notes, setNotes] = useState('');
   const [showPublic, setShowPublic] = useState(false);
+  const [setupMinutes, setSetupMinutes] = useState(0);
+  const [cleanupMinutes, setCleanupMinutes] = useState(0);
   const [blocks, setBlocks] = useState<BlockDraft[]>([]);
   const [submitting, setSubmitting] = useState(false);
   const [result, setResult] = useState<WizardResult | null>(null);
@@ -239,6 +241,8 @@ export function Wizard({
       sendInvoice: kind === 'rental' && sendInvoice && contactEmail.trim() !== '',
       notes,
       showPublic,
+      setupMinutes,
+      cleanupMinutes,
       lines: lines.map((l) => ({
         facilityId: l.facilityId, date: l.date, start: l.start, end: l.end,
         rateMode: l.rateMode,
@@ -704,6 +708,33 @@ export function Wizard({
           </label>
 
           <div className="flex flex-col gap-2 border-t border-hairline pt-3">
+            <span className="field-label">Setup &amp; cleanup buffers</span>
+            <p className="text-sm text-silver">
+              Minutes held either side of every time block. Buffered time counts
+              as occupied, so nobody gets booked on top of the setup or teardown
+              — the published times stay exactly as entered.
+            </p>
+            <div className="flex flex-wrap gap-3">
+              <div>
+                <label className="field-label" htmlFor="wiz-setup">Setup before (min)</label>
+                <input
+                  id="wiz-setup" type="number" min={0} max={480} step={5} className="input w-36"
+                  value={setupMinutes}
+                  onChange={(e) => setSetupMinutes(Math.max(0, Math.min(480, Number(e.target.value) || 0)))}
+                />
+              </div>
+              <div>
+                <label className="field-label" htmlFor="wiz-cleanup">Cleanup after (min)</label>
+                <input
+                  id="wiz-cleanup" type="number" min={0} max={480} step={5} className="input w-36"
+                  value={cleanupMinutes}
+                  onChange={(e) => setCleanupMinutes(Math.max(0, Math.min(480, Number(e.target.value) || 0)))}
+                />
+              </div>
+            </div>
+          </div>
+
+          <div className="flex flex-col gap-2 border-t border-hairline pt-3">
             <span className="field-label">Block other facilities during this booking</span>
             <p className="text-sm text-silver">
               Holds additional spaces as internal blocks (never billed, hidden from
@@ -885,6 +916,12 @@ export function Wizard({
               </>
             )}
             {showPublic && <><dt className="label text-[10px]">Public</dt><dd>Shows on the public schedule</dd></>}
+            {(setupMinutes > 0 || cleanupMinutes > 0) && (
+              <>
+                <dt className="label text-[10px]">Buffers</dt>
+                <dd>{setupMinutes}m setup &middot; {cleanupMinutes}m cleanup (held, not billed)</dd>
+              </>
+            )}
             {notes && <><dt className="label text-[10px]">Notes</dt><dd>{notes}</dd></>}
           </dl>
           <p className="text-sm text-silver">
