@@ -20,7 +20,7 @@ export default async function DivisionAdminPage({ params }: { params: { id: stri
   const [{ data: teams }, { data: members }, { data: games }, { data: facRows }, standings] = await Promise.all([
     db.from('teams').select('id, name').eq('division_id', divisionId).order('sort_order'),
     db.from('team_members').select('id, team_id').eq('division_id', divisionId),
-    db.from('games').select('id, round, home_team_id, away_team_id, starts_at, status, home_score, away_score').eq('division_id', divisionId).order('starts_at'),
+    db.from('games').select('id, round, home_team_id, away_team_id, starts_at, status, home_score, away_score, overtime, live_stream_ref').eq('division_id', divisionId).order('starts_at'),
     db.from('facilities').select('id, parent_id, name, label, sort_order, bookable, deleted_at').is('deleted_at', null),
     divisionStandings(divisionId),
   ]);
@@ -90,8 +90,11 @@ export default async function DivisionAdminPage({ params }: { params: { id: stri
             <span className="text-silver">vs</span>
             <input name="awayScore" type="number" defaultValue={g.away_score ?? ''} className="input w-14 text-sm" />
             <span className="text-ink">{teamName.get(g.away_team_id!) ?? '?'}</span>
-            <label className="flex items-center gap-1 font-mono text-[10px] uppercase text-silver"><input type="checkbox" name="overtime" /> OT</label>
+            {/* Reflect what's saved — a bare checkbox here silently cleared OT
+                (and the stream ref) on every re-save. */}
+            <label className="flex items-center gap-1 font-mono text-[10px] uppercase text-silver"><input type="checkbox" name="overtime" defaultChecked={g.overtime} /> OT</label>
             <span className="tag">{g.status}</span>
+            <input name="liveStreamRef" defaultValue={g.live_stream_ref ?? ''} placeholder="Stream ref (Watch link)" className="input w-44 text-sm" />
             <button type="submit" className="btn-ghost btn-sm ml-auto">Save game</button>
           </form>
         ))}
@@ -107,7 +110,17 @@ export default async function DivisionAdminPage({ params }: { params: { id: stri
       )}
 
       <section className="flex flex-col gap-3">
-        <h2 className="text-2xl">Compete. Portal</h2>
+        <div className="flex items-baseline justify-between">
+          <h2 className="text-2xl">Compete. Portal</h2>
+          {div.show_on_compete && (
+            <a
+              href={`${process.env.NEXT_PUBLIC_COMPETE_URL ?? 'https://compete.athleteinstitute.ca'}/${div.id}`}
+              target="_blank" rel="noreferrer" className="label text-[11px] hover:text-ink"
+            >
+              View public page ↗
+            </a>
+          )}
+        </div>
         <p className="text-body max-w-[62ch] text-sm">
           Controls the public site at compete.athleteinstitute.ca — no login required to view it.
           Leagues and clinics show last names as an initial by default; tournaments and rep/club

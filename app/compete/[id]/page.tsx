@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
+import type { Metadata } from 'next';
 import { divisionDetail } from '@/lib/compete/compete';
 
 export const dynamic = 'force-dynamic';
@@ -13,6 +14,14 @@ const fmtTime = (iso: string | null) =>
 const PLAY_URL = process.env.NEXT_PUBLIC_PLAY_URL ?? 'https://play.athleteinstitute.ca';
 const STREAM = process.env.STREAM_PLAYBACK_BASE ?? 'https://live.athleteinstitute.ca/watch';
 
+/** Shared standings links get a real title in previews, not the app default. */
+export async function generateMetadata({ params }: { params: { id: string } }): Promise<Metadata> {
+  const detail = await divisionDetail(Number(params.id));
+  if (!detail) return {};
+  const program = detail.division.programName;
+  return { title: `${detail.division.name}${program ? ` · ${program}` : ''} — Compete. Athlete Institute` };
+}
+
 /**
  * One division, public. Standings + schedule/results + rosters. Names are masked
  * per the division's show_full_names toggle by lib/compete (never here).
@@ -24,8 +33,11 @@ export default async function DivisionPage({ params }: { params: { id: string } 
 
   const isVb = standings.sport === 'volleyball';
   const unit = isVb ? 'S' : 'PF';
-  const results = games.filter((g) => g.status === 'final');
+  // Upcoming reads soonest-first (games arrive ordered by starts_at); results
+  // read most-recent-first, like any scores feed.
+  const results = games.filter((g) => g.status === 'final').reverse();
   const upcoming = games.filter((g) => g.status !== 'final');
+  const anyPlayed = standings.standings.some((r) => r.gp > 0);
 
   // Group rosters by team for display.
   const byTeam = new Map<string, string[]>();
@@ -45,7 +57,9 @@ export default async function DivisionPage({ params }: { params: { id: string } 
       {/* Standings */}
       <section className="cs-sec">
         <h2 className="cs-h2">Standings</h2>
-        {standings.standings.length === 0 ? (
+        {/* computeStandings returns a row per team even before any game is
+            final, so "nothing played" is every row at 0 GP — not zero rows. */}
+        {!anyPlayed ? (
           <p className="cs-empty">No games played yet.</p>
         ) : (
           <div className="cs-tablewrap">
@@ -86,7 +100,7 @@ export default async function DivisionPage({ params }: { params: { id: string } 
                     <b>{g.homeTeam}</b> <span className="cs-vs">vs</span> <b>{g.awayTeam}</b>
                   </span>
                   {g.status === 'final' ? (
-                    <span className="cs-score mono">{g.homeScore}&ndash;{g.awayScore}</span>
+                    <span className="cs-score mono">{g.homeScore}&ndash;{g.awayScore}{g.overtime && <span className="cs-ot"> OT</span>}</span>
                   ) : (
                     <span className="cs-pending label text-[10px]">{g.round ? `Round ${g.round}` : 'Scheduled'}</span>
                   )}

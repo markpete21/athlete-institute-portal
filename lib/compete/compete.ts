@@ -38,6 +38,7 @@ export interface CompeteGame {
   awayTeam: string;
   homeScore: number | null;
   awayScore: number | null;
+  overtime: boolean;
   liveStreamRef: string | null;
 }
 
@@ -112,7 +113,7 @@ export async function divisionDetail(divisionId: number): Promise<{
 
   const { data: gameRows } = await db
     .from('games')
-    .select('id, starts_at, round, status, home_team_id, away_team_id, home_score, away_score, live_stream_ref')
+    .select('id, starts_at, round, status, home_team_id, away_team_id, home_score, away_score, overtime, live_stream_ref')
     .eq('division_id', divisionId)
     .order('starts_at', { nullsFirst: false });
   const games: CompeteGame[] = (gameRows ?? []).map((g) => ({
@@ -124,6 +125,7 @@ export async function divisionDetail(divisionId: number): Promise<{
     awayTeam: teamName(g.away_team_id),
     homeScore: g.home_score,
     awayScore: g.away_score,
+    overtime: !!g.overtime,
     liveStreamRef: g.live_stream_ref,
   }));
 

@@ -73,8 +73,8 @@ export async function saveScoreAction(formData: FormData): Promise<void> {
 /**
  * Compete. Portal visibility for a division: whether it appears on the public
  * site at all, and whether public rosters show full names or "Ava P.".
- * Defaults are set at creation by program type (leagues/clinics -> full names;
- * tournaments/rep -> masked; Academy -> never public) and overridden here.
+ * Defaults are set at creation by program type (leagues/clinics -> MASKED;
+ * tournaments/rep -> full names; Academy -> never public) and overridden here.
  */
 export async function saveCompeteSettingsAction(formData: FormData): Promise<void> {
   const s = await getPortalSession();

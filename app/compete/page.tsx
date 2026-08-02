@@ -1,7 +1,9 @@
 import Link from 'next/link';
+import type { Metadata } from 'next';
 import { listDivisions } from '@/lib/compete/compete';
 
 export const dynamic = 'force-dynamic';
+export const metadata: Metadata = { title: 'Compete. Athlete Institute — Standings & schedules' };
 
 /** Compete. Portal home — every published division, no login required. */
 export default async function CompeteHome() {

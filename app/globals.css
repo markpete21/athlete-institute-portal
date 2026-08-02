@@ -788,6 +788,7 @@
 .cs-matchup { flex: 1; min-width: 180px; color: var(--cs-ink); font-size: 14px; }
 .cs-vs { color: var(--cs-silver); font-size: 12px; margin: 0 3px; }
 .cs-score { font-size: 17px; font-weight: 800; color: var(--cs-ink); }
+.cs-ot { font-size: 10px; font-weight: 600; letter-spacing: 0.12em; color: var(--cs-silver); vertical-align: 2px; }
 .cs-pending { flex: 0 0 auto; }
 .cs-watch {
   flex: 0 0 auto; text-decoration: none; border: 1px solid var(--cs-red); color: var(--cs-red);
