@@ -1,9 +1,10 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { buildTree, flattenTree, type FacilityNode } from '@ai/foundation';
+import { buildTree, DEFAULT_TIEBREAKS, flattenTree, type FacilityNode, type Sport } from '@ai/foundation';
 import { supabaseAdmin } from '@ai/foundation/supabase';
-import { divisionStandings } from '@/lib/competitive/competitive';
-import { buildScheduleAction, runBuilderAction, saveCompeteSettingsAction, saveScoreAction } from '../actions';
+import RatingSelect from '@/components/admin/RatingSelect';
+import { divisionStandings, rosterWithRatings, TIEBREAK_OPTIONS } from '@/lib/competitive/competitive';
+import { buildScheduleAction, generatePlayoffsAction, runBuilderAction, saveCompeteSettingsAction, saveScoreAction, saveTiebreaksAction, setSkillRatingAction } from '../actions';
 
 export const dynamic = 'force-dynamic';
 
@@ -14,15 +15,16 @@ const fmt = (iso: string | null) => iso ? new Date(iso).toLocaleString('en-CA', 
 export default async function DivisionAdminPage({ params }: { params: { id: string } }) {
   const db = supabaseAdmin();
   const divisionId = Number(params.id);
-  const { data: div } = await db.from('divisions').select('id, name, sport, show_on_compete, show_full_names, programs(name)').eq('id', divisionId).maybeSingle();
+  const { data: div } = await db.from('divisions').select('id, name, sport, tiebreaks, show_on_compete, show_full_names, programs(name)').eq('id', divisionId).maybeSingle();
   if (!div) notFound();
 
-  const [{ data: teams }, { data: members }, { data: games }, { data: facRows }, standings] = await Promise.all([
+  const [{ data: teams }, { data: members }, { data: games }, { data: facRows }, standings, roster] = await Promise.all([
     db.from('teams').select('id, name').eq('division_id', divisionId).order('sort_order'),
     db.from('team_members').select('id, team_id').eq('division_id', divisionId),
-    db.from('games').select('id, round, home_team_id, away_team_id, starts_at, status, home_score, away_score, overtime, live_stream_ref').eq('division_id', divisionId).order('starts_at'),
+    db.from('games').select('id, round, stage, home_team_id, away_team_id, starts_at, status, home_score, away_score, overtime, live_stream_ref').eq('division_id', divisionId).order('starts_at'),
     db.from('facilities').select('id, parent_id, name, label, sort_order, bookable, deleted_at').is('deleted_at', null),
     divisionStandings(divisionId),
+    rosterWithRatings(divisionId),
   ]);
   const ordered = flattenTree(buildTree((facRows ?? []) as FacilityNode[]));
   const teamName = new Map((teams ?? []).map((t) => [t.id, t.name]));
@@ -77,6 +79,43 @@ export default async function DivisionAdminPage({ params }: { params: { id: stri
         </form>
       </section>
 
+      {/* Roster + staff skill ratings (internal only, never public) */}
+      {roster.length > 0 && (
+        <section className="card flex flex-col gap-3 p-5">
+          <h2 className="text-2xl">Roster &amp; skill ratings</h2>
+          <p className="text-body max-w-[62ch] text-sm">
+            The 1&ndash;5 rating is staff-only and follows the athlete across every program —
+            it feeds the team builder so drafts come out even. It never appears anywhere public.
+          </p>
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {[...(teams ?? []), { id: null as number | null, name: 'Unassigned' }].map((t) => {
+              const players = roster.filter((r) => r.teamId === t.id);
+              if (!players.length) return null;
+              return (
+                <div key={t.id ?? 'none'} className="border border-hairline p-3">
+                  <p className="label mb-2 text-[10px]">{t.name}</p>
+                  <ul className="flex flex-col gap-1">
+                    {players.map((r) => (
+                      <li key={r.memberId} className="flex items-center justify-between gap-2 text-sm text-ink">
+                        <span>{r.name}</span>
+                        {r.familyMemberId && (
+                          <RatingSelect
+                            action={setSkillRatingAction}
+                            familyMemberId={r.familyMemberId}
+                            divisionId={divisionId}
+                            value={r.skillRating}
+                          />
+                        )}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              );
+            })}
+          </div>
+        </section>
+      )}
+
       {/* Score entry */}
       <section className="flex flex-col gap-3">
         <h2 className="text-2xl">Games</h2>
@@ -84,7 +123,7 @@ export default async function DivisionAdminPage({ params }: { params: { id: stri
           <form key={g.id} action={saveScoreAction} className="card flex flex-wrap items-center gap-2 p-3 text-sm">
             <input type="hidden" name="divisionId" value={divisionId} />
             <input type="hidden" name="gameId" value={g.id} />
-            <span className="label text-[10px]">R{g.round} · {fmt(g.starts_at)}</span>
+            <span className="label text-[10px]">{g.stage === 'playoff' ? 'PO' : 'R'}{g.round} · {fmt(g.starts_at)}</span>
             <span className="text-ink">{teamName.get(g.home_team_id!) ?? '?'} </span>
             <input name="homeScore" type="number" defaultValue={g.home_score ?? ''} className="input w-14 text-sm" />
             <span className="text-silver">vs</span>
@@ -108,6 +147,75 @@ export default async function DivisionAdminPage({ params }: { params: { id: stri
           <StandingsTable standings={standings} />
         </section>
       )}
+
+      {/* Standings hierarchy — the ordered tiebreaks behind the table above */}
+      <section className="card flex flex-col gap-3 p-5">
+        <h2 className="text-2xl">Standings hierarchy</h2>
+        <p className="text-body max-w-[62ch] text-sm">
+          Teams are ranked by the first criterion; ties fall through to the next.
+          Applies to this division&apos;s table everywhere, including the public site.
+        </p>
+        <form action={saveTiebreaksAction} className="flex flex-wrap items-end gap-3">
+          <input type="hidden" name="divisionId" value={divisionId} />
+          {(() => {
+            // Show what standings actually use: the saved order, or the
+            // sport's default when the division has never been customized.
+            const effective = (div.tiebreaks as string[])?.length
+              ? (div.tiebreaks as string[])
+              : DEFAULT_TIEBREAKS[div.sport as Sport] ?? DEFAULT_TIEBREAKS.other;
+            return [1, 2, 3, 4, 5].map((i) => (
+              <div key={i}>
+                <label className="field-label">{i === 1 ? '1st' : i === 2 ? '2nd' : i === 3 ? '3rd' : `${i}th`}</label>
+                <select name={`tb${i}`} defaultValue={effective[i - 1] ?? ''} className="input text-sm">
+                  <option value="">—</option>
+                  {TIEBREAK_OPTIONS.map((o) => <option key={o.key} value={o.key}>{o.label}</option>)}
+                </select>
+              </div>
+            ));
+          })()}
+          <button type="submit" className="btn-ghost btn-sm">Save order</button>
+        </form>
+      </section>
+
+      {/* Playoffs — seed from standings, then advance winners round by round */}
+      <section className="card flex flex-col gap-3 p-5">
+        <h2 className="text-2xl">Playoffs</h2>
+        {(() => {
+          const po = (games ?? []).filter((g) => g.stage === 'playoff');
+          const lastRound = po.length ? Math.max(...po.map((g) => g.round ?? 1)) : 0;
+          const lastDone = po.filter((g) => (g.round ?? 1) === lastRound).every((g) => g.status === 'final');
+          const finalReached = po.some((g) => (g.round ?? 1) === lastRound) && po.filter((g) => (g.round ?? 1) === lastRound).length === 1;
+          return (
+            <>
+              <p className="text-body max-w-[62ch] text-sm">
+                {po.length === 0
+                  ? 'Seeds the bracket from current standings (1 plays the lowest seed and so on). Game times start as TBD - set them from the games list.'
+                  : finalReached
+                    ? 'The final has been generated - the bracket is complete.'
+                    : lastDone
+                      ? `Round ${lastRound} is complete. Generate the next round to pair the winners.`
+                      : `Round ${lastRound} is underway - enter its scores, then generate the next round.`}
+              </p>
+              <form action={generatePlayoffsAction} className="flex items-end gap-3">
+                <input type="hidden" name="divisionId" value={divisionId} />
+                {po.length === 0 && (
+                  <div>
+                    <label className="field-label">Teams</label>
+                    <select name="numTeams" defaultValue="4" className="input w-20 text-sm">
+                      {[2, 4, 8, 16].filter((n) => n <= (teams ?? []).length).map((n) => <option key={n} value={n}>{n}</option>)}
+                    </select>
+                  </div>
+                )}
+                {!finalReached && (
+                  <button type="submit" className="btn-gold btn-sm">
+                    {po.length === 0 ? 'Seed bracket from standings' : 'Generate next round'}
+                  </button>
+                )}
+              </form>
+            </>
+          );
+        })()}
+      </section>
 
       <section className="flex flex-col gap-3">
         <div className="flex items-baseline justify-between">

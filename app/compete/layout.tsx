@@ -2,6 +2,8 @@ import Link from 'next/link';
 import { auth, currentUser } from '@clerk/nextjs/server';
 import PlayWordmark from '@/components/brand/PlayWordmark';
 import AppsMenu from '@/components/nav/AppsMenu';
+import UpcomingBanner from '@/components/compete/UpcomingBanner';
+import { listPrograms } from '@/lib/compete/compete';
 import { ECOSYSTEM_LINKS } from '@ai/foundation';
 
 export const dynamic = 'force-dynamic';
@@ -31,7 +33,7 @@ async function initials(): Promise<string> {
 }
 
 export default async function CompeteLayout({ children }: { children: React.ReactNode }) {
-  const { userId } = await auth();
+  const [{ userId }, programs] = await Promise.all([auth(), listPrograms()]);
   const chip = userId ? await initials() : null;
 
   return (
@@ -62,7 +64,26 @@ export default async function CompeteLayout({ children }: { children: React.Reac
           {/* THE shared apps menu (hub manifest) — public apps only here. */}
           <AppsMenu current="compete" />
         </div>
+        {/* Programs across the top, league-site style: each published
+            program is a tab; one division links straight in, several link to
+            the program's group on the home page. */}
+        {programs.length > 0 && (
+          <nav className="cs-progbar" aria-label="Programs">
+            {programs.map((p) => (
+              <a
+                key={p.programId}
+                href={p.divisions.length === 1 ? `/${p.divisions[0].id}` : `/#program-${p.programId}`}
+                className="cs-prog"
+              >
+                {p.programName}
+              </a>
+            ))}
+          </nav>
+        )}
       </header>
+
+      {/* Upcoming games, site-wide. */}
+      <UpcomingBanner />
 
       <main className="cs-main">{children}</main>
 

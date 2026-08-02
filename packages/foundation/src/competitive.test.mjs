@@ -93,6 +93,16 @@ const ok = (n, c, d = '') => { console.log(`${c ? '✓' : '✗'} ${n}${c ? '' : 
   ok('tie-break produces a deterministic order', s.length === 3);
 }
 
+// --- points_for tiebreak (admin-editable standings hierarchy) ---------------
+{
+  const results = [
+    { homeTeam: 1, awayTeam: 3, homeScore: 80, awayScore: 40 }, // T1 high-scoring
+    { homeTeam: 2, awayTeam: 3, homeScore: 50, awayScore: 40 }, // T2 same record, fewer PF
+  ];
+  const s = computeStandings(results, [1, 2, 3], ['wins', 'points_for']);
+  ok('points_for breaks the tie toward the higher-scoring team', s[0].team === 1 && s[1].team === 2, s.map((r) => r.team).join(','));
+}
+
 // --- single-elimination bracket --------------------------------------------
 {
   const b8 = singleElimination(8);

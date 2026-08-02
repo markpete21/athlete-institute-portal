@@ -634,16 +634,18 @@
 /* Peak puts the BOTTOM of the ball on the top of the "Pl"; the second bounce
    reaches half that height. Both in the ball's own em (it renders at 1.22em):
    cap height 0.7275em of the lockup + the dot's 0.0127em below the baseline
-   = 0.7404em of the lockup, which is 0.607em at 1.22 — and half is 0.303em. */
+   = 0.7404em of the lockup, which is 0.607em at 1.22 — and half is 0.303em.
+   Gravity easing per leg — ease-out rising, ease-in falling — with squash only
+   during ground contact and no holds between bounces, so the two dribbles read
+   as one continuous motion before the rest beat. */
 @keyframes pw-dribble {
-  0%   { transform: translateY(0)       scaleY(1); }
-  12%  { transform: translateY(-0.607em) scaleY(1.06); }
-  24%  { transform: translateY(0)       scaleY(0.86); }
-  30%  { transform: translateY(0)       scaleY(1); }
-  42%  { transform: translateY(-0.303em); }
-  52%  { transform: translateY(0)       scaleY(0.93); }
-  58%  { transform: translateY(0)       scaleY(1); }
-  100% { transform: translateY(0); }
+  0%   { transform: translateY(0)        scaleY(1);    animation-timing-function: cubic-bezier(0.215, 0.61, 0.355, 1); }
+  13%  { transform: translateY(-0.607em) scaleY(1);    animation-timing-function: cubic-bezier(0.55, 0.055, 0.675, 0.19); }
+  25%  { transform: translateY(0)        scaleY(0.92); animation-timing-function: cubic-bezier(0.215, 0.61, 0.355, 1); }
+  35%  { transform: translateY(-0.303em) scaleY(1);    animation-timing-function: cubic-bezier(0.55, 0.055, 0.675, 0.19); }
+  44%  { transform: translateY(0)        scaleY(0.95); }
+  50%  { transform: translateY(0)        scaleY(1); }
+  100% { transform: translateY(0)        scaleY(1); }
 }
 @media (prefers-reduced-motion: reduce) { .pw-ball { animation: none; } }
 .pw-qual {
@@ -725,7 +727,7 @@
 .cs-topbar { --pw-bracket-line: #8c877c; }
 /* and the bracket (ball included) sits a touch right and low of where the box
    puts it, so the period reads level with the word */
-.cs-topbar .pw-bracket { position: relative; left: 2px; top: 1px; }
+.cs-topbar .pw-bracket { position: relative; left: 5px; top: 2px; }
 .cs-nav { display: flex; gap: 4px; flex: 1; min-width: 0; overflow-x: auto; }
 .cs-nav a {
   padding: 9px 12px; font-size: 13.5px; color: var(--cs-dark-muted);
@@ -799,6 +801,97 @@
   letter-spacing: 0.12em; text-transform: uppercase;
 }
 .cs-watch:hover { background: var(--cs-red); color: #fff; }
+
+/* --- Programs across the top (league-site nav row) ------------------------ */
+.cs-progbar {
+  max-width: 1060px; margin: 0 auto; padding: 0 22px;
+  display: flex; gap: 22px; overflow-x: auto;
+  border-top: 1px solid rgba(158, 161, 161, 0.22);
+}
+.cs-prog {
+  flex: 0 0 auto; padding: 10px 0 11px; text-decoration: none;
+  font-family: var(--font-mono), monospace; font-size: 10.5px; font-weight: 500;
+  letter-spacing: 0.14em; text-transform: uppercase; color: #b9b4a9;
+  border-bottom: 2px solid transparent;
+}
+.cs-prog:hover { color: #fff; border-bottom-color: var(--cs-gold); }
+
+/* --- Upcoming games banner ------------------------------------------------- */
+.cs-banner {
+  display: flex; align-items: stretch; gap: 0;
+  background: var(--cs-paper); border-bottom: 1px solid var(--cs-hairline);
+}
+.cs-banner-kicker {
+  flex: 0 0 auto; display: flex; align-items: center; padding: 0 14px 0 22px;
+  border-right: 1px solid var(--cs-hairline);
+}
+.cs-banner-track { display: flex; overflow-x: auto; }
+.cs-upcard { position: relative; flex: 0 0 auto; border-right: 1px solid var(--cs-hairline); }
+.cs-upcard-main {
+  display: flex; align-items: center; gap: 10px; padding: 9px 16px; text-decoration: none;
+  min-width: 190px;
+}
+.cs-upcard-logo { width: 26px; height: 26px; object-fit: contain; }
+.cs-upcard-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--cs-gold); }
+.cs-upcard-text { display: flex; flex-direction: column; line-height: 1.35; }
+.cs-upcard-text b { font-size: 12.5px; color: var(--cs-ink); font-weight: 700; white-space: nowrap; }
+.cs-upcard-text b i { font-style: normal; color: var(--cs-silver); font-size: 11px; }
+.cs-upcard-text > span { font-size: 10.5px; color: var(--cs-silver); white-space: nowrap; }
+/* hover flap: facility and/or watch-live, revealed OVER the card (the track
+   scrolls horizontally, so anything outside the card would be clipped) */
+.cs-upcard-flap {
+  position: absolute; inset: 0;
+  display: flex; gap: 12px; align-items: center; justify-content: center;
+  padding: 6px 10px; background: var(--cs-ink); color: #d8d4cb;
+  font-size: 11.5px; white-space: nowrap;
+  opacity: 0; pointer-events: none; transition: opacity 0.12s ease;
+  z-index: 5;
+}
+.cs-upcard:hover .cs-upcard-flap { opacity: 1; pointer-events: auto; }
+.cs-upcard-live { color: #ff6b6b; text-decoration: none; font-weight: 600; }
+.cs-upcard-live:hover { text-decoration: underline; }
+
+/* --- Expandable sections (standings up top; earlier results) --------------- */
+.cs-fold { border: 1px solid var(--cs-hairline); background: var(--cs-paper); }
+.cs-fold-sum {
+  cursor: pointer; list-style: none; display: flex; align-items: center; gap: 10px;
+  padding: 13px 16px; font-weight: 800; font-size: 17px; color: var(--cs-ink);
+}
+.cs-fold-sum::-webkit-details-marker { display: none; }
+.cs-fold-sum::before {
+  content: ''; width: 7px; height: 7px; flex: 0 0 auto;
+  border-right: 2px solid var(--cs-red); border-bottom: 2px solid var(--cs-red);
+  transform: rotate(-45deg); transition: transform 0.15s ease; margin-top: -2px;
+}
+.cs-fold[open] .cs-fold-sum::before { transform: rotate(45deg); margin-top: -5px; }
+.cs-fold-body { padding: 0 16px 14px; }
+.cs-earlier { margin-top: 12px; }
+.cs-earlier summary { cursor: pointer; list-style: none; }
+.cs-earlier summary::-webkit-details-marker { display: none; }
+.cs-earlier summary::after { content: ' +'; color: var(--cs-red); }
+.cs-earlier[open] summary::after { content: ' −'; }
+.cs-po {
+  margin-left: 8px; padding: 2px 6px; border: 1px solid var(--cs-gold); color: var(--cs-gold);
+}
+
+/* --- Playoff bracket --------------------------------------------------------- */
+.cs-bracket { display: flex; gap: 26px; overflow-x: auto; padding-bottom: 6px; }
+.cs-bracket-round { flex: 0 0 230px; display: flex; flex-direction: column; gap: 10px; }
+.cs-bracket-games { display: flex; flex-direction: column; gap: 14px; flex: 1; justify-content: space-around; }
+.cs-match { background: var(--cs-paper); border: 1px solid var(--cs-hairline); }
+.cs-match-team {
+  display: flex; justify-content: space-between; gap: 10px; padding: 8px 11px;
+  font-size: 13px; color: var(--cs-ink);
+}
+.cs-match-team + .cs-match-team { border-top: 1px solid var(--cs-hairline); }
+.cs-match-team b { font-weight: 800; }
+.cs-match-won { background: rgba(158, 137, 89, 0.12); }
+.cs-match-won span { font-weight: 700; }
+.cs-match-when {
+  display: block; padding: 5px 11px; border-top: 1px solid var(--cs-hairline);
+  font-family: var(--font-mono), monospace; font-size: 9.5px; letter-spacing: 0.1em;
+  text-transform: uppercase; color: var(--cs-silver);
+}
 
 .cs-rosters { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 12px; }
 .cs-roster { background: var(--cs-paper); border: 1px solid var(--cs-hairline); padding: 13px 15px; }

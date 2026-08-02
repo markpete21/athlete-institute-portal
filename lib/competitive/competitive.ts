@@ -72,10 +72,14 @@ export async function runTeamBuilder(input: { divisionId: number; numTeams: numb
   const { data: members } = await db.from('team_members').select('id, registration_id, team_id, locked, group_key').eq('division_id', input.divisionId);
   if (!members?.length) throw new Error('No roster members to draft.');
 
-  // Read attribute values from registration answers + jersey size.
+  // Read attribute values from registration answers + jersey size. The staff
+  // 1-5 skill rating (family_members.staff_skill_rating, staff-only, never
+  // public) is the PREFERRED skill source - a question answer is the fallback
+  // for athletes staff haven't rated yet.
   const regIds = members.map((m) => m.registration_id).filter(Boolean) as number[];
-  const { data: regs } = await db.from('registrations').select('id, jersey_size').in('id', regIds);
+  const { data: regs } = await db.from('registrations').select('id, jersey_size, family_members(staff_skill_rating)').in('id', regIds);
   const jerseyByReg = new Map((regs ?? []).map((r) => [r.id, r.jersey_size as string | null]));
+  const ratingByReg = new Map((regs ?? []).map((r) => [r.id, (r.family_members as unknown as { staff_skill_rating: number | null } | null)?.staff_skill_rating ?? null]));
   const qIds = Object.values(input.attributeQuestionMap ?? {}).filter(Boolean) as number[];
   const answers = qIds.length ? (await db.from('question_answers').select('registration_id, question_id, answer').in('registration_id', regIds).in('question_id', qIds)).data ?? [] : [];
   const ansMap = new Map(answers.map((a) => [`${a.registration_id}:${a.question_id}`, a.answer]));
@@ -92,10 +96,11 @@ export async function runTeamBuilder(input: { divisionId: number; numTeams: numb
   const players: DraftPlayer[] = members.map((m) => {
     const num = (attr: BalanceAttribute) => { const qid = input.attributeQuestionMap?.[attr]; const v = qid ? ansMap.get(`${m.registration_id}:${qid}`) : undefined; return v != null ? Number(v) : undefined; };
     const genderQ = input.attributeQuestionMap?.gender;
+    const staffRating = ratingByReg.get(m.registration_id ?? -1);
     return {
       id: m.id,
       age: input.attributes.includes('age') ? num('age') : undefined,
-      skill: input.attributes.includes('skill') ? num('skill') : undefined,
+      skill: input.attributes.includes('skill') ? (staffRating ?? num('skill')) : undefined,
       experience: input.attributes.includes('experience') ? num('experience') : undefined,
       height: input.attributes.includes('height') ? num('height') : undefined,
       gender: input.attributes.includes('gender') && genderQ ? String(ansMap.get(`${m.registration_id}:${genderQ}`) ?? '') || undefined : undefined,
@@ -196,10 +201,122 @@ export async function divisionStandings(divisionId: number): Promise<{ standings
   const { data: div } = await db.from('divisions').select('sport, tiebreaks').eq('id', divisionId).single();
   const { data: teamsRows } = await db.from('teams').select('id, name').eq('division_id', divisionId).order('sort_order');
   const teamIds = (teamsRows ?? []).map((t) => t.id);
-  const { data: games } = await db.from('games').select('home_team_id, away_team_id, home_score, away_score').eq('division_id', divisionId).eq('status', 'final');
+  // Regular-season games only: playoff results decide the bracket, not the
+  // table. (Tournament programs book everything as 'regular', so their
+  // bracket still feeds these standings.)
+  const { data: games } = await db.from('games').select('home_team_id, away_team_id, home_score, away_score').eq('division_id', divisionId).eq('status', 'final').eq('stage', 'regular');
   const results: GameResult[] = (games ?? []).filter((g) => g.home_team_id && g.away_team_id).map((g) => ({ homeTeam: g.home_team_id!, awayTeam: g.away_team_id!, homeScore: g.home_score ?? 0, awayScore: g.away_score ?? 0 }));
   const tiebreaks = (div!.tiebreaks as string[])?.length ? (div!.tiebreaks as string[]) : DEFAULT_TIEBREAKS[div!.sport as Sport];
   return { standings: computeStandings(results, teamIds, tiebreaks), teamNames: new Map((teamsRows ?? []).map((t) => [t.id, t.name])), sport: div!.sport as Sport };
+}
+
+// --- Roster + staff skill ratings -------------------------------------------
+
+export interface RosterMemberAdmin {
+  memberId: number;
+  teamId: number | null;
+  familyMemberId: number | null;
+  name: string;
+  skillRating: number | null;
+}
+
+/** Admin-side roster with names + staff ratings. NEVER surfaced publicly. */
+export async function rosterWithRatings(divisionId: number): Promise<RosterMemberAdmin[]> {
+  const db = supabaseAdmin();
+  const { data } = await db
+    .from('team_members')
+    .select('id, team_id, registrations(family_member_id, family_members(id, first_name, last_name, staff_skill_rating))')
+    .eq('division_id', divisionId);
+  return (data ?? []).map((m) => {
+    const fm = (m.registrations as unknown as { family_members: { id: number; first_name: string; last_name: string; staff_skill_rating: number | null } | null } | null)?.family_members ?? null;
+    return {
+      memberId: m.id,
+      teamId: m.team_id,
+      familyMemberId: fm?.id ?? null,
+      name: fm ? `${fm.first_name} ${fm.last_name}` : 'Unlinked registration',
+      skillRating: fm?.staff_skill_rating ?? null,
+    };
+  });
+}
+
+/** Staff-only 1-5 rating on the ATHLETE (follows them season to season). */
+export async function setSkillRating(familyMemberId: number, rating: number | null, actorClerkId: string): Promise<void> {
+  if (rating !== null && (rating < 1 || rating > 5)) throw new Error('Rating must be 1-5.');
+  const { error } = await supabaseAdmin().from('family_members').update({ staff_skill_rating: rating }).eq('id', familyMemberId);
+  if (error) throw new Error(error.message);
+  await audit({ actorId: actorClerkId, action: 'athlete.skill-rated', target: `family_member:${familyMemberId}`, meta: { rating } });
+}
+
+// --- Standings hierarchy ------------------------------------------------------
+
+export const TIEBREAK_OPTIONS: { key: string; label: string }[] = [
+  { key: 'wins', label: 'Wins' },
+  { key: 'head_to_head', label: 'Head to head' },
+  { key: 'differential', label: 'Point differential' },
+  { key: 'win_pct', label: 'Win %' },
+  { key: 'points_for', label: 'Points for' },
+];
+
+/** Save a division's standings hierarchy (ordered tiebreak criteria). */
+export async function updateTiebreaks(divisionId: number, tiebreaks: string[], actorClerkId: string): Promise<void> {
+  const valid = new Set(TIEBREAK_OPTIONS.map((o) => o.key));
+  const cleaned = tiebreaks.filter((t, i) => valid.has(t) && tiebreaks.indexOf(t) === i);
+  if (!cleaned.length) throw new Error('At least one criterion required.');
+  const { error } = await supabaseAdmin().from('divisions').update({ tiebreaks: cleaned }).eq('id', divisionId);
+  if (error) throw new Error(error.message);
+  await audit({ actorId: actorClerkId, action: 'division.tiebreaks', target: `division:${divisionId}`, meta: { tiebreaks: cleaned } });
+}
+
+// --- Playoffs -----------------------------------------------------------------
+
+/**
+ * Generate the next playoff round for a league division (stage='playoff').
+ * No playoff games yet -> round 1 from current standings, top `numTeams`
+ * seeds (power of two, so no byes: 1vN, 2vN-1... in bracket order). Later ->
+ * pairs the winners of the last completed round in slot order. Times start
+ * TBD; staff schedule each game from the games list.
+ */
+export async function generatePlayoffRound(divisionId: number, numTeams: number, actorClerkId: string): Promise<{ round: number; created: number }> {
+  const db = supabaseAdmin();
+  const { data: existing } = await db
+    .from('games')
+    .select('id, round, status, home_team_id, away_team_id, home_score, away_score')
+    .eq('division_id', divisionId)
+    .eq('stage', 'playoff')
+    .order('round')
+    .order('id');
+
+  if (!existing?.length) {
+    if (![2, 4, 8, 16].includes(numTeams)) throw new Error('Playoff size must be 2, 4, 8 or 16 teams.');
+    const { standings } = await divisionStandings(divisionId);
+    const played = standings.filter((s) => s.gp > 0).length;
+    if (played === 0) throw new Error('No regular-season results yet - playoffs seed from standings.');
+    if (standings.length < numTeams) throw new Error(`Only ${standings.length} teams in the division.`);
+    const seeds = standings.slice(0, numTeams).map((s) => s.team);
+    const rows = [];
+    for (let i = 0; i < numTeams / 2; i++) {
+      rows.push({ division_id: divisionId, stage: 'playoff', round: 1, home_team_id: seeds[i], away_team_id: seeds[numTeams - 1 - i] });
+    }
+    const { error } = await db.from('games').insert(rows);
+    if (error) throw new Error(error.message);
+    await audit({ actorId: actorClerkId, action: 'division.playoffs-seeded', target: `division:${divisionId}`, meta: { numTeams } });
+    return { round: 1, created: rows.length };
+  }
+
+  const lastRound = Math.max(...existing.map((g) => g.round ?? 1));
+  const lastGames = existing.filter((g) => (g.round ?? 1) === lastRound);
+  if (lastGames.length === 1) throw new Error('The final has been generated - the bracket is complete.');
+  if (lastGames.some((g) => g.status !== 'final')) throw new Error(`Round ${lastRound} isn't finished yet.`);
+
+  const winners = lastGames.map((g) => (g.home_score! > g.away_score! ? g.home_team_id : g.away_team_id));
+  const rows = [];
+  for (let i = 0; i < winners.length; i += 2) {
+    rows.push({ division_id: divisionId, stage: 'playoff', round: lastRound + 1, home_team_id: winners[i], away_team_id: winners[i + 1] ?? null });
+  }
+  const { error } = await db.from('games').insert(rows);
+  if (error) throw new Error(error.message);
+  await audit({ actorId: actorClerkId, action: 'division.playoffs-advanced', target: `division:${divisionId}`, meta: { round: lastRound + 1 } });
+  return { round: lastRound + 1, created: rows.length };
 }
 
 function upcomingDates(startISO: string, weekdays: number[], count: number): string[] {

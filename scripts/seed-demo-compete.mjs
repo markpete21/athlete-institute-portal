@@ -109,7 +109,12 @@ async function seed() {
     const members = [];
     for (let i = 0; i < count; i++) {
       const [first_name, last_name] = names.next().value;
-      members.push({ family_id: family.id, first_name, last_name, member_role: 'dependent', hide_from_public_rosters: hideFirst && i === 0 });
+      members.push({
+        family_id: family.id, first_name, last_name, member_role: 'dependent',
+        hide_from_public_rosters: hideFirst && i === 0,
+        // staff-only 1-5 rating (deterministic spread so the team builder demos well)
+        staff_skill_rating: ((i * 3 + count) % 5) + 1,
+      });
     }
     const fmRows = await post('family_members', members);
     const regRows = await post('registrations', fmRows.map((m) => ({ program_id: programId, family_id: family.id, family_member_id: m.id, season_key: '2026:may-aug', status: 'active' })));

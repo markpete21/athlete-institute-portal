@@ -348,6 +348,7 @@ export function computeStandings(results: GameResult[], teamIds: number[], tiebr
       if (tb === 'wins') d = b.w - a.w;
       else if (tb === 'win_pct') d = b.winPct - a.winPct;
       else if (tb === 'differential') d = b.diff - a.diff;
+      else if (tb === 'points_for') d = b.pf - a.pf;
       else if (tb === 'head_to_head') d = (h2h.get(`${b.team}:${a.team}`) ?? 0) - (h2h.get(`${a.team}:${b.team}`) ?? 0);
       if (d !== 0) return d;
     }

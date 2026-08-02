@@ -6,7 +6,7 @@ import { audit, type BalanceAttribute, type Sport } from '@ai/foundation';
 import { supabaseAdmin } from '@ai/foundation/supabase';
 import { getPortalSession } from '@/lib/auth';
 import { profileCan } from '@/lib/staff/staff';
-import { buildLeagueSchedule, createDivision, runTeamBuilder, saveScore } from '@/lib/competitive/competitive';
+import { buildLeagueSchedule, createDivision, generatePlayoffRound, runTeamBuilder, saveScore, setSkillRating, updateTiebreaks } from '@/lib/competitive/competitive';
 
 async function requireStaff() {
   const session = await getPortalSession();
@@ -67,6 +67,41 @@ export async function saveScoreAction(formData: FormData): Promise<void> {
     liveStreamRef: String(formData.get('liveStreamRef') ?? '').trim() || null,
     actorClerkId: session.userId!,
   });
+  revalidatePath(`/competitive/${divisionId}`);
+}
+
+/**
+ * Staff-only 1-5 skill rating on the athlete. Never public; powers the team
+ * builder. Any staff can set it (it's an operational note, not a sensitive
+ * roster field like medical info).
+ */
+export async function setSkillRatingAction(formData: FormData): Promise<void> {
+  const session = await requireStaff();
+  const raw = String(formData.get('rating') ?? '');
+  await setSkillRating(
+    Number(formData.get('familyMemberId')),
+    raw === '' ? null : Number(raw),
+    session.userId!,
+  );
+  revalidatePath(`/competitive/${Number(formData.get('divisionId'))}`);
+}
+
+/** Standings hierarchy: ordered tiebreak criteria from the ranked selects. */
+export async function saveTiebreaksAction(formData: FormData): Promise<void> {
+  const session = await requireStaff();
+  const divisionId = Number(formData.get('divisionId'));
+  const ordered = [1, 2, 3, 4, 5]
+    .map((i) => String(formData.get(`tb${i}`) ?? ''))
+    .filter(Boolean);
+  await updateTiebreaks(divisionId, ordered, session.userId!);
+  revalidatePath(`/competitive/${divisionId}`);
+}
+
+/** Seed round 1 from standings, or advance winners into the next round. */
+export async function generatePlayoffsAction(formData: FormData): Promise<void> {
+  const session = await requireStaff();
+  const divisionId = Number(formData.get('divisionId'));
+  await generatePlayoffRound(divisionId, Number(formData.get('numTeams')) || 4, session.userId!);
   revalidatePath(`/competitive/${divisionId}`);
 }
 
