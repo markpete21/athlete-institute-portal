@@ -57,6 +57,7 @@ export async function createProgramAction(formData: FormData): Promise<void> {
     category: (String(formData.get('category') ?? '') || undefined) as ProgramCategory | undefined,
     sportTag: String(formData.get('sportTag') ?? '').trim() || null,
     brandKey: String(formData.get('brandKey') ?? 'athlete-institute'),
+    seasonKey: String(formData.get('seasonKey') ?? '').trim() || null,
     minAge: num(formData.get('minAge')),
     maxAge: num(formData.get('maxAge')),
     capacity: num(formData.get('capacity')),

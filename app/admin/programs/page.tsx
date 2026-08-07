@@ -3,14 +3,16 @@ import { PROGRAM_CATEGORIES } from '@ai/foundation';
 import { supabaseAdmin } from '@ai/foundation/supabase';
 import { BRANDS } from '@ai/foundation';
 import { listProgramTypes } from '@/lib/programs/programs';
+import { listSeasons } from '@/lib/seasons/seasons';
 import { createProgramAction } from './actions';
 
 export const dynamic = 'force-dynamic';
 
 /** Programs list + create (Module 4 Stage 1). */
 export default async function ProgramsListPage() {
-  const [types, { data: programs }] = await Promise.all([
+  const [types, seasons, { data: programs }] = await Promise.all([
     listProgramTypes(),
+    listSeasons(),
     supabaseAdmin().from('programs').select('id, name, category, status, brand_key, program_type_id').order('id', { ascending: false }).limit(50),
   ]);
   const typeName = new Map(types.map((t) => [t.id, t.name]));
@@ -54,6 +56,13 @@ export default async function ProgramsListPage() {
           <div>
             <label className="field-label" htmlFor="sportTag">Sport</label>
             <input id="sportTag" name="sportTag" placeholder="Basketball" className="input" />
+          </div>
+          <div>
+            <label className="field-label" htmlFor="seasonKey">Season</label>
+            <select id="seasonKey" name="seasonKey" className="input" defaultValue="">
+              <option value="">— none yet —</option>
+              {seasons.map((s) => <option key={s.key} value={s.key}>{s.name}</option>)}
+            </select>
           </div>
           <div className="flex gap-2">
             <div><label className="field-label" htmlFor="minAge">Min age</label><input id="minAge" name="minAge" type="number" className="input w-20" /></div>

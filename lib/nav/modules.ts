@@ -42,6 +42,7 @@ export const MODULES: ModuleDef[] = [
     { label: 'All programs', href: '/programs' },
     { label: 'Program types', href: '/programs/types' },
     { label: 'Custom questions', href: '/programs/questions' },
+    { label: 'Seasons', href: '/seasons' },
   ] },
   { key: 'camps', label: 'Camps', group: 'Programs & Registration', href: '/camps', actions: [
     { label: 'All camps', href: '/camps' },

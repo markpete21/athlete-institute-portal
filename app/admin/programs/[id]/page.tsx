@@ -3,6 +3,7 @@ import { notFound } from 'next/navigation';
 import { BRANDS, PROGRAM_CATEGORIES, buildTree, flattenTree, formatCAD, type FacilityNode } from '@ai/foundation';
 import { supabaseAdmin } from '@ai/foundation/supabase';
 import { getProgram } from '@/lib/programs/programs';
+import { listSeasons } from '@/lib/seasons/seasons';
 import { listQuestions, programQuestions } from '@/lib/programs/questions';
 import { listWaivers } from '@/lib/waivers';
 import {
@@ -36,7 +37,7 @@ export default async function ProgramBuilderPage({ params }: { params: { id: str
   ]);
   const ordered = flattenTree(buildTree((facRows ?? []) as FacilityNode[]));
   const playBase = process.env.NEXT_PUBLIC_PLAY_URL ?? 'https://play.athleteinstitute.ca';
-  const [attachedQuestions, allQuestions, waivers] = await Promise.all([programQuestions(program.id), listQuestions(), listWaivers()]);
+  const [attachedQuestions, allQuestions, waivers, seasons] = await Promise.all([programQuestions(program.id), listQuestions(), listWaivers(), listSeasons()]);
   const attachedIds = new Set(attachedQuestions.map((q) => q.id));
 
   return (
@@ -93,7 +94,17 @@ export default async function ProgramBuilderPage({ params }: { params: { id: str
           </select>
         </div>
         <div><label className="field-label">Sport</label><input name="sportTag" defaultValue={program.sport_tag ?? ''} className="input" /></div>
-        <div><label className="field-label">Season key</label><input name="seasonKey" defaultValue={program.season_key ?? ''} placeholder="2026:sep-dec" className="input" /></div>
+        <div>
+          <label className="field-label">Season</label>
+          <select name="seasonKey" defaultValue={program.season_key ?? ''} className="input">
+            <option value="">— none —</option>
+            {/* keep an unknown/archived saved key selectable so saving doesn't clobber it */}
+            {program.season_key && !seasons.some((s) => s.key === program.season_key) && (
+              <option value={program.season_key}>{program.season_key}</option>
+            )}
+            {seasons.map((s) => <option key={s.key} value={s.key}>{s.name}</option>)}
+          </select>
+        </div>
         <div className="flex gap-2">
           <div><label className="field-label">Min age</label><input name="minAge" type="number" defaultValue={program.min_age ?? ''} className="input w-20" /></div>
           <div><label className="field-label">Max age</label><input name="maxAge" type="number" defaultValue={program.max_age ?? ''} className="input w-20" /></div>
