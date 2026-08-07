@@ -2,9 +2,10 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import type { Metadata } from 'next';
 import Bracket from '@/components/compete/Bracket';
+import AveragesTable from '@/components/compete/AveragesTable';
 import Crest from '@/components/compete/crest';
 import DivisionTabs from '@/components/compete/DivisionTabs';
-import { divisionDetail, type CompeteGame } from '@/lib/compete/compete';
+import { divisionDetail, divisionStats, type CompeteGame } from '@/lib/compete/compete';
 
 export const dynamic = 'force-dynamic';
 
@@ -83,6 +84,7 @@ export default async function DivisionPage({ params }: { params: { id: string } 
   const detail = await divisionDetail(Number(params.id));
   if (!detail) notFound();
   const { division, standings, games, rosters } = detail;
+  const stats = division.statsEnabled ? await divisionStats(division.id) : null;
 
   const isVb = standings.sport === 'volleyball';
   const unit = isVb ? 'S' : 'PF';
@@ -157,20 +159,93 @@ export default async function DivisionPage({ params }: { params: { id: string } 
     </div>
   );
 
-  const rostersPane = byTeam.size === 0 ? (
+  // Roster names link to profiles only while the stats platform is on — a
+  // hidden member ("Team member") never links anywhere.
+  const rosterEntries = new Map<string, { name: string; memberId: number }[]>();
+  for (const r of rosters) {
+    if (!rosterEntries.has(r.teamName)) rosterEntries.set(r.teamName, []);
+    rosterEntries.get(r.teamName)!.push({ name: r.displayName, memberId: r.memberId });
+  }
+  const rostersPane = rosterEntries.size === 0 ? (
     <p className="cs-empty">Rosters haven&apos;t been published yet.</p>
   ) : (
     <>
       <div className="cs-rosters">
-        {[...byTeam.entries()].map(([team, names]) => (
+        {[...rosterEntries.entries()].map(([team, players]) => (
           <div key={team} className="cs-roster">
             <b className="cs-roster-head"><Crest name={team} small />{team}</b>
-            <ul>{names.map((n, i) => <li key={i}>{n}</li>)}</ul>
+            <ul>
+              {players.map((p, i) =>
+                division.statsEnabled && p.name !== 'Team member' ? (
+                  <li key={i}><a className="cs-plink" href={`/${division.id}/player/${p.memberId}`}>{p.name}</a></li>
+                ) : (
+                  <li key={i}>{p.name}</li>
+                ),
+              )}
+            </ul>
           </div>
         ))}
       </div>
       {!division.showFullNames && (
         <p className="cs-note">Last names are shown as an initial on this division.</p>
+      )}
+    </>
+  );
+
+  const statsPane = stats && (
+    <>
+      {stats.show.leaders && stats.players.length > 0 && (
+        <section className="cs-sec">
+          <h2 className="cs-h2">League leaders</h2>
+          <div className="cs-leadboards">
+            {stats.leaders.map((b) => (
+              <div key={b.key} className="cs-lb">
+                <span className="label text-[10px]">{b.label}</span>
+                <ol>
+                  {b.top.map((p, i) => (
+                    <li key={p.memberId} className={i === 0 ? 'top' : undefined}>
+                      <span className="rk mono">{i + 1}</span>
+                      <a className="cs-plink" href={`/${division.id}/player/${p.memberId}`}>{p.name}</a>
+                      <span className="tm label text-[9px]">{p.teamName}</span>
+                      <span className="val mono">{p[b.key].toFixed(1)}</span>
+                    </li>
+                  ))}
+                </ol>
+              </div>
+            ))}
+          </div>
+          {stats.leaderMinGp > 1 && <p className="cs-note">Leaders need {stats.leaderMinGp}+ games played.</p>}
+        </section>
+      )}
+      {stats.show.averages && stats.players.length > 0 && (
+        <section className="cs-sec">
+          <h2 className="cs-h2">Player averages</h2>
+          <AveragesTable rows={stats.players} divisionId={division.id} />
+        </section>
+      )}
+      {stats.show.team && anyPlayed && (
+        <section className="cs-sec">
+          <h2 className="cs-h2">Team stats</h2>
+          <div className="cs-tablewrap">
+            <table className="cs-table">
+              <thead><tr><th>Team</th><th>GP</th><th>{unit}/G</th><th>Opp/G</th><th>Diff</th></tr></thead>
+              <tbody>
+                {standings.standings.map((r) => (
+                  <tr key={r.team}>
+                    <td className="cs-team"><span className="cs-team-in"><Crest name={standings.teamNames.get(r.team) ?? ''} small />{standings.teamNames.get(r.team)}</span></td>
+                    <td className="mono">{r.gp}</td>
+                    <td className="mono">{r.gp ? (r.pf / r.gp).toFixed(1) : '0.0'}</td>
+                    <td className="mono">{r.gp ? (r.pa / r.gp).toFixed(1) : '0.0'}</td>
+                    <td className="mono">{r.diff > 0 ? `+${r.diff}` : r.diff}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </section>
+      )}
+      {stats.players.length === 0 && (
+        <p className="cs-empty">Stats appear as staff enter box scores after each game.</p>
       )}
     </>
   );
@@ -187,6 +262,7 @@ export default async function DivisionPage({ params }: { params: { id: string } 
         tabs={[
           { id: 'schedule', label: 'Schedule & Results', pane: schedulePane },
           { id: 'standings', label: 'Standings', pane: standingsPane },
+          ...(statsPane ? [{ id: 'stats', label: 'Stats', pane: statsPane }] : []),
           { id: 'rosters', label: 'Rosters', pane: rostersPane },
         ]}
       />

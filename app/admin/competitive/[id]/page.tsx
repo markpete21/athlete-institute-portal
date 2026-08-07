@@ -4,7 +4,7 @@ import { buildTree, DEFAULT_TIEBREAKS, flattenTree, type FacilityNode, type Spor
 import { supabaseAdmin } from '@ai/foundation/supabase';
 import RatingSelect from '@/components/admin/RatingSelect';
 import { divisionStandings, rosterWithRatings, TIEBREAK_OPTIONS } from '@/lib/competitive/competitive';
-import { buildScheduleAction, generatePlayoffsAction, runBuilderAction, saveCompeteSettingsAction, saveScoreAction, saveTiebreaksAction, setSkillRatingAction } from '../actions';
+import { buildScheduleAction, generatePlayoffsAction, runBuilderAction, saveBoxScoreAction, saveCompeteSettingsAction, saveScoreAction, saveStatsSettingsAction, saveTiebreaksAction, setSkillRatingAction } from '../actions';
 
 export const dynamic = 'force-dynamic';
 
@@ -15,17 +15,20 @@ const fmt = (iso: string | null) => iso ? new Date(iso).toLocaleString('en-CA', 
 export default async function DivisionAdminPage({ params }: { params: { id: string } }) {
   const db = supabaseAdmin();
   const divisionId = Number(params.id);
-  const { data: div } = await db.from('divisions').select('id, name, sport, tiebreaks, show_on_compete, show_full_names, programs(name)').eq('id', divisionId).maybeSingle();
+  const { data: div } = await db.from('divisions').select('id, name, sport, tiebreaks, show_on_compete, show_full_names, stats_enabled, stats_show, programs(name)').eq('id', divisionId).maybeSingle();
   if (!div) notFound();
 
-  const [{ data: teams }, { data: members }, { data: games }, { data: facRows }, standings, roster] = await Promise.all([
+  const [{ data: teams }, { data: members }, { data: games }, { data: facRows }, { data: statLines }, standings, roster] = await Promise.all([
     db.from('teams').select('id, name').eq('division_id', divisionId).order('sort_order'),
     db.from('team_members').select('id, team_id').eq('division_id', divisionId),
     db.from('games').select('id, round, stage, home_team_id, away_team_id, starts_at, status, home_score, away_score, overtime, live_stream_ref').eq('division_id', divisionId).order('starts_at'),
     db.from('facilities').select('id, parent_id, name, label, sort_order, bookable, deleted_at').is('deleted_at', null),
+    db.from('game_stat_lines').select('game_id, team_member_id, pts, reb, ast').eq('division_id', divisionId),
     divisionStandings(divisionId),
     rosterWithRatings(divisionId),
   ]);
+  const lineFor = new Map((statLines ?? []).map((l) => [`${l.game_id}:${l.team_member_id}`, l]));
+  const statsShow = (div.stats_show ?? {}) as { averages?: boolean; leaders?: boolean; team?: boolean };
   const ordered = flattenTree(buildTree((facRows ?? []) as FacilityNode[]));
   const teamName = new Map((teams ?? []).map((t) => [t.id, t.name]));
   const rosterCount = (members ?? []).length;
@@ -119,8 +122,11 @@ export default async function DivisionAdminPage({ params }: { params: { id: stri
       {/* Score entry */}
       <section className="flex flex-col gap-3">
         <h2 className="text-2xl">Games</h2>
-        {(games ?? []).map((g) => (
-          <form key={g.id} action={saveScoreAction} className="card flex flex-wrap items-center gap-2 p-3 text-sm">
+        {(games ?? []).map((g) => {
+          const gamePlayers = roster.filter((r) => r.teamId != null && (r.teamId === g.home_team_id || r.teamId === g.away_team_id));
+          return (
+          <div key={g.id} className="card p-3">
+          <form action={saveScoreAction} className="flex flex-wrap items-center gap-2 text-sm">
             <input type="hidden" name="divisionId" value={divisionId} />
             <input type="hidden" name="gameId" value={g.id} />
             <span className="label text-[10px]">{g.stage === 'playoff' ? 'PO' : 'R'}{g.round} · {fmt(g.starts_at)}</span>
@@ -136,7 +142,47 @@ export default async function DivisionAdminPage({ params }: { params: { id: stri
             <input name="liveStreamRef" defaultValue={g.live_stream_ref ?? ''} placeholder="Stream ref (Watch link)" className="input w-44 text-sm" />
             <button type="submit" className="btn-ghost btn-sm ml-auto">Save game</button>
           </form>
-        ))}
+          {/* Box score — one line per rostered player on either team. Only
+              counts publicly once the game is final and stats are enabled. */}
+          {div.stats_enabled && gamePlayers.length > 0 && (
+            <details className="mt-2 border-t border-hairline pt-2">
+              <summary className="label cursor-pointer text-[10px]">
+                Box score ({gamePlayers.filter((r) => lineFor.has(`${g.id}:${r.memberId}`)).length}/{gamePlayers.length} entered)
+              </summary>
+              <form action={saveBoxScoreAction} className="mt-2 flex flex-col gap-3">
+                <input type="hidden" name="divisionId" value={divisionId} />
+                <input type="hidden" name="gameId" value={g.id} />
+                <div className="grid gap-4 sm:grid-cols-2">
+                  {[g.home_team_id, g.away_team_id].map((tid) => (
+                    <div key={tid ?? 'x'}>
+                      <p className="label mb-1 text-[10px]">{teamName.get(tid!) ?? '?'}</p>
+                      <div className="flex flex-col gap-1">
+                        <div className="grid grid-cols-[1fr_52px_52px_52px] gap-1 font-mono text-[9px] uppercase text-silver"><span /><span>PTS</span><span>REB</span><span>AST</span></div>
+                        {roster.filter((r) => r.teamId === tid).map((r) => {
+                          const line = lineFor.get(`${g.id}:${r.memberId}`);
+                          return (
+                            <div key={r.memberId} className="grid grid-cols-[1fr_52px_52px_52px] items-center gap-1 text-sm">
+                              <span className="truncate text-ink">{r.name}</span>
+                              <input name={`pts_${r.memberId}`} type="number" min={0} defaultValue={line?.pts ?? ''} className="input px-1 py-0.5 text-sm" />
+                              <input name={`reb_${r.memberId}`} type="number" min={0} defaultValue={line?.reb ?? ''} className="input px-1 py-0.5 text-sm" />
+                              <input name={`ast_${r.memberId}`} type="number" min={0} defaultValue={line?.ast ?? ''} className="input px-1 py-0.5 text-sm" />
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                <div className="flex items-center gap-3">
+                  <button type="submit" className="btn-ghost btn-sm">Save box score</button>
+                  <span className="label text-[9px]">Blank row = no line · typed 0 counts · public once the game is final</span>
+                </div>
+              </form>
+            </details>
+          )}
+          </div>
+          );
+        })}
         {(games ?? []).length === 0 && <p className="text-sm text-silver">No games scheduled yet.</p>}
       </section>
 
@@ -249,6 +295,27 @@ export default async function DivisionAdminPage({ params }: { params: { id: stri
           </span>
           <button className="btn-ghost btn-sm ml-auto">Save</button>
         </form>
+
+        {/* Stats platform — default OFF; boards pick what the public tab shows */}
+        <form action={saveStatsSettingsAction} className="card flex flex-wrap items-center gap-5 p-4">
+          <input type="hidden" name="divisionId" value={divisionId} />
+          <label className="flex items-center gap-2 text-sm">
+            <input type="checkbox" name="statsEnabled" defaultChecked={div.stats_enabled} />
+            Stats platform
+          </label>
+          <span className="label text-[10px]">{div.stats_enabled ? 'ON — Stats tab + player pages live' : 'OFF — no stats pages'}</span>
+          <label className="flex items-center gap-2 text-sm">
+            <input type="checkbox" name="showAverages" defaultChecked={statsShow.averages !== false} /> Player averages
+          </label>
+          <label className="flex items-center gap-2 text-sm">
+            <input type="checkbox" name="showLeaders" defaultChecked={statsShow.leaders !== false} /> League leaders
+          </label>
+          <label className="flex items-center gap-2 text-sm">
+            <input type="checkbox" name="showTeam" defaultChecked={statsShow.team !== false} /> Team stats
+          </label>
+          <button className="btn-ghost btn-sm ml-auto">Save</button>
+        </form>
+        <p className="label text-[10px]">Box scores are entered per game in the Games list above once the platform is on.</p>
       </section>
 
       <Link href="/competitive" className="label text-[11px] hover:text-ink">← All divisions</Link>

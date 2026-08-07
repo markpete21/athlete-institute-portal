@@ -1047,3 +1047,30 @@
   .cs-gcard { grid-template-columns: 54px 1fr auto; gap: 11px; padding: 11px 12px; }
   .cs-tabs { gap: 18px; }
 }
+
+/* Compete stats platform (slice 2) — leader boards, sortable averages,
+   player profile tiles. Same ledger language as the cards above. */
+.cs-leadboards { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 14px; }
+.cs-lb { background: var(--cs-paper); border: 1px solid var(--cs-hairline); padding: 13px 16px 11px; }
+.cs-lb > .label { display: block; margin-bottom: 7px; }
+.cs-lb ol { list-style: none; margin: 0; padding: 0; }
+.cs-lb li { display: flex; align-items: baseline; gap: 8px; padding: 6px 0; border-top: 1px solid var(--cs-hairline); font-size: 13.5px; }
+.cs-lb li.top { font-size: 15px; font-weight: 700; }
+.cs-lb .rk { font-size: 10px; color: var(--cs-gold); width: 13px; font-variant-numeric: tabular-nums; }
+.cs-lb .tm { color: var(--cs-silver) !important; }
+.cs-lb .val { margin-left: auto; font-weight: 600; font-variant-numeric: tabular-nums; }
+.cs-plink { color: inherit; text-decoration: none; }
+.cs-plink:hover { color: var(--cs-gold); text-decoration: underline; text-underline-offset: 3px; }
+.cs-sort button {
+  all: unset; cursor: pointer; font: inherit; color: inherit;
+  letter-spacing: inherit; text-transform: inherit;
+}
+.cs-sort.on button { color: var(--cs-gold); }
+.cs-sort.on button::after { content: " \2193"; }
+.cs-pp-head { display: flex; align-items: center; gap: 14px; margin-top: 10px; }
+.cs-pp-head .cs-crest { width: 44px; height: 44px; font-size: 13px; }
+.cs-pp-name { margin: 0; }
+.cs-pp-tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); gap: 12px; max-width: 560px; }
+.cs-pp-tile { background: var(--cs-paper); border: 1px solid var(--cs-hairline); padding: 12px 15px; display: grid; gap: 1px; }
+.cs-pp-tile .v { font-size: 22px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.cs-pp-tile .k { font-family: var(--font-mono, monospace); font-size: 9px; letter-spacing: 0.12em; color: var(--cs-silver); }

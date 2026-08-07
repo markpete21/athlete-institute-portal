@@ -131,3 +131,94 @@ export async function saveCompeteSettingsAction(formData: FormData): Promise<voi
   });
   revalidatePath(`/competitive/${divisionId}`);
 }
+
+/**
+ * Stats platform per division (slice 2): master switch + which boards the
+ * public Stats tab shows. Default OFF — flipping it on is what makes player
+ * profiles and the Stats tab exist at all.
+ */
+export async function saveStatsSettingsAction(formData: FormData): Promise<void> {
+  const s = await getPortalSession();
+  if (!s.isStaff) throw new Error('Staff only.');
+  const divisionId = Number(formData.get('divisionId'));
+  const show = {
+    averages: formData.get('showAverages') === 'on',
+    leaders: formData.get('showLeaders') === 'on',
+    team: formData.get('showTeam') === 'on',
+  };
+  const enabled = formData.get('statsEnabled') === 'on';
+  const { error } = await supabaseAdmin()
+    .from('divisions')
+    .update({ stats_enabled: enabled, stats_show: show })
+    .eq('id', divisionId);
+  if (error) throw new Error(error.message);
+  await audit({
+    actorId: s.userId!,
+    action: 'division.stats-settings',
+    target: `division:${divisionId}`,
+    meta: { enabled, ...show },
+  });
+  revalidatePath(`/competitive/${divisionId}`);
+}
+
+/**
+ * Per-game box score: one line per rostered player, keyed on the roster row
+ * (team_members.id) so identity follows the registration -> family member.
+ * A row left fully blank deletes any existing line; a typed 0 is a real stat.
+ * Same capability gate as score entry.
+ */
+export async function saveBoxScoreAction(formData: FormData): Promise<void> {
+  const session = await requireStaff();
+  if (session.profileId && !(await profileCan(session.profileId, 'score_entry', 'edit'))) {
+    throw new Error('You do not have the score-entry capability.');
+  }
+  const divisionId = Number(formData.get('divisionId'));
+  const gameId = Number(formData.get('gameId'));
+  const db = supabaseAdmin();
+
+  const { data: members } = await db
+    .from('team_members')
+    .select('id, team_id')
+    .eq('division_id', divisionId);
+  const teamOf = new Map((members ?? []).map((m) => [m.id, m.team_id]));
+
+  const rows = new Map<number, { pts: string; reb: string; ast: string }>();
+  for (const [key, value] of formData.entries()) {
+    const m = /^(pts|reb|ast)_(\d+)$/.exec(key);
+    if (!m) continue;
+    const mid = Number(m[2]);
+    const row = rows.get(mid) ?? { pts: '', reb: '', ast: '' };
+    row[m[1] as 'pts' | 'reb' | 'ast'] = String(value).trim();
+    rows.set(mid, row);
+  }
+
+  const upserts: Array<{ game_id: number; division_id: number; team_id: number | null; team_member_id: number; pts: number; reb: number; ast: number }> = [];
+  const deletes: number[] = [];
+  for (const [mid, r] of rows) {
+    if (r.pts === '' && r.reb === '' && r.ast === '') { deletes.push(mid); continue; }
+    upserts.push({
+      game_id: gameId,
+      division_id: divisionId,
+      team_id: teamOf.get(mid) ?? null,
+      team_member_id: mid,
+      pts: Math.max(0, Number(r.pts) || 0),
+      reb: Math.max(0, Number(r.reb) || 0),
+      ast: Math.max(0, Number(r.ast) || 0),
+    });
+  }
+  if (upserts.length) {
+    const { error } = await db.from('game_stat_lines').upsert(upserts, { onConflict: 'game_id,team_member_id' });
+    if (error) throw new Error(error.message);
+  }
+  if (deletes.length) {
+    const { error } = await db.from('game_stat_lines').delete().eq('game_id', gameId).in('team_member_id', deletes);
+    if (error) throw new Error(error.message);
+  }
+  await audit({
+    actorId: session.userId!,
+    action: 'game.box-score',
+    target: `game:${gameId}`,
+    meta: { divisionId, saved: upserts.length, cleared: deletes.length },
+  });
+  revalidatePath(`/competitive/${divisionId}`);
+}
