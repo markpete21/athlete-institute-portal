@@ -55,10 +55,13 @@ export interface Program {
   waiver_id: number | null;
   status: string;
   share_token: string;
+  /** Compete landing-page brand (colours + media URLs); {} until customized. */
+  compete_brand: Record<string, unknown>;
+  tickets_url: string | null;
 }
 
 const P_COLS =
-  'id, name, description, program_type_id, category, sport_tag, season_key, year, brand_key, min_age, max_age, registration_opens_at, registration_closes_at, capacity, proration_method, base_price_cents, early_bird_price_cents, early_bird_until, late_fee_cents, late_fee_after, returning_discount_cents, multi_member_discount_cents, scholarship_eligible, quickbooks_class, waiver_id, status, share_token';
+  'id, name, description, program_type_id, category, sport_tag, season_key, year, brand_key, min_age, max_age, registration_opens_at, registration_closes_at, capacity, proration_method, base_price_cents, early_bird_price_cents, early_bird_until, late_fee_cents, late_fee_after, returning_discount_cents, multi_member_discount_cents, scholarship_eligible, quickbooks_class, waiver_id, status, share_token, compete_brand, tickets_url';
 
 // --- Types ------------------------------------------------------------------
 

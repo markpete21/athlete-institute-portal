@@ -254,7 +254,13 @@ export default async function DivisionPage({ params }: { params: { id: string } 
     <>
       <div className="cs-head">
         <Link href="/" className="label text-[11px]">← All divisions</Link>
-        <p className="label text-[11px]" style={{ marginTop: 8 }}>{division.programName}</p>
+        {division.programId ? (
+          <p className="label text-[11px]" style={{ marginTop: 8 }}>
+            <Link href={`/p/${division.programId}`} className="hover:text-ink">{division.programName} →</Link>
+          </p>
+        ) : (
+          <p className="label text-[11px]" style={{ marginTop: 8 }}>{division.programName}</p>
+        )}
         <h1 className="cs-h1">{division.name}<span className="cs-h1-dot">.</span></h1>
       </div>
 

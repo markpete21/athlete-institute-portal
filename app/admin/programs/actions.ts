@@ -3,6 +3,9 @@
 import { redirect } from 'next/navigation';
 import { revalidatePath } from 'next/cache';
 import type { ProgramCategory, ProrationMethod } from '@ai/foundation';
+import { audit } from '@ai/foundation';
+import { supabaseAdmin } from '@ai/foundation/supabase';
+import { BUCKETS, getPublicUrl, uploadFile } from '@ai/foundation/storage';
 import { getPortalSession } from '@/lib/auth';
 import { assignStaff, createProgram, generateSessions, setProgramStatus, unassignStaff, updateProgram, upsertProgramType } from '@/lib/programs/programs';
 
@@ -171,4 +174,98 @@ export async function generateSessionsAction(formData: FormData): Promise<void> 
     actorClerkId: session.userId!,
   });
   revalidatePath(`/programs/${id}`);
+}
+
+/* ------------------------------------------------------------------ */
+/* Compete brand & sponsors (migration 0056)                          */
+/* ------------------------------------------------------------------ */
+
+const BRAND_IMG_TYPES = ['image/png', 'image/jpeg', 'image/webp', 'image/svg+xml'];
+const HERO_TYPES = [...BRAND_IMG_TYPES, 'video/mp4', 'video/webm'];
+const MAX_BRAND_BYTES = 2 * 1024 * 1024;
+const MAX_HERO_BYTES = 24 * 1024 * 1024;
+
+async function putBrandFile(programId: number, slot: string, file: File, allowed: string[], maxBytes: number): Promise<string> {
+  if (file.size > maxBytes) throw new Error(`${slot} must be ${Math.round(maxBytes / 1024 / 1024)} MB or smaller.`);
+  if (!allowed.includes(file.type)) throw new Error(`${slot} must be one of: ${allowed.join(', ')}`);
+  const ext = (file.name.split('.').pop() ?? 'png').toLowerCase().replace(/[^a-z0-9]/g, '') || 'png';
+  // Timestamped so a re-upload busts CDN caches, same as booking logos.
+  const path = `compete-brand/${programId}/${slot}-${Date.now()}.${ext}`;
+  await uploadFile(BUCKETS.eventLogos, path, await file.arrayBuffer(), { contentType: file.type, upsert: true });
+  return getPublicUrl(BUCKETS.eventLogos, path);
+}
+
+/** Colours, logo, hero media and tickets link for the program's Compete
+ *  landing page. Files are optional on every save; existing media stays
+ *  unless replaced. */
+export async function saveCompeteBrandAction(formData: FormData): Promise<void> {
+  const session = await requireStaff();
+  const programId = Number(formData.get('programId'));
+  const db = supabaseAdmin();
+  const { data: prog } = await db.from('programs').select('compete_brand').eq('id', programId).maybeSingle();
+  if (!prog) throw new Error('Program not found.');
+  const brand = { ...(prog.compete_brand as Record<string, unknown> ?? {}) };
+
+  const hex = (v: FormDataEntryValue | null) => {
+    const s = String(v ?? '').trim().toLowerCase();
+    return /^#[0-9a-f]{6}$/.test(s) ? s : null;
+  };
+  brand.primary = hex(formData.get('primary')) ?? brand.primary ?? '#1e1e1e';
+  brand.accent = hex(formData.get('accent')) ?? brand.accent ?? '#9e8959';
+
+  const logo = formData.get('logo');
+  if (logo instanceof File && logo.size > 0) {
+    brand.logoUrl = await putBrandFile(programId, 'logo', logo, BRAND_IMG_TYPES, MAX_BRAND_BYTES);
+  }
+  const hero = formData.get('hero');
+  if (hero instanceof File && hero.size > 0) {
+    brand.heroUrl = await putBrandFile(programId, 'hero', hero, HERO_TYPES, MAX_HERO_BYTES);
+    brand.heroType = hero.type.startsWith('video') ? 'video' : 'image';
+  }
+  if (formData.get('clearLogo') === 'on') { brand.logoUrl = null; }
+  if (formData.get('clearHero') === 'on') { brand.heroUrl = null; brand.heroType = null; }
+
+  const ticketsUrl = String(formData.get('ticketsUrl') ?? '').trim();
+  const ticketsOn = formData.get('ticketsOn') === 'on';
+
+  const { error } = await db
+    .from('programs')
+    .update({ compete_brand: brand, tickets_url: ticketsOn && ticketsUrl ? ticketsUrl : null })
+    .eq('id', programId);
+  if (error) throw new Error(error.message);
+  await audit({
+    actorId: session.userId!,
+    action: 'program.compete-brand',
+    target: `program:${programId}`,
+    meta: { primary: brand.primary, accent: brand.accent, hasLogo: !!brand.logoUrl, hasHero: !!brand.heroUrl, tickets: ticketsOn && !!ticketsUrl },
+  });
+  revalidatePath(`/programs/${programId}`);
+}
+
+export async function addSponsorAction(formData: FormData): Promise<void> {
+  const session = await requireStaff();
+  const programId = Number(formData.get('programId'));
+  const name = String(formData.get('name') ?? '').trim();
+  if (!name) throw new Error('Sponsor name is required.');
+  let logoUrl: string | null = null;
+  const logo = formData.get('logo');
+  if (logo instanceof File && logo.size > 0) {
+    logoUrl = await putBrandFile(programId, `sponsor-${Date.now()}`, logo, BRAND_IMG_TYPES, MAX_BRAND_BYTES);
+  }
+  const db = supabaseAdmin();
+  const { data: last } = await db.from('compete_sponsors').select('sort').eq('program_id', programId).order('sort', { ascending: false }).limit(1);
+  const { error } = await db.from('compete_sponsors').insert({ program_id: programId, name, logo_url: logoUrl, sort: (last?.[0]?.sort ?? 0) + 1 });
+  if (error) throw new Error(error.message);
+  await audit({ actorId: session.userId!, action: 'program.sponsor-add', target: `program:${programId}`, meta: { name } });
+  revalidatePath(`/programs/${programId}`);
+}
+
+export async function removeSponsorAction(formData: FormData): Promise<void> {
+  const session = await requireStaff();
+  const id = Number(formData.get('sponsorId'));
+  const programId = Number(formData.get('programId'));
+  const { error } = await supabaseAdmin().from('compete_sponsors').delete().eq('id', id).eq('program_id', programId);
+  if (error) throw new Error(error.message);
+  await audit({ actorId: session.userId!, action: 'program.sponsor-remove', target: `program:${programId}`, meta: { sponsorId: id } });
+  revalidatePath(`/programs/${programId}`);
 }

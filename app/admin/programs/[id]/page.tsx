@@ -7,12 +7,15 @@ import { listSeasons } from '@/lib/seasons/seasons';
 import { listQuestions, programQuestions } from '@/lib/programs/questions';
 import { listWaivers } from '@/lib/waivers';
 import {
+  addSponsorAction,
   assignStaffAction,
   attachProgramWaiverAction,
   attachQuestionAction,
   detachQuestionAction,
   generateSessionsAction,
   draftDescriptionAction,
+  removeSponsorAction,
+  saveCompeteBrandAction,
   setStatusAction,
   unassignStaffAction,
   updateProgramAction,
@@ -29,12 +32,14 @@ export default async function ProgramBuilderPage({ params }: { params: { id: str
   if (!program) notFound();
 
   const db = supabaseAdmin();
-  const [{ data: facRows }, { data: staff }, { data: sessions }, { data: profs }] = await Promise.all([
+  const [{ data: facRows }, { data: staff }, { data: sessions }, { data: profs }, { data: sponsorRows }] = await Promise.all([
     db.from('facilities').select('id, parent_id, name, label, sort_order, bookable, deleted_at').is('deleted_at', null),
     db.from('program_staff').select('id, profile_id, role_label, profiles(email, first_name, last_name)').eq('program_id', program.id),
     db.from('program_sessions').select('id, starts_at, ends_at').eq('program_id', program.id).order('starts_at'),
     db.from('registrations').select('id', { count: 'exact', head: true }).eq('program_id', program.id).eq('status', 'active'),
+    db.from('compete_sponsors').select('id, name, logo_url').eq('program_id', program.id).order('sort').order('id'),
   ]);
+  const sponsors = sponsorRows ?? [];
   const ordered = flattenTree(buildTree((facRows ?? []) as FacilityNode[]));
   const playBase = process.env.NEXT_PUBLIC_PLAY_URL ?? 'https://play.athleteinstitute.ca';
   const [attachedQuestions, allQuestions, waivers, seasons] = await Promise.all([programQuestions(program.id), listQuestions(), listWaivers(), listSeasons()]);
@@ -232,6 +237,84 @@ export default async function ProgramBuilderPage({ params }: { params: { id: str
           <button type="submit" className="btn-ghost btn-sm">Attach</button>
         </form>
         <a href={`/programs/${program.id}/gear`} className="btn-ghost btn-sm">Gear order sheet ↗</a>
+      </section>
+
+      {/* Compete brand & sponsors — this league's own event ecosystem on the
+          public site: colours, logo, hero media, tickets link, sponsor strip. */}
+      <section className="card flex flex-col gap-4 p-5">
+        <div className="flex items-baseline justify-between">
+          <h2 className="text-2xl">Compete brand &amp; sponsors</h2>
+          <a
+            href={`${process.env.NEXT_PUBLIC_COMPETE_URL ?? 'https://compete.athleteinstitute.ca'}/p/${program.id}`}
+            target="_blank" rel="noreferrer" className="label text-[11px] hover:text-ink"
+          >
+            View landing page ↗
+          </a>
+        </div>
+        <p className="text-body max-w-[66ch] text-sm">
+          Drives this event&apos;s landing page on Compete — hero in its colours (or the uploaded
+          photo/video), logo with monogram fallback, sponsor strip, and an optional Tickets
+          button. Sponsors appear in the order they&apos;re added.
+        </p>
+        <form action={saveCompeteBrandAction} className="flex flex-wrap items-end gap-4">
+          <input type="hidden" name="programId" value={program.id} />
+          {(() => {
+            const b = (program.compete_brand ?? {}) as Record<string, unknown>;
+            const hexOr = (v: unknown, d: string) => (typeof v === 'string' && /^#[0-9a-fA-F]{6}$/.test(v) ? v : d);
+            return (
+              <>
+                <div><label className="field-label">Primary</label><input name="primary" type="color" defaultValue={hexOr(b.primary, '#1e1e1e')} className="input h-10 w-16 p-1" /></div>
+                <div><label className="field-label">Accent</label><input name="accent" type="color" defaultValue={hexOr(b.accent, '#9e8959')} className="input h-10 w-16 p-1" /></div>
+                <div>
+                  <label className="field-label">Logo {typeof b.logoUrl === 'string' && b.logoUrl ? '(uploaded)' : '(monogram shown)'}</label>
+                  <input name="logo" type="file" accept="image/png,image/jpeg,image/webp,image/svg+xml" className="text-xs" />
+                </div>
+                <div>
+                  <label className="field-label">Hero photo / video {typeof b.heroUrl === 'string' && b.heroUrl ? `(${b.heroType ?? 'set'})` : '(colour hero shown)'}</label>
+                  <input name="hero" type="file" accept="image/png,image/jpeg,image/webp,video/mp4,video/webm" className="text-xs" />
+                </div>
+                {typeof b.logoUrl === 'string' && b.logoUrl && (
+                  <label className="flex items-center gap-1 pb-2 font-mono text-[10px] uppercase text-silver"><input type="checkbox" name="clearLogo" /> remove logo</label>
+                )}
+                {typeof b.heroUrl === 'string' && b.heroUrl && (
+                  <label className="flex items-center gap-1 pb-2 font-mono text-[10px] uppercase text-silver"><input type="checkbox" name="clearHero" /> remove hero</label>
+                )}
+              </>
+            );
+          })()}
+          <div className="flex items-end gap-2">
+            <label className="flex items-center gap-1 pb-2 font-mono text-[10px] uppercase text-silver">
+              <input type="checkbox" name="ticketsOn" defaultChecked={!!program.tickets_url} /> Tickets
+            </label>
+            <div><label className="field-label">Tickets link</label><input name="ticketsUrl" defaultValue={program.tickets_url ?? ''} placeholder="https://tickets.athleteinstitute.ca/e/…" className="input w-72 text-sm" /></div>
+          </div>
+          <button type="submit" className="btn-gold btn-sm">Save brand</button>
+        </form>
+
+        <div className="flex flex-col gap-2">
+          <p className="label text-[10px]">Sponsors</p>
+          {sponsors.length === 0 && <p className="text-sm text-silver">No sponsors yet.</p>}
+          {sponsors.map((s) => (
+            <form key={s.id} action={removeSponsorAction} className="flex items-center gap-3 border border-hairline p-2 text-sm">
+              <input type="hidden" name="programId" value={program.id} />
+              <input type="hidden" name="sponsorId" value={s.id} />
+              {s.logo_url ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={s.logo_url} alt="" className="h-7 w-14 border border-hairline object-contain" />
+              ) : (
+                <span className="grid h-7 w-14 place-items-center border border-hairline font-mono text-[9px] text-silver">{s.name.slice(0, 2).toUpperCase()}</span>
+              )}
+              <span className="text-ink">{s.name}</span>
+              <button type="submit" className="label ml-auto text-[10px] hover:text-[#B4483C]">REMOVE</button>
+            </form>
+          ))}
+          <form action={addSponsorAction} className="flex flex-wrap items-end gap-3">
+            <input type="hidden" name="programId" value={program.id} />
+            <div><label className="field-label">Sponsor name</label><input name="name" required placeholder="North Peel Auto" className="input" /></div>
+            <div><label className="field-label">Logo (optional)</label><input name="logo" type="file" accept="image/png,image/jpeg,image/webp,image/svg+xml" className="text-xs" /></div>
+            <button type="submit" className="btn-ghost btn-sm">Add sponsor</button>
+          </form>
+        </div>
       </section>
 
       <p className="text-sm text-silver">

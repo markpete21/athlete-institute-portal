@@ -477,3 +477,91 @@ export async function playerProfile(divisionId: number, memberId: number): Promi
     log,
   };
 }
+
+/* ------------------------------------------------------------------ */
+/* League landing pages: brand, sponsors, tickets (migration 0056).   */
+/* ------------------------------------------------------------------ */
+
+export interface CompeteBrand {
+  primary: string;
+  accent: string;
+  logoUrl: string | null;
+  heroUrl: string | null;
+  heroType: 'image' | 'video' | null;
+}
+
+export interface CompeteSponsor { id: number; name: string; logoUrl: string | null }
+
+export interface ProgramLanding {
+  programId: number;
+  name: string;
+  kind: 'league' | 'tournament';
+  seasonName: string | null;
+  brand: CompeteBrand;
+  ticketsUrl: string | null;
+  sponsors: CompeteSponsor[];
+  divisions: { id: number; name: string; sport: string; teamCount: number }[];
+  nextGames: UpcomingGame[];
+}
+
+export function normalizeBrand(raw: unknown): CompeteBrand {
+  const o = (raw ?? {}) as Record<string, unknown>;
+  const hex = (v: unknown, fallback: string) =>
+    typeof v === 'string' && /^#[0-9a-fA-F]{6}$/.test(v) ? v : fallback;
+  return {
+    primary: hex(o.primary, '#1e1e1e'),
+    accent: hex(o.accent, '#9e8959'),
+    logoUrl: typeof o.logoUrl === 'string' && o.logoUrl ? o.logoUrl : null,
+    heroUrl: typeof o.heroUrl === 'string' && o.heroUrl ? o.heroUrl : null,
+    heroType: o.heroType === 'video' ? 'video' : o.heroType === 'image' ? 'image' : null,
+  };
+}
+
+/**
+ * One league/tournament's public landing page. Null when the program has no
+ * published divisions — an unpublished league is a 404, same rule as
+ * divisions. Sponsors come back in display order.
+ */
+export async function programLanding(programId: number): Promise<ProgramLanding | null> {
+  const db = supabaseAdmin();
+  const { data: prog } = await db
+    .from('programs')
+    .select('id, name, season_key, tournament_mode, compete_brand, tickets_url')
+    .eq('id', programId)
+    .maybeSingle();
+  if (!prog) return null;
+
+  const { data: divs } = await db
+    .from('divisions')
+    .select('id, name, sport')
+    .eq('program_id', programId)
+    .eq('show_on_compete', true)
+    .order('id');
+  if (!divs?.length) return null;
+
+  const divIds = divs.map((d) => d.id);
+  const [{ data: teams }, { data: sponsors }, seasonName, games] = await Promise.all([
+    db.from('teams').select('id, division_id').in('division_id', divIds),
+    db.from('compete_sponsors').select('id, name, logo_url').eq('program_id', programId).order('sort').order('id'),
+    (async () => {
+      if (!prog.season_key) return null;
+      const { data: s } = await db.from('seasons').select('name').eq('key', prog.season_key).maybeSingle();
+      return s?.name ?? prog.season_key;
+    })(),
+    upcomingGames(24),
+  ]);
+  const counts = new Map<number, number>();
+  for (const t of teams ?? []) counts.set(t.division_id, (counts.get(t.division_id) ?? 0) + 1);
+
+  return {
+    programId: prog.id,
+    name: prog.name,
+    kind: prog.tournament_mode ? 'tournament' : 'league',
+    seasonName,
+    brand: normalizeBrand(prog.compete_brand),
+    ticketsUrl: prog.tickets_url || null,
+    sponsors: (sponsors ?? []).map((s) => ({ id: s.id, name: s.name, logoUrl: s.logo_url })),
+    divisions: divs.map((d) => ({ id: d.id, name: d.name, sport: d.sport, teamCount: counts.get(d.id) ?? 0 })),
+    nextGames: games.filter((g) => divIds.includes(g.divisionId)).slice(0, 5),
+  };
+}
