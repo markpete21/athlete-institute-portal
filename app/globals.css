@@ -935,3 +935,115 @@
 .ps-tocompete:focus-visible .pw-lockup { opacity: 0; }
 .ps-tocompete:hover .ps-tocompete-hover,
 .ps-tocompete:focus-visible .ps-tocompete-hover { opacity: 1; }
+
+/* ============================================================
+   Compete redesign 2026-08-07 — tabs, scoreboard cards, ticker.
+   Approved from Prototype A (Ledger). Appended as one block; the
+   old .cs-banner/.cs-upcard + .cs-game rules above are superseded
+   and can be removed in a cleanup pass.
+   ============================================================ */
+
+/* team crest monograms (logo-ready: swap span for img, same box) */
+.cs-crest {
+  width: 27px; height: 27px; flex: 0 0 auto; border-radius: 2px; color: #fff;
+  display: grid; place-items: center;
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: 9px; font-weight: 700; letter-spacing: 0.02em;
+}
+.cs-crest-sm { width: 20px; height: 20px; font-size: 7.5px; }
+
+/* division tabs — each one is its own page */
+.cs-tabs {
+  display: flex; gap: 26px; border-bottom: 1px solid var(--cs-hairline);
+  margin: 0 0 26px; flex-wrap: wrap;
+}
+.cs-tab {
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase;
+  color: var(--cs-silver); background: none; border: 0; cursor: pointer;
+  padding: 12px 0; border-bottom: 2px solid transparent; margin-bottom: -1px;
+}
+.cs-tab:hover { color: var(--cs-ink); }
+.cs-tab.on { color: var(--cs-ink); border-bottom-color: var(--cs-gold); }
+
+/* scoreboard cards */
+.cs-gamegrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(400px, 1fr)); gap: 14px; }
+.cs-gcard {
+  background: var(--cs-paper); border: 1px solid var(--cs-hairline);
+  display: grid; grid-template-columns: 64px 1fr auto; gap: 15px;
+  padding: 13px 16px; align-items: center;
+}
+.cs-gcard:hover { border-color: var(--cs-gold); }
+.cs-gdate {
+  display: grid; gap: 1px; border-right: 1px solid var(--cs-hairline);
+  padding-right: 13px; align-self: stretch; align-content: center;
+}
+.cs-gdate .d1 { font-family: var(--font-mono, monospace); font-size: 9px; letter-spacing: 0.14em; color: var(--cs-silver); }
+.cs-gdate .d2 { font-weight: 900; font-size: 13px; white-space: nowrap; color: var(--cs-ink); }
+.cs-gdate .d3 { font-family: var(--font-mono, monospace); font-size: 9.5px; color: var(--cs-body); white-space: nowrap; }
+.cs-gteams { display: grid; gap: 2px; min-width: 0; }
+.cs-grow { display: flex; align-items: center; gap: 10px; padding: 2px 0; min-width: 0; }
+.cs-gname { font-size: 14.5px; font-weight: 600; color: var(--cs-ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cs-gscore {
+  margin-left: auto; font-size: 16.5px; font-weight: 600; color: var(--cs-silver);
+  font-variant-numeric: tabular-nums; display: flex; align-items: center; gap: 6px;
+}
+.cs-grow.win .cs-gname { font-weight: 800; }
+.cs-grow.win .cs-gscore { color: var(--cs-ink); font-weight: 800; }
+.cs-grow.win .cs-gscore::after { content: "◂"; color: var(--cs-gold); font-size: 9px; }
+.cs-gcard.future .cs-gname { font-weight: 700; }
+.cs-gmeta { display: grid; gap: 4px; justify-items: end; text-align: right; min-width: 84px; }
+.cs-gstat {
+  font-family: var(--font-mono, monospace); font-size: 9px; letter-spacing: 0.12em;
+  text-transform: uppercase; color: var(--cs-silver);
+}
+.cs-gstat.sched { border: 1px solid var(--cs-gold); color: var(--cs-gold); padding: 3px 8px; }
+.cs-gwatch {
+  font-family: var(--font-mono, monospace); font-size: 8.5px; letter-spacing: 0.12em;
+  text-transform: uppercase; color: var(--cs-red); border: 1px solid var(--cs-red);
+  padding: 3px 7px; text-decoration: none;
+}
+.cs-gwatch:hover { background: var(--cs-red); color: #fff; }
+
+/* standings + roster crest rows */
+.cs-team-in { display: inline-flex; align-items: center; gap: 8px; }
+.cs-roster-head { display: flex; align-items: center; gap: 8px; }
+
+/* 7-day ticker */
+.cs-tick { display: flex; align-items: stretch; background: var(--cs-paper); border-bottom: 1px solid var(--cs-hairline); }
+.cs-tick-arrow {
+  flex: 0 0 26px; background: none; border: 0; border-right: 1px solid var(--cs-hairline);
+  color: var(--cs-silver); font-size: 15px; cursor: pointer; padding: 0;
+}
+.cs-tick-arrow:last-child { border-right: 0; border-left: 1px solid var(--cs-hairline); }
+.cs-tick-arrow:hover { color: var(--cs-ink); }
+.cs-tick-rail {
+  display: flex; overflow-x: auto; scroll-behavior: smooth; scrollbar-width: none;
+  cursor: grab; user-select: none; -webkit-user-select: none; flex: 1; min-width: 0;
+}
+.cs-tick-rail.dragging { cursor: grabbing; scroll-behavior: auto; }
+.cs-tick-rail::-webkit-scrollbar { display: none; }
+.cs-tick-date {
+  flex: 0 0 auto; display: grid; align-content: center; gap: 1px; text-align: center;
+  padding: 8px 12px; background: var(--cs-panel); border-right: 1px solid var(--cs-hairline);
+}
+.cs-tick-date span { font-family: var(--font-mono, monospace); font-size: 8.5px; letter-spacing: 0.14em; color: var(--cs-silver); }
+.cs-tick-date b { font-size: 12px; font-weight: 900; color: var(--cs-ink); white-space: nowrap; }
+.cs-tick-game {
+  flex: 0 0 auto; min-width: 168px; display: grid; grid-template-columns: 1fr auto;
+  gap: 2px 10px; align-items: center; padding: 8px 12px 7px;
+  border-right: 1px solid var(--cs-hairline); text-decoration: none;
+}
+.cs-tick-game:hover { background: var(--cs-soft); }
+.cs-tick-teams { display: grid; gap: 3px; }
+.cs-tick-row { display: flex; align-items: center; gap: 7px; }
+.cs-tick-row b { font-size: 12.5px; font-weight: 700; color: var(--cs-ink); white-space: nowrap; }
+.cs-tick-time { font-family: var(--font-mono, monospace); font-size: 10.5px; font-weight: 600; color: var(--cs-ink); font-variant-numeric: tabular-nums; }
+.cs-tick-time.live { color: var(--cs-red); }
+.cs-tick-div { grid-column: 1 / -1; font-size: 8.5px !important; letter-spacing: 0.1em !important; color: var(--cs-silver) !important; margin-top: 2px; }
+
+@media (max-width: 700px) {
+  .cs-gamegrid { grid-template-columns: 1fr; }
+  .cs-gcard { grid-template-columns: 54px 1fr auto; gap: 11px; padding: 11px 12px; }
+  .cs-tabs { gap: 18px; }
+}
