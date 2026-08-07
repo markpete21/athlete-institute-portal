@@ -46,6 +46,10 @@ export default async function CompeteLayout({ children }: { children: React.Reac
           <nav className="cs-nav">
             <a href="/">Divisions</a>
             <a href={`${PLAY_URL}/schedule`}>Facility schedule</a>
+            {/* Slice 7: household schedule, signed-in only. Compete stays
+                auth-free — this LINKS to the gated Play timeline, it never
+                gates anything here. */}
+            {chip && <a href={`${PLAY_URL}/account`}>My schedule</a>}
           </nav>
           {/* Signed out: the real Play lockup (dribbling ball and all) reading
               LOGIN in the same mono qualifier treatment this bar uses for
@@ -70,12 +74,10 @@ export default async function CompeteLayout({ children }: { children: React.Reac
             the program's group on the home page. */}
         {programs.length > 0 && (
           <nav className="cs-progbar" aria-label="Programs">
+            {/* Program tabs open the league's landing page (slice 4) — its
+                own front door with brand, sponsors and divisions. */}
             {programs.map((p) => (
-              <a
-                key={p.programId}
-                href={p.divisions.length === 1 ? `/${p.divisions[0].id}` : `/#program-${p.programId}`}
-                className="cs-prog"
-              >
+              <a key={p.programId} href={`/p/${p.programId}`} className="cs-prog">
                 {p.programName}
               </a>
             ))}

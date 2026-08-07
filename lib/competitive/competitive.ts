@@ -1,4 +1,5 @@
 import 'server-only';
+import { randomBytes } from 'crypto';
 import {
   DEFAULT_TIEBREAKS,
   assignSlots,
@@ -329,4 +330,118 @@ function upcomingDates(startISO: string, weekdays: number[], count: number): str
     cur = new Date(cur.getTime() + 86400_000);
   }
   return out;
+}
+
+/* ------------------------------------------------------------------ */
+/* Standalone Compete events (migration 0057)                         */
+/* ------------------------------------------------------------------ */
+
+/**
+ * A standalone event is a program that exists only for Compete: hosted or
+ * outside-organization leagues/tournaments. Reusing the programs spine keeps
+ * divisions, games, standings, stats, branding and sponsors working
+ * unchanged; Play's catalog excludes compete_only rows, so there is no
+ * registration path behind it. Tournaments get tournament_mode so the
+ * full-names default and bracket behaviour hold automatically.
+ */
+export async function createStandaloneEvent(
+  input: { name: string; kind: 'league' | 'tournament'; seasonKey: string | null; brandKey: string },
+  actorClerkId: string,
+): Promise<number> {
+  const db = supabaseAdmin();
+  const { data: type } = await db.from('program_types').select('id').eq('key', 'league').maybeSingle();
+  if (!type) throw new Error('league program type missing');
+  const { data: prog, error } = await db
+    .from('programs')
+    .insert({
+      name: input.name,
+      program_type_id: type.id,
+      brand_key: input.brandKey,
+      season_key: input.seasonKey,
+      compete_only: true,
+      tournament_mode: input.kind === 'tournament' ? 'championship' : null,
+      status: 'draft', // never enters the Play catalog anyway (compete_only)
+      share_token: randomBytes(9).toString('base64url'),
+      created_by: actorClerkId,
+    })
+    .select('id')
+    .single();
+  if (error) throw new Error(error.message);
+  await audit({
+    actorId: actorClerkId,
+    action: 'compete.standalone-create',
+    target: `program:${prog.id}`,
+    meta: { name: input.name, kind: input.kind, seasonKey: input.seasonKey },
+  });
+  return prog.id;
+}
+
+/**
+ * Duplicate a standalone event for its next run: copies the program row
+ * (brand, sponsors, tickets link, tournament mode) and its division + team
+ * shells. Games, rosters and stats deliberately do NOT copy — a new season
+ * starts empty — and copied divisions land unpublished so the event can be
+ * re-seasoned before it appears publicly.
+ */
+export async function duplicateStandaloneEvent(programId: number, actorClerkId: string): Promise<number> {
+  const db = supabaseAdmin();
+  const { data: src, error: srcErr } = await db
+    .from('programs')
+    .select('name, program_type_id, brand_key, season_key, tournament_mode, compete_brand, tickets_url, compete_only')
+    .eq('id', programId)
+    .single();
+  if (srcErr) throw new Error(srcErr.message);
+  if (!src.compete_only) throw new Error('Only standalone Compete events can be duplicated here.');
+
+  const { data: copy, error: insErr } = await db
+    .from('programs')
+    .insert({
+      name: `${src.name} (copy)`,
+      program_type_id: src.program_type_id,
+      brand_key: src.brand_key,
+      season_key: src.season_key,
+      tournament_mode: src.tournament_mode,
+      compete_brand: src.compete_brand,
+      tickets_url: src.tickets_url,
+      compete_only: true,
+      status: 'draft',
+      share_token: randomBytes(9).toString('base64url'),
+      created_by: actorClerkId,
+    })
+    .select('id')
+    .single();
+  if (insErr) throw new Error(insErr.message);
+
+  const { data: sponsors } = await db.from('compete_sponsors').select('name, logo_url, sort').eq('program_id', programId);
+  if (sponsors?.length) {
+    await db.from('compete_sponsors').insert(sponsors.map((s) => ({ ...s, program_id: copy.id })));
+  }
+
+  const { data: divs } = await db.from('divisions').select('id, name, sport, max_teams, min_players, max_players, tiebreaks').eq('program_id', programId);
+  for (const d of divs ?? []) {
+    const { data: nd, error: divErr } = await db
+      .from('divisions')
+      .insert({
+        program_id: copy.id, name: d.name, sport: d.sport,
+        max_teams: d.max_teams, min_players: d.min_players, max_players: d.max_players,
+        tiebreaks: d.tiebreaks,
+        show_on_compete: false, // re-season first, publish when ready
+        stats_enabled: false,
+      })
+      .select('id')
+      .single();
+    if (divErr) throw new Error(divErr.message);
+    const { data: teams } = await db.from('teams').select('name, sort_order').eq('division_id', d.id);
+    if (teams?.length) {
+      await db.from('teams').insert(teams.map((t) => ({ division_id: nd.id, name: t.name, sort_order: t.sort_order })));
+    }
+  }
+
+  await audit({
+    actorId: actorClerkId,
+    action: 'compete.standalone-duplicate',
+    target: `program:${copy.id}`,
+    meta: { from: programId, divisions: (divs ?? []).length },
+  });
+  return copy.id;
 }

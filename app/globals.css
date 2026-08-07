@@ -1105,3 +1105,13 @@
 .cs-lnext-when { font-size: 11px; color: var(--cs-body); min-width: 150px; }
 .cs-lnext-who { display: flex; align-items: center; gap: 7px; color: var(--cs-ink); font-size: 13.5px; }
 .cs-lnext-who i { color: var(--cs-silver); font-style: normal; font-size: 11px; }
+
+/* Compete root: welcome banner + simple layout (slice 6) */
+.cs-welcome { background: var(--cs-dark); color: #fff; padding: 20px 24px; margin-bottom: 26px; }
+.cs-welcome p { margin: 0; font-size: 15px; max-width: 56ch; }
+.cs-simplehead { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin-bottom: 10px; }
+.cs-simpleleague { background: var(--cs-paper); border: 1px solid var(--cs-hairline); padding: 16px 20px 6px; }
+.cs-simplerow { display: flex; align-items: baseline; gap: 14px; flex-wrap: wrap; padding: 12px 0; border-top: 1px solid var(--cs-hairline); text-decoration: none; }
+.cs-simplerow b { font-size: 16px; font-weight: 900; color: var(--cs-ink); }
+.cs-simplerow:hover b { color: var(--cs-gold); }
+.cs-simplego { margin-left: auto; font-family: var(--font-mono, monospace); font-size: 9px; letter-spacing: 0.1em; color: var(--cs-gold); }

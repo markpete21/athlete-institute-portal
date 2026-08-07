@@ -222,3 +222,43 @@ export async function saveBoxScoreAction(formData: FormData): Promise<void> {
   });
   revalidatePath(`/competitive/${divisionId}`);
 }
+
+/** Standalone Compete event: exists only on the public competitive site —
+ *  no Play registration behind it. Lands on the program page for branding. */
+export async function createStandaloneEventAction(formData: FormData): Promise<void> {
+  const session = await requireStaff();
+  const { createStandaloneEvent } = await import('@/lib/competitive/competitive');
+  const id = await createStandaloneEvent(
+    {
+      name: String(formData.get('name') ?? '').trim() || 'Untitled event',
+      kind: formData.get('kind') === 'tournament' ? 'tournament' : 'league',
+      seasonKey: String(formData.get('seasonKey') ?? '').trim() || null,
+      brandKey: String(formData.get('brandKey') ?? 'athlete-institute'),
+    },
+    session.userId!,
+  );
+  redirect(`/programs/${id}`);
+}
+
+export async function duplicateStandaloneEventAction(formData: FormData): Promise<void> {
+  const session = await requireStaff();
+  const { duplicateStandaloneEvent } = await import('@/lib/competitive/competitive');
+  await duplicateStandaloneEvent(Number(formData.get('programId')), session.userId!);
+  revalidatePath('/competitive');
+}
+
+/** Per-location Compete display settings (migration 0057): layout mode +
+ *  welcome banner. Auto renders simple under 8 published divisions. */
+export async function saveLocationDisplayAction(formData: FormData): Promise<void> {
+  const s = await getPortalSession();
+  if (!s.isStaff) throw new Error('Staff only.');
+  const locationId = Number(formData.get('locationId'));
+  const layout = String(formData.get('layoutMode') ?? 'auto');
+  const welcome = String(formData.get('welcome') ?? '').trim() || null;
+  const { error } = await supabaseAdmin()
+    .from('compete_location_settings')
+    .upsert({ location_id: locationId, layout_mode: layout, welcome }, { onConflict: 'location_id' });
+  if (error) throw new Error(error.message);
+  await audit({ actorId: s.userId!, action: 'compete.location-display', target: `location:${locationId}`, meta: { layout, hasWelcome: !!welcome } });
+  revalidatePath('/competitive');
+}

@@ -41,7 +41,10 @@ export async function listPublicPrograms(filters: CatalogFilters = {}): Promise<
   let q = db
     .from('programs')
     .select('id, name, description, category, brand_key, sport_tag, base_price_cents, min_age, max_age, status, share_token, capacity, program_types(key, name)')
-    .in('status', PUBLIC_STATUSES);
+    .in('status', PUBLIC_STATUSES)
+    // Standalone Compete events (migration 0057) never appear in the Play
+    // catalog — no registration exists behind them.
+    .eq('compete_only', false);
   if (filters.category) q = q.eq('category', filters.category);
   if (filters.brandKey) q = q.eq('brand_key', filters.brandKey);
   if (filters.seasonKey) q = q.eq('season_key', filters.seasonKey);
