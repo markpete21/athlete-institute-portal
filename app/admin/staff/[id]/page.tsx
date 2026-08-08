@@ -36,7 +36,7 @@ const fmt = (d: string) => new Date(`${d}T12:00:00Z`).toLocaleDateString('en-CA'
 
 export default async function StaffDetailPage({ params }: { params: { id: string } }) {
   const db = supabaseAdmin();
-  const { data: staff } = await db.from('staff').select('id, first_name, last_name, email, bio, photo_url, status, profile_id').eq('id', Number(params.id)).maybeSingle();
+  const { data: staff } = await db.from('staff').select('id, first_name, last_name, email, phone, bio, photo_url, status, profile_id').eq('id', Number(params.id)).maybeSingle();
   if (!staff) notFound();
 
   const [{ data: assigns }, { data: certs }, { data: programs }, { data: allStaff }, { data: unav }, { data: roles }] = await Promise.all([
@@ -94,6 +94,7 @@ export default async function StaffDetailPage({ params }: { params: { id: string
               <span className="tag">{staff.status}</span>
               {!staff.profile_id && <span className="tag">account-less</span>}
               {staff.email && <span className="tag">{staff.email}</span>}
+              {staff.phone && <span className="tag mono">{staff.phone}</span>}
               {(roleAssignments as Array<{ id: number; roles: unknown }>).map((ra) => (
                 <span key={ra.id} className="tag" style={{ color: 'var(--accent)', borderColor: 'var(--accent)' }}>{(ra.roles as { name: string } | null)?.name}</span>
               ))}
@@ -115,6 +116,7 @@ export default async function StaffDetailPage({ params }: { params: { id: string
             <div><label className="field-label" htmlFor="firstName">First</label><input id="firstName" name="firstName" defaultValue={staff.first_name} required className="input text-sm" /></div>
             <div><label className="field-label" htmlFor="lastName">Last</label><input id="lastName" name="lastName" defaultValue={staff.last_name} required className="input text-sm" /></div>
           </div>
+          <div><label className="field-label" htmlFor="phone">Cell phone</label><input id="phone" name="phone" type="tel" defaultValue={staff.phone ?? ''} placeholder="(519) 555-0123" className="input text-sm" /></div>
           <div><label className="field-label" htmlFor="bio">Bio (global — shown with their photo on public pages)</label><textarea id="bio" name="bio" rows={3} defaultValue={staff.bio ?? ''} className="input text-sm" /></div>
           <button type="submit" className="btn-ghost btn-sm self-start">Save details</button>
         </form>

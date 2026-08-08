@@ -30,17 +30,18 @@ export interface Staff {
   first_name: string;
   last_name: string;
   email: string | null;
+  phone: string | null;
   bio: string | null;
   photo_url: string | null;
   status: 'active' | 'inactive' | 'archived';
 }
 
-const S_COLS = 'id, profile_id, first_name, last_name, email, bio, photo_url, status';
+const S_COLS = 'id, profile_id, first_name, last_name, email, phone, bio, photo_url, status';
 
-export async function createStaff(input: { firstName: string; lastName: string; email?: string | null; bio?: string | null; photoUrl?: string | null; profileId?: number | null }, actorClerkId: string): Promise<Staff> {
+export async function createStaff(input: { firstName: string; lastName: string; email?: string | null; phone?: string | null; bio?: string | null; photoUrl?: string | null; profileId?: number | null }, actorClerkId: string): Promise<Staff> {
   const { data, error } = await supabaseAdmin()
     .from('staff')
-    .insert({ first_name: input.firstName.trim(), last_name: input.lastName.trim(), email: input.email ?? null, bio: input.bio ?? null, photo_url: input.photoUrl ?? null, profile_id: input.profileId ?? null, created_by: actorClerkId })
+    .insert({ first_name: input.firstName.trim(), last_name: input.lastName.trim(), email: input.email ?? null, phone: input.phone?.trim() || null, bio: input.bio ?? null, photo_url: input.photoUrl ?? null, profile_id: input.profileId ?? null, created_by: actorClerkId })
     .select(S_COLS)
     .single();
   if (error) throw new Error(`staff create failed: ${error.message}`);
@@ -66,13 +67,28 @@ export async function addStaffEmail(staffId: number, email: string, actorClerkId
   return { linkedProfileId: existing?.id ?? null };
 }
 
-export async function updateStaffDetails(staffId: number, input: { firstName?: string; lastName?: string; bio?: string | null }, actorClerkId: string): Promise<void> {
+export async function updateStaffDetails(staffId: number, input: { firstName?: string; lastName?: string; email?: string | null; phone?: string | null; bio?: string | null }, actorClerkId: string): Promise<void> {
+  const db = supabaseAdmin();
   const patch: Record<string, unknown> = {};
   if (input.firstName !== undefined) patch.first_name = input.firstName.trim();
   if (input.lastName !== undefined) patch.last_name = input.lastName.trim();
+  if (input.phone !== undefined) patch.phone = input.phone?.trim() || null;
   if (input.bio !== undefined) patch.bio = input.bio?.trim() || null;
+  if (input.email !== undefined) {
+    const email = input.email?.trim().toLowerCase() || null;
+    patch.email = email;
+    // A not-yet-linked record adopts an existing profile on email change,
+    // same as addStaffEmail. An existing profile link is never touched here.
+    if (email) {
+      const { data: staffRow } = await db.from('staff').select('profile_id').eq('id', staffId).single();
+      if (staffRow && !staffRow.profile_id) {
+        const { data: existing } = await db.from('profiles').select('id').eq('email', email).maybeSingle();
+        if (existing) patch.profile_id = existing.id;
+      }
+    }
+  }
   if (!Object.keys(patch).length) return;
-  const { error } = await supabaseAdmin().from('staff').update(patch).eq('id', staffId);
+  const { error } = await db.from('staff').update(patch).eq('id', staffId);
   if (error) throw new Error(error.message);
   await audit({ actorId: actorClerkId, action: 'staff.updated', target: `staff:${staffId}`, meta: patch });
 }

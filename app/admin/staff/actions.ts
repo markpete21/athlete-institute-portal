@@ -30,15 +30,23 @@ const cents = (v: FormDataEntryValue | null) => Math.round(Number(String(v ?? '0
 
 export async function createStaffAction(formData: FormData): Promise<void> {
   const session = await requireStaff();
-  const s = await createStaff({ firstName: String(formData.get('firstName') ?? ''), lastName: String(formData.get('lastName') ?? ''), email: String(formData.get('email') ?? '').trim() || null, bio: String(formData.get('bio') ?? '').trim() || null }, session.userId!);
+  const s = await createStaff({ firstName: String(formData.get('firstName') ?? ''), lastName: String(formData.get('lastName') ?? ''), email: String(formData.get('email') ?? '').trim() || null, phone: String(formData.get('phone') ?? '').trim() || null, bio: String(formData.get('bio') ?? '').trim() || null }, session.userId!);
   redirect(`/staff/${s.id}`);
 }
 
 export async function updateDetailsAction(formData: FormData): Promise<void> {
   const session = await requireStaff();
   const id = Number(formData.get('staffId'));
-  await updateStaffDetails(id, { firstName: String(formData.get('firstName') ?? ''), lastName: String(formData.get('lastName') ?? ''), bio: String(formData.get('bio') ?? '') }, session.userId!);
+  await updateStaffDetails(id, { firstName: String(formData.get('firstName') ?? ''), lastName: String(formData.get('lastName') ?? ''), phone: String(formData.get('phone') ?? ''), bio: String(formData.get('bio') ?? '') }, session.userId!);
   revalidatePath(`/staff/${id}`);
+}
+
+/** Inline contact edit from the staff list's quick-expand row. */
+export async function updateContactAction(formData: FormData): Promise<void> {
+  const session = await requireStaff();
+  const id = Number(formData.get('staffId'));
+  await updateStaffDetails(id, { email: String(formData.get('email') ?? ''), phone: String(formData.get('phone') ?? '') }, session.userId!);
+  revalidatePath('/staff');
 }
 
 export async function photoAction(formData: FormData): Promise<void> {
