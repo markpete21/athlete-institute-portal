@@ -19,6 +19,22 @@ export default async function StaffListPage({ searchParams }: { searchParams: { 
   if (statusFilter) query = query.eq('status', statusFilter);
   const [{ data: staff }, unavailability] = await Promise.all([query, upcomingUnavailability()]);
 
+  // Active program assignments, grouped per staff for the Programs column.
+  const staffIds = (staff ?? []).map((s) => s.id);
+  const assignmentsByStaff = new Map<number, Array<{ program: string; role: string | null }>>();
+  if (staffIds.length) {
+    const { data: assigns } = await db
+      .from('staff_assignments')
+      .select('staff_id, role_label, programs(name)')
+      .in('staff_id', staffIds)
+      .eq('active', true);
+    for (const a of assigns ?? []) {
+      const list = assignmentsByStaff.get(a.staff_id) ?? [];
+      list.push({ program: (a.programs as unknown as { name: string } | null)?.name ?? '—', role: a.role_label });
+      assignmentsByStaff.set(a.staff_id, list);
+    }
+  }
+
   return (
     <main className="mx-auto flex min-h-screen max-w-4xl flex-col gap-8 px-6 py-12">
       <header className="flex flex-wrap items-end justify-between gap-3 border-b border-hairline pb-6">
@@ -27,9 +43,23 @@ export default async function StaffListPage({ searchParams }: { searchParams: { 
           <h1 className="text-5xl">Staff<span style={{ color: 'var(--accent)' }}>.</span></h1>
           <p className="text-body mt-2">Records, roles, per-program pay, certifications. Status derives itself: assigned to a current program or owed pay = active.</p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex items-start gap-2">
           <Link href="/staff/permissions" className="btn-ghost btn-sm">Permission matrix</Link>
           <Link href="/staff/pay" className="btn-ghost btn-sm">Pay dashboard</Link>
+          <details className="relative">
+            <summary className="btn-gold btn-sm inline-block cursor-pointer list-none [&::-webkit-details-marker]:hidden">Add staff</summary>
+            <div className="absolute right-0 z-10 mt-2 w-[min(34rem,90vw)] border border-hairline bg-paper p-5 shadow-lg">
+              <h2 className="text-xl">Add staff / coach</h2>
+              <form action={createStaffAction} className="mt-3 grid gap-3 sm:grid-cols-2">
+                <div><label className="field-label" htmlFor="firstName">First</label><input id="firstName" name="firstName" required className="input text-sm" /></div>
+                <div><label className="field-label" htmlFor="lastName">Last</label><input id="lastName" name="lastName" required className="input text-sm" /></div>
+                <div className="sm:col-span-2"><label className="field-label" htmlFor="email">Email (optional — add later to invite)</label><input id="email" name="email" type="email" className="input text-sm" /></div>
+                <div className="sm:col-span-2"><label className="field-label" htmlFor="bio">Bio (global)</label><textarea id="bio" name="bio" rows={2} className="input text-sm" /></div>
+                <p className="text-xs text-silver sm:col-span-2">A coach can be added with no account or email now (e.g. from a roster upload) and upgraded to a login later.</p>
+                <button type="submit" className="btn-gold btn-sm justify-self-start">Add</button>
+              </form>
+            </div>
+          </details>
         </div>
       </header>
 
@@ -46,18 +76,6 @@ export default async function StaffListPage({ searchParams }: { searchParams: { 
           </div>
         </section>
       )}
-
-      <section className="card flex flex-col gap-3 p-6">
-        <h2 className="text-2xl">Add staff / coach</h2>
-        <form action={createStaffAction} className="grid gap-3 sm:grid-cols-4">
-          <div><label className="field-label" htmlFor="firstName">First</label><input id="firstName" name="firstName" required className="input" /></div>
-          <div><label className="field-label" htmlFor="lastName">Last</label><input id="lastName" name="lastName" required className="input" /></div>
-          <div><label className="field-label" htmlFor="email">Email (optional)</label><input id="email" name="email" type="email" placeholder="add later to invite" className="input" /></div>
-          <div className="flex items-end"><button type="submit" className="btn-gold">Add</button></div>
-          <div className="sm:col-span-4"><label className="field-label" htmlFor="bio">Bio (global)</label><textarea id="bio" name="bio" rows={2} className="input" /></div>
-        </form>
-        <p className="text-sm text-silver">A coach can be added with no account or email now (e.g. from a roster upload) and upgraded to a login later.</p>
-      </section>
 
       <form method="get" action="/staff" className="flex flex-wrap items-end gap-3">
         <div className="min-w-56 flex-1">
@@ -77,28 +95,45 @@ export default async function StaffListPage({ searchParams }: { searchParams: { 
       </form>
 
       <table className="data-table">
-        <thead><tr><th /><th>Name</th><th>Email</th><th>Account</th><th>Status</th><th /></tr></thead>
+        <thead><tr><th /><th>Name</th><th>Programs &amp; roles</th><th>Email</th><th>Account</th><th>Status</th><th /></tr></thead>
         <tbody>
-          {(staff ?? []).map((s) => (
-            <tr key={s.id}>
-              <td className="w-10">
-                <span className="block h-8 w-8 overflow-hidden rounded-full border border-hairline bg-paper-panel">
-                  {s.photo_url ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img src={s.photo_url} alt="" className="h-full w-full object-cover" />
+          {(staff ?? []).map((s) => {
+            const assignments = assignmentsByStaff.get(s.id) ?? [];
+            return (
+              <tr key={s.id}>
+                <td className="w-16">
+                  <span className="block h-12 w-12 overflow-hidden rounded-full border border-hairline bg-paper-panel">
+                    {s.photo_url ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={s.photo_url} alt="" className="h-full w-full object-cover" />
+                    ) : (
+                      <span className="flex h-full w-full items-center justify-center text-xs font-bold text-silver">{s.first_name[0]}{s.last_name[0]}</span>
+                    )}
+                  </span>
+                </td>
+                <td className="text-ink">{s.first_name} {s.last_name}</td>
+                <td>
+                  {assignments.length === 0 ? (
+                    <span className="text-silver">—</span>
                   ) : (
-                    <span className="flex h-full w-full items-center justify-center text-[10px] font-bold text-silver">{s.first_name[0]}{s.last_name[0]}</span>
+                    <span className="flex flex-wrap gap-1">
+                      {assignments.map((a, i) => (
+                        <span key={i} className="tag">
+                          {a.role ? <span style={{ color: 'var(--accent)' }}>{a.role}</span> : null}
+                          {a.role ? ' · ' : ''}{a.program}
+                        </span>
+                      ))}
+                    </span>
                   )}
-                </span>
-              </td>
-              <td className="text-ink">{s.first_name} {s.last_name}</td>
-              <td>{s.email ?? '—'}</td>
-              <td>{s.profile_id ? <span className="tag">login</span> : <span className="tag">account-less</span>}</td>
-              <td><span className="tag" style={{ color: STATUS_COLOR[s.status], borderColor: STATUS_COLOR[s.status] }}>{s.status}</span></td>
-              <td><Link href={`/staff/${s.id}`} className="btn-ghost btn-sm">Open</Link></td>
-            </tr>
-          ))}
-          {(staff ?? []).length === 0 && <tr><td colSpan={6} className="text-silver">No staff match.</td></tr>}
+                </td>
+                <td>{s.email ?? '—'}</td>
+                <td>{s.profile_id ? <span className="tag">login</span> : <span className="tag">account-less</span>}</td>
+                <td><span className="tag" style={{ color: STATUS_COLOR[s.status], borderColor: STATUS_COLOR[s.status] }}>{s.status}</span></td>
+                <td><Link href={`/staff/${s.id}`} className="btn-ghost btn-sm">Open</Link></td>
+              </tr>
+            );
+          })}
+          {(staff ?? []).length === 0 && <tr><td colSpan={7} className="text-silver">No staff match.</td></tr>}
         </tbody>
       </table>
     </main>
