@@ -3,7 +3,7 @@
  * Run: npm run test:staff
  */
 import { deriveStaffStatus, resolveCapabilities, can } from './__compiled__/staff-core.js';
-import { generatePaySchedule, totalPayCents, recomputeWithAbsences } from './__compiled__/staff-pay.js';
+import { generatePaySchedule, totalPayCents, recomputeWithAbsences, biWeeklyPeriod, shiftPeriod, originalOwedAfterReplacement } from './__compiled__/staff-pay.js';
 
 let pass = 0, fail = 0;
 const ok = (n, c, d = '') => { console.log(`${c ? '✓' : '✗'} ${n}${c ? '' : ` - ${d}`}`); c ? pass++ : fail++; };
@@ -57,6 +57,37 @@ eq('total: flat', totalPayCents({ mode: 'flat', rateCents: 120000, units: 99 }),
 {
   const r = recomputeWithAbsences({ mode: 'flat', originalRateCents: 100000, totalUnits: 8, absences: [{ replacementRateCents: 6000 }] });
   ok('flat pay unaffected by per-session absence recompute', r.originalCents === 100000, JSON.stringify(r));
+}
+
+// --- bi-weekly pay periods ---------------------------------------------------
+{
+  // Anchor 2026-01-05 is a Monday; periods are Mon..Sun x2, org-wide.
+  const p = biWeeklyPeriod('2026-01-05');
+  eq('period: anchor date starts its own period', p, { startISO: '2026-01-05', endISO: '2026-01-18' });
+  eq('period: last day belongs to same period', biWeeklyPeriod('2026-01-18'), { startISO: '2026-01-05', endISO: '2026-01-18' });
+  eq('period: next day rolls over', biWeeklyPeriod('2026-01-19'), { startISO: '2026-01-19', endISO: '2026-02-01' });
+  eq('period: date BEFORE the anchor still aligns', biWeeklyPeriod('2025-12-31'), { startISO: '2025-12-22', endISO: '2026-01-04' });
+  const aug = biWeeklyPeriod('2026-08-07');
+  const days = (Date.parse(aug.startISO) - Date.parse('2026-01-05')) / 86400_000;
+  ok('period: months later still 14-day aligned to anchor', days % 14 === 0 && aug.startISO <= '2026-08-07' && aug.endISO >= '2026-08-07', JSON.stringify(aug));
+  eq('period: shift forward', shiftPeriod(p, 1), { startISO: '2026-01-19', endISO: '2026-02-01' });
+  eq('period: shift back', shiftPeriod(p, -1), { startISO: '2025-12-22', endISO: '2026-01-04' });
+}
+
+// --- replace-for-remainder owed math ----------------------------------------
+{
+  eq('remainder: per-session owed = rate x worked units',
+    originalOwedAfterReplacement({ mode: 'per_session', rateCents: 5000, totalUnits: 10, unitsBefore: 4 }), 20000);
+  eq('remainder: hourly same as per-session',
+    originalOwedAfterReplacement({ mode: 'hourly', rateCents: 3000, totalUnits: 20, unitsBefore: 15 }), 45000);
+  eq('remainder: flat prorated by worked fraction',
+    originalOwedAfterReplacement({ mode: 'flat', rateCents: 100000, totalUnits: 8, unitsBefore: 2 }), 25000);
+  eq('remainder: flat with no sessions falls back to full amount',
+    originalOwedAfterReplacement({ mode: 'flat', rateCents: 100000, totalUnits: 0, unitsBefore: 0 }), 100000);
+  eq('remainder: salary uses the schedule cut passed in',
+    originalOwedAfterReplacement({ mode: 'salary', rateCents: 100000, totalUnits: 6, unitsBefore: 3, salaryOwedCents: 300000 }), 300000);
+  eq('remainder: zero units worked owes zero',
+    originalOwedAfterReplacement({ mode: 'per_session', rateCents: 5000, totalUnits: 10, unitsBefore: 0 }), 0);
 }
 
 console.log(`\n${pass} passed, ${fail} failed`);

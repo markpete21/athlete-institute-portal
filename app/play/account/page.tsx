@@ -3,6 +3,7 @@ import { formatCAD } from '@ai/foundation';
 import { Icon } from '@/components/nav/icons';
 import { getPortalSession } from '@/lib/auth';
 import { accountView, type AttentionItem, type Member } from '@/lib/play/account';
+import { staffForProfile } from '@/lib/staff/staff';
 
 export const dynamic = 'force-dynamic';
 
@@ -45,7 +46,10 @@ export default async function AccountHome() {
     );
   }
 
-  const view = await accountView(session.familyId, 14);
+  const [view, staffRecord] = await Promise.all([
+    accountView(session.familyId, 14),
+    session.profileId ? staffForProfile(session.profileId) : Promise.resolve(null),
+  ]);
   const byId = new Map(view.members.map((m) => [m.id, m]));
 
   return (
@@ -56,6 +60,7 @@ export default async function AccountHome() {
           <h1 className="pa-h1">{view.familyName ?? 'Your family'}<span className="pa-dot">.</span></h1>
         </div>
         <div className="pa-head-actions">
+          {staffRecord && <Link href="/staff" className="btn-ghost btn-sm">My staff view</Link>}
           <Link href="/account/members" className="btn-ghost btn-sm">Manage household</Link>
           <Link href="/programs" className="btn-gold btn-sm">Register for a program</Link>
         </div>

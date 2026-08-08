@@ -1,9 +1,10 @@
 import { supabaseAdmin } from '@ai/foundation/supabase';
-import { setCapabilityAction } from '../actions';
+import { addCapabilityAction, setCapabilityAction } from '../actions';
 
 export const dynamic = 'force-dynamic';
 
-const CAPABILITIES = [
+/** The built-in capabilities; custom ones added below join this list. */
+const CORE_CAPABILITIES: Array<{ key: string; label: string }> = [
   { key: 'roster_names', label: 'Roster — names' },
   { key: 'roster_sensitive', label: 'Roster — sensitive (medical, contacts, DOB)' },
   { key: 'schedule', label: 'Program schedule' },
@@ -22,8 +23,18 @@ export default async function PermissionMatrixPage() {
   const byKey = new Map<string, { view: boolean; edit: boolean }>();
   for (const c of caps ?? []) byKey.set(`${c.role_id}:${c.capability}`, { view: c.can_view, edit: c.can_edit });
 
+  // Extensible: any capability key seeded on any role joins the matrix for every role.
+  const capabilities = [...CORE_CAPABILITIES];
+  const known = new Set(CORE_CAPABILITIES.map((c) => c.key));
+  for (const c of caps ?? []) {
+    if (!known.has(c.capability)) {
+      known.add(c.capability);
+      capabilities.push({ key: c.capability, label: c.capability.replace(/_/g, ' ') });
+    }
+  }
+
   return (
-    <main className="mx-auto flex min-h-screen max-w-4xl flex-col gap-8 px-6 py-16">
+    <main className="mx-auto flex min-h-screen max-w-4xl flex-col gap-8 px-6 py-12">
       <header className="flex flex-col gap-2 border-b border-hairline pb-6">
         <p className="label text-[11px]">Admin · Staff</p>
         <h1 className="text-5xl">Permissions<span style={{ color: 'var(--accent)' }}>.</span></h1>
@@ -34,7 +45,7 @@ export default async function PermissionMatrixPage() {
         <div key={role.id} className="card flex flex-col gap-2 p-5">
           <h2 className="text-2xl">{role.name}</h2>
           <div className="flex flex-col gap-1">
-            {CAPABILITIES.map((cap) => {
+            {capabilities.map((cap) => {
               const cur = byKey.get(`${role.id}:${cap.key}`) ?? { view: false, edit: false };
               return (
                 <form key={cap.key} action={setCapabilityAction} className="flex items-center gap-3 border-b border-hairline py-1 text-sm">
@@ -50,6 +61,21 @@ export default async function PermissionMatrixPage() {
           </div>
         </div>
       ))}
+
+      <form action={addCapabilityAction} className="card flex flex-wrap items-end gap-3 p-5">
+        <div className="min-w-56 flex-1">
+          <label className="field-label" htmlFor="key">Add a capability</label>
+          <input id="key" name="key" required placeholder="e.g. attendance_marking" className="input text-sm" />
+        </div>
+        <div>
+          <label className="field-label" htmlFor="roleId">First granted to</label>
+          <select id="roleId" name="roleId" className="input text-sm">
+            {(roles ?? []).map((r) => <option key={r.id} value={r.id}>{r.name}</option>)}
+          </select>
+        </div>
+        <button type="submit" className="btn-ghost btn-sm">Add</button>
+        <p className="w-full text-xs text-silver">New capabilities appear on every role with view/edit unchecked. Gate features on them via <span className="mono">profileCan()</span>.</p>
+      </form>
     </main>
   );
 }

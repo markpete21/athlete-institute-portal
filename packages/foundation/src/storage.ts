@@ -11,7 +11,10 @@
 import { supabaseAdmin } from './supabase';
 
 export const BUCKETS = {
-  /** Staff bios/photos (Module 5). */
+  /** Staff bios/photos (Module 5). PUBLIC — coach photos render on the public
+      program registration pages and "our coaches" pages for anonymous
+      visitors, so they cannot sit behind expiring signed URLs. Only staff
+      admins can upload here; children's photos live in member-photos. */
   staffPhotos: 'staff-photos',
   /** Event/program logos (Modules 2/4/6). PUBLIC — these render on the TV
       display boards, which live at unauthenticated token URLs and stay up for
@@ -39,7 +42,7 @@ export type BucketName = (typeof BUCKETS)[BucketKey];
 const IMAGE_BUCKETS: BucketName[] = ['staff-photos', 'event-logos', 'display-media', 'product-images', 'gallery-media', 'brand-assets', 'member-photos'];
 
 /** Buckets served publicly (no signed URL). Everything else stays private. */
-const PUBLIC_BUCKETS: BucketName[] = ['brand-assets', 'event-logos'];
+const PUBLIC_BUCKETS: BucketName[] = ['brand-assets', 'event-logos', 'staff-photos'];
 
 /**
  * Idempotently create every bucket, and reconcile the public/private flag on

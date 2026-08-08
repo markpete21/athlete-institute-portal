@@ -100,3 +100,65 @@ export function recomputeWithAbsences(input: AbsenceInput): { originalCents: num
   const replacementCents = input.absences.reduce((a, b) => a + b.replacementRateCents, 0);
   return { originalCents, replacementCents };
 }
+
+// --- Pay periods -------------------------------------------------------------
+
+/** Monday anchor every bi-weekly pay period aligns to, org-wide. */
+export const PAY_PERIOD_ANCHOR = '2026-01-05';
+
+export interface PayPeriod {
+  startISO: string;
+  /** Inclusive last day of the period. */
+  endISO: string;
+}
+
+/**
+ * The bi-weekly pay period containing dateISO. Periods are 14 days, aligned
+ * org-wide to PAY_PERIOD_ANCHOR (a Monday), so "who is paid this period"
+ * means the same window on every report.
+ */
+export function biWeeklyPeriod(dateISO: string, anchorISO: string = PAY_PERIOD_ANCHOR): PayPeriod {
+  const toUTC = (iso: string) => {
+    const [y, m, d] = iso.split('-').map(Number);
+    return Date.UTC(y, m - 1, d);
+  };
+  const days = Math.floor((toUTC(dateISO) - toUTC(anchorISO)) / 86400_000);
+  const offset = ((days % 14) + 14) % 14;
+  const start = addDaysISO(dateISO, -offset);
+  return { startISO: start, endISO: addDaysISO(start, 13) };
+}
+
+export function shiftPeriod(period: PayPeriod, byPeriods: number): PayPeriod {
+  const start = addDaysISO(period.startISO, byPeriods * 14);
+  return { startISO: start, endISO: addDaysISO(start, 13) };
+}
+
+// --- Replace for remainder ---------------------------------------------------
+
+/**
+ * What the ORIGINAL is still owed in total when replaced from a point onward.
+ * per_session/hourly: their rate for the units they actually worked.
+ * flat: prorated by worked fraction (flat-per-program, replaced partway).
+ * salary (amount per period): callers cut the schedule by date instead - the
+ * periods before the handoff stand as generated; this returns their sum, so
+ * pass it via salaryOwedCents.
+ */
+export function originalOwedAfterReplacement(input: {
+  mode: PayMode;
+  rateCents: number;
+  totalUnits: number;
+  unitsBefore: number;
+  /** For salary: sum of already-generated period amounts due before the handoff. */
+  salaryOwedCents?: number;
+}): number {
+  switch (input.mode) {
+    case 'per_session':
+    case 'hourly':
+      return input.rateCents * Math.max(0, input.unitsBefore);
+    case 'flat':
+      if (input.totalUnits <= 0) return input.rateCents;
+      return Math.round((input.rateCents * Math.min(input.unitsBefore, input.totalUnits)) / input.totalUnits);
+    case 'salary':
+      return input.salaryOwedCents ?? 0;
+  }
+}

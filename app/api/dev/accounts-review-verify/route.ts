@@ -219,8 +219,12 @@ export async function GET() {
     const { data: order } = await db.from('program_orders')
       .insert({ family_id: famB, subtotal_cents: 6000, total_cents: 6000, status: 'plan_active', created_by: 'system:verify' })
       .select('id').single();
-    const yesterday = new Date(Date.now() - 86400_000).toISOString().slice(0, 10);
-    const nextWeek = new Date(Date.now() + 7 * 86400_000).toISOString().slice(0, 10);
+    // Relative to the TORONTO calendar day: after ~8pm Toronto, UTC has already
+    // rolled over, so UTC-derived "yesterday" = torontoToday() and the overdue
+    // case silently vanishes (this bit us at 22:40 on a review night).
+    const torontoNoon = Date.parse(`${torontoToday()}T12:00:00Z`);
+    const yesterday = new Date(torontoNoon - 86400_000).toISOString().slice(0, 10);
+    const nextWeek = new Date(torontoNoon + 7 * 86400_000).toISOString().slice(0, 10);
     await db.from('program_installments').insert([
       { order_id: order!.id, seq: 1, label: 'Deposit', amount_cents: 2000, due_date: yesterday, status: 'pending' },
       { order_id: order!.id, seq: 2, label: 'Payment 2', amount_cents: 2000, due_date: nextWeek, status: 'pending' },
