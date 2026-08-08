@@ -69,6 +69,7 @@ const shift = (days) => {
 };
 
 // --- clear ------------------------------------------------------------------
+const FAMILY_NAME = 'Staff Demo Family';
 {
   const staff = await get(`staff?select=id&created_by=eq.${ACTOR}`);
   const progs = await get(`programs?select=id&share_token=eq.demo-staff-league`);
@@ -77,8 +78,11 @@ const shift = (days) => {
     // assignments/pay/absences/certs/unavailability cascade off staff + program
     await del(`staff?id=in.(${ids})`);
   }
+  // program delete cascades registrations + feedback rounds/responses
   if (progs?.length) await del(`programs?id=in.(${progs.map((p) => p.id).join(',')})`);
-  console.log(`cleared ${staff?.length ?? 0} demo staff + ${progs?.length ?? 0} demo program`);
+  const fams = await get(`families?select=id&name=eq.${encodeURIComponent(FAMILY_NAME)}`);
+  if (fams?.length) await del(`families?id=in.(${fams.map((f) => f.id).join(',')})`);
+  console.log(`cleared ${staff?.length ?? 0} demo staff + ${progs?.length ?? 0} demo program + ${fams?.length ?? 0} demo family`);
   if (process.argv.includes('--clear')) process.exit(0);
 }
 
@@ -190,5 +194,23 @@ await post('staff_unavailability', [
   { staff_id: chris.id, date: shift(10), note: null },
 ]);
 
+// --- feedback (Module 15) so the staff Rating column has stars ----------------
+const [family] = await post('families', { name: FAMILY_NAME });
+const members = await post('family_members', [
+  { family_id: family.id, first_name: 'Avery', last_name: 'Demo', member_role: 'dependent', dob: '2013-04-02' },
+  { family_id: family.id, first_name: 'Blake', last_name: 'Demo', member_role: 'dependent', dob: '2012-09-18' },
+  { family_id: family.id, first_name: 'Casey', last_name: 'Demo', member_role: 'dependent', dob: '2014-01-27' },
+]);
+const regs = await post('registrations', members.map((m) => ({
+  program_id: program.id, family_member_id: m.id, family_id: family.id, standing: 'brand_new', status: 'active',
+})));
+const [round] = await post('feedback_rounds', { program_id: program.id, round: 'end', prompt_at: `${shift(-2)}T12:00:00-04:00` });
+const RATINGS = [5, 4, 5];
+await post('feedback_responses', regs.map((r, i) => ({
+  round_id: round.id, program_id: program.id, registration_id: r.id, family_id: family.id,
+  token: `demo-staff-fb-${r.id}`, rating: RATINGS[i], kind: 'quick', submitted_at: `${shift(-1)}T12:00:00-04:00`,
+})));
+
 console.log(`seeded: program ${program.id} (${totalSessions} sessions), staff Marcus ${marcus.id} / Dana ${dana.id} / Chris ${chris.id} / Priya ${priya.id}`);
 console.log(`absence ${absDate} covered by Chris @ $70; Marcus first pay date marked paid`);
+console.log(`feedback: 3 registrations + ratings ${RATINGS.join('/')} on program ${program.id} (family ${family.id})`);

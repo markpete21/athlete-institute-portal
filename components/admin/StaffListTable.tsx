@@ -32,10 +32,25 @@ export interface StaffListRow {
   email: string | null;
   phone: string | null;
   assignments: Array<{ program: string; role: string | null }>;
+  /** From Module 15 feedback — pooled across their public programs. */
+  rating: { avg: number; count: number } | null;
   periods: StaffPeriodSummary[];
 }
 
 const PERIOD_LABEL: Record<StaffPeriodSummary['kind'], string> = { last: 'Last period', this: 'This period', next: 'Next period' };
+
+function Stars({ rating }: { rating: StaffListRow['rating'] }) {
+  if (!rating) return <span className="text-silver">—</span>;
+  const filled = Math.round(rating.avg);
+  return (
+    <span className="inline-flex items-center gap-1 whitespace-nowrap" title={`${rating.avg} / 5 from ${rating.count} review${rating.count === 1 ? '' : 's'} (program feedback)`}>
+      <span aria-hidden style={{ color: 'var(--accent)', letterSpacing: '1px' }}>
+        {'★'.repeat(filled)}<span style={{ opacity: 0.25 }}>{'★'.repeat(5 - filled)}</span>
+      </span>
+      <span className="mono text-xs text-silver">({rating.count})</span>
+    </span>
+  );
+}
 
 function CopyButton({ value, what }: { value: string; what: string }) {
   const [copied, setCopied] = useState(false);
@@ -96,7 +111,8 @@ export function StaffListTable({ rows }: { rows: StaffListRow[] }) {
         <tr>
           <th />
           <th><SortHeader label="Name" active={sortKey === 'name'} dir={dir} onClick={() => toggleSort('name')} /></th>
-          <th className="w-[36%]"><SortHeader label="Programs & roles" active={sortKey === 'program'} dir={dir} onClick={() => toggleSort('program')} /></th>
+          <th className="w-[32%]"><SortHeader label="Programs & roles" active={sortKey === 'program'} dir={dir} onClick={() => toggleSort('program')} /></th>
+          <th>Rating</th>
           <th>Account</th>
           <th>Status</th>
           <th />
@@ -108,7 +124,7 @@ export function StaffListTable({ rows }: { rows: StaffListRow[] }) {
             onToggle={() => { setOpen((v) => (v === s.id ? null : s.id)); setEditing(null); }}
             onEdit={() => setEditing((v) => (v === s.id ? null : s.id))} />
         ))}
-        {rows.length === 0 && <tr><td colSpan={6} className="text-silver">No staff match.</td></tr>}
+        {rows.length === 0 && <tr><td colSpan={7} className="text-silver">No staff match.</td></tr>}
       </tbody>
     </table>
   );
@@ -143,6 +159,7 @@ function RowPair({ s, open, editing, onToggle, onEdit }: { s: StaffListRow; open
             </span>
           )}
         </td>
+        <td><Stars rating={s.rating} /></td>
         <td>{s.hasLogin ? <span className="tag">login</span> : <span className="tag">account-less</span>}</td>
         <td><span className="tag" style={{ color: s.statusColor, borderColor: s.statusColor }}>{s.status}</span></td>
         <td>
@@ -154,7 +171,7 @@ function RowPair({ s, open, editing, onToggle, onEdit }: { s: StaffListRow; open
       </tr>
       {open && (
         <tr>
-          <td colSpan={6} className="!bg-paper-panel">
+          <td colSpan={7} className="!bg-paper-panel">
             <div className="grid gap-6 p-4 sm:grid-cols-2">
               <div className="flex flex-col gap-2">
                 <p className="label text-[11px]">Contact</p>

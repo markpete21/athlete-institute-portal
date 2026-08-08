@@ -2,7 +2,7 @@ import Link from 'next/link';
 import { biWeeklyPeriod, formatCAD, shiftPeriod, torontoDate, torontoToday, type PayPeriod } from '@ai/foundation';
 import { supabaseAdmin } from '@ai/foundation/supabase';
 import { StaffListTable, type StaffListRow, type StaffPeriodSummary } from '@/components/admin/StaffListTable';
-import { upcomingUnavailability } from '@/lib/staff/staff';
+import { staffRatings, upcomingUnavailability } from '@/lib/staff/staff';
 import { createStaffAction } from './actions';
 
 export const dynamic = 'force-dynamic';
@@ -72,6 +72,7 @@ export default async function StaffListPage({ searchParams }: { searchParams: { 
   const spanEnd = windows[2].p.endISO;
 
   const staffIds = (staff ?? []).map((s) => s.id);
+  const ratings = await staffRatings(staffIds);
   const assignmentsByStaff = new Map<number, Array<{ program: string; role: string | null }>>();
   const staffByAssignment = new Map<number, number>();
   const programsByStaff = new Map<number, Set<number>>();
@@ -151,6 +152,7 @@ export default async function StaffListPage({ searchParams }: { searchParams: { 
       email: s.email,
       phone: s.phone,
       assignments: assignmentsByStaff.get(s.id) ?? [],
+      rating: ratings.get(s.id) ?? null,
       periods,
     };
   });

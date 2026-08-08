@@ -694,6 +694,41 @@ export async function staffSelfView(staff: Staff): Promise<{
   return { caps, programs, pay, unavailability: unav ?? [] };
 }
 
+// --- Ratings (from Module 15 feedback) ----------------------------------------
+
+/**
+ * Star ratings per staff member, aggregated from Module 15 program feedback.
+ * A response rates the program experience, so it counts for every coach who
+ * PUBLICLY delivered it (show_public assignments; hidden substitutes are
+ * excluded). Reviews are collected and coordinated by the Feedback module -
+ * this is a read-only rollup.
+ */
+export async function staffRatings(staffIds: number[]): Promise<Map<number, { avg: number; count: number }>> {
+  const out = new Map<number, { avg: number; count: number }>();
+  if (!staffIds.length) return out;
+  const db = supabaseAdmin();
+  const { data: assigns } = await db.from('staff_assignments').select('staff_id, program_id').in('staff_id', staffIds).eq('show_public', true);
+  const programIds = [...new Set((assigns ?? []).map((a) => a.program_id))];
+  if (!programIds.length) return out;
+  const { data: responses } = await db.from('feedback_responses').select('program_id, rating').in('program_id', programIds).not('rating', 'is', null);
+  const byProgram = new Map<number, number[]>();
+  for (const r of responses ?? []) {
+    const list = byProgram.get(r.program_id) ?? [];
+    list.push(r.rating!);
+    byProgram.set(r.program_id, list);
+  }
+  const pooled = new Map<number, number[]>();
+  for (const a of assigns ?? []) {
+    const ratings = byProgram.get(a.program_id);
+    if (!ratings?.length) continue;
+    pooled.set(a.staff_id, [...(pooled.get(a.staff_id) ?? []), ...ratings]);
+  }
+  for (const [staffId, ratings] of pooled) {
+    out.set(staffId, { avg: Math.round((ratings.reduce((s, r) => s + r, 0) / ratings.length) * 10) / 10, count: ratings.length });
+  }
+  return out;
+}
+
 // --- Pay reporting + QuickBooks export ---------------------------------------
 
 export interface PayReportRow {
