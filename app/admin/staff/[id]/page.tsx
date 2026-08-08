@@ -11,10 +11,12 @@ import {
   deleteCertAction,
   grantRoleAction,
   photoAction,
+  removeAssignmentAction,
   removePhotoAction,
   replaceRemainderAction,
   revokeRoleAction,
   updateDetailsAction,
+  updateRateAction,
 } from '../actions';
 
 export const dynamic = 'force-dynamic';
@@ -209,6 +211,17 @@ export default async function StaffDetailPage({ params }: { params: { id: string
 
               {a.active && (
                 <div className="flex flex-wrap gap-4">
+                  <details className="min-w-56 flex-1">
+                    <summary className="label cursor-pointer text-[11px]">Change rate</summary>
+                    <form action={updateRateAction} className="mt-2 grid gap-2 sm:grid-cols-2">
+                      <input type="hidden" name="staffId" value={staff.id} />
+                      <input type="hidden" name="assignmentId" value={a.id} />
+                      <div><label className="field-label">New rate $ ({a.pay_mode.replace('_', ' ')})</label><input name="newRate" required placeholder="0.00" className="input text-xs" /></div>
+                      <div><label className="field-label">From date</label><input name="fromDate" type="date" defaultValue={today} className="input text-xs" /></div>
+                      <p className="text-xs text-silver sm:col-span-2">Work before the date stays at the old rate; the outstanding schedule re-cuts at the new one. Paid dates never move.</p>
+                      <button type="submit" className="btn-ghost btn-sm sm:col-span-2">Update rate</button>
+                    </form>
+                  </details>
                   <details className="min-w-64 flex-1">
                     <summary className="label cursor-pointer text-[11px]">Mark a session absent</summary>
                     <form action={absenceAction} className="mt-2 grid gap-2 sm:grid-cols-2">
@@ -248,6 +261,14 @@ export default async function StaffDetailPage({ params }: { params: { id: string
                     </form>
                   </details>
                 </div>
+              )}
+
+              {pay.paid === 0 && (
+                <form action={removeAssignmentAction} className="self-end">
+                  <input type="hidden" name="staffId" value={staff.id} />
+                  <input type="hidden" name="assignmentId" value={a.id} />
+                  <button type="submit" className="label text-[11px] text-neg hover:underline">Remove assignment (nothing paid yet)</button>
+                </form>
               )}
             </div>
           );

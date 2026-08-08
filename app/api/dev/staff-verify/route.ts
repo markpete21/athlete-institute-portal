@@ -16,10 +16,12 @@ import {
   qbPayoutCsv,
   recordAbsence,
   refreshStaffStatus,
+  removeAssignment,
   replaceForRemainder,
   setCapability,
   submitUnavailability,
   upcomingUnavailability,
+  updateAssignmentRate,
 } from '@/lib/staff/staff';
 
 /**
@@ -151,7 +153,34 @@ export async function GET() {
       `${csv.split('\n').length - 1} rows`,
     );
 
-    // 14. cert expiry warn-only (never blocks)
+    // 14. rate change mid-window: Cara $70 -> $80 from Nov 1. Her assignment
+    // starts Oct 15 (replacement), so only Oct 17 counts as worked at the old
+    // rate; Nov 7 + Nov 28 re-cut at the new one.
+    const rate = await updateAssignmentRate({ assignmentId: repl.replacementAssignmentId, newRateCents: 8000, fromDateISO: '2026-11-01' }, 'system:verify');
+    const { data: caraAfter } = await db.from('staff_pay_dates').select('amount_cents, status').eq('assignment_id', repl.replacementAssignmentId);
+    const caraOutstanding = (caraAfter ?? []).filter((p) => p.status === 'outstanding').reduce((s, p) => s + p.amount_cents, 0);
+    const { data: caraAssign } = await db.from('staff_assignments').select('rate_cents').eq('id', repl.replacementAssignmentId).single();
+    record(
+      'rate change honours the assignment window (1x$70 + 2x$80)',
+      rate.newOutstandingCents === 23000 && caraOutstanding === 23000 && caraAssign!.rate_cents === 8000,
+      `outstanding ${caraOutstanding}, rate ${caraAssign!.rate_cents}`,
+    );
+
+    // 15. remove-assignment guard: coach's assignment has PAID history
+    let removeBlocked = false;
+    try { await removeAssignment(assignmentId, 'system:verify'); } catch { removeBlocked = true; }
+    record('remove refuses once anything was paid', removeBlocked, removeBlocked ? 'rejected as expected' : 'REMOVED PAID HISTORY');
+
+    // 16. remove a mistaken assignment (nothing paid) cleans up fully
+    const dara = await createStaff({ firstName: 'Dara', lastName: 'Mistake' }, 'system:verify');
+    staffIds.push(dara.id);
+    const wrongId = await assignStaffToProgram({ staffId: dara.id, programId: prog.id, payMode: 'flat', rateCents: 10000, frequency: 'after_program' }, 'system:verify');
+    await removeAssignment(wrongId, 'system:verify');
+    const { count: leftoverPay } = await db.from('staff_pay_dates').select('id', { count: 'exact', head: true }).eq('assignment_id', wrongId);
+    const { data: daraAfter } = await db.from('staff').select('status').eq('id', dara.id).single();
+    record('mistaken assignment removed, pay dates gone, status recomputed', (leftoverPay ?? 0) === 0 && daraAfter!.status === 'inactive', `leftover ${leftoverPay}, status ${daraAfter!.status}`);
+
+    // 17. cert expiry warn-only (never blocks)
     await addCertification({ staffId: coach.id, name: 'Vulnerable Sector Check', expiresOn: new Date(Date.now() + 10 * 86400_000).toISOString().slice(0, 10) }, 'system:verify');
     const warn = await processCertExpiries();
     record('cert expiry warns (warn-only)', warn.warned >= 1, `${warn.warned} warned`);

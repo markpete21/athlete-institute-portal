@@ -22,6 +22,8 @@ export interface StaffPeriodSummary {
 export interface StaffListRow {
   id: number;
   name: string;
+  /** "lastname, firstname" — the default sort key. */
+  sortName: string;
   initials: string;
   photoUrl: string | null;
   status: string;
@@ -54,15 +56,54 @@ function CopyButton({ value, what }: { value: string; what: string }) {
   );
 }
 
+type SortKey = 'name' | 'program';
+
+function SortHeader({ label, active, dir, onClick }: { label: string; active: boolean; dir: 1 | -1; onClick: () => void }) {
+  return (
+    <button type="button" onClick={onClick} className={`inline-flex items-center gap-1 uppercase ${active ? 'text-ink' : ''} hover:text-ink`} aria-sort={active ? (dir === 1 ? 'ascending' : 'descending') : undefined}>
+      {label}
+      <span className="mono text-[9px]" style={active ? { color: 'var(--accent)' } : { opacity: 0.4 }}>{active ? (dir === 1 ? '▲' : '▼') : '↕'}</span>
+    </button>
+  );
+}
+
 export function StaffListTable({ rows }: { rows: StaffListRow[] }) {
   const [open, setOpen] = useState<number | null>(null);
   const [editing, setEditing] = useState<number | null>(null);
+  const [sortKey, setSortKey] = useState<SortKey>('name');
+  const [dir, setDir] = useState<1 | -1>(1);
+
+  const toggleSort = (key: SortKey) => {
+    if (key === sortKey) setDir((d) => (d === 1 ? -1 : 1));
+    else { setSortKey(key); setDir(1); }
+  };
+
+  // Default = last name. Program sorts by first program NAME (never the
+  // role label); unassigned staff sink to the bottom in both directions.
+  const sorted = [...rows].sort((a, b) => {
+    if (sortKey === 'name') return dir * a.sortName.localeCompare(b.sortName);
+    const pa = [...a.assignments].map((x) => x.program).sort()[0];
+    const pb = [...b.assignments].map((x) => x.program).sort()[0];
+    if (!pa && !pb) return a.sortName.localeCompare(b.sortName);
+    if (!pa) return 1;
+    if (!pb) return -1;
+    return dir * pa.localeCompare(pb) || a.sortName.localeCompare(b.sortName);
+  });
 
   return (
     <table className="data-table">
-      <thead><tr><th /><th>Name</th><th className="w-[36%]">Programs &amp; roles</th><th>Account</th><th>Status</th><th /></tr></thead>
+      <thead>
+        <tr>
+          <th />
+          <th><SortHeader label="Name" active={sortKey === 'name'} dir={dir} onClick={() => toggleSort('name')} /></th>
+          <th className="w-[36%]"><SortHeader label="Programs & roles" active={sortKey === 'program'} dir={dir} onClick={() => toggleSort('program')} /></th>
+          <th>Account</th>
+          <th>Status</th>
+          <th />
+        </tr>
+      </thead>
       <tbody>
-        {rows.map((s) => (
+        {sorted.map((s) => (
           <RowPair key={s.id} s={s} open={open === s.id} editing={editing === s.id}
             onToggle={() => { setOpen((v) => (v === s.id ? null : s.id)); setEditing(null); }}
             onEdit={() => setEditing((v) => (v === s.id ? null : s.id))} />

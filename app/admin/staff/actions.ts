@@ -14,9 +14,11 @@ import {
   deleteCertification,
   markPayDatePaid,
   recordAbsence,
+  removeAssignment,
   removeStaffPhoto,
   replaceForRemainder,
   setCapability,
+  updateAssignmentRate,
   updateStaffDetails,
   uploadStaffPhoto,
 } from '@/lib/staff/staff';
@@ -155,6 +157,24 @@ export async function replaceRemainderAction(formData: FormData): Promise<void> 
     replacementName: String(formData.get('replacementName') ?? '').trim() || null,
     newRateCents: cents(formData.get('newRate')),
   }, session.userId!);
+  revalidatePath(`/staff/${staffId}`);
+}
+
+export async function updateRateAction(formData: FormData): Promise<void> {
+  const session = await requireStaff();
+  const staffId = Number(formData.get('staffId'));
+  await updateAssignmentRate({
+    assignmentId: Number(formData.get('assignmentId')),
+    newRateCents: cents(formData.get('newRate')),
+    fromDateISO: String(formData.get('fromDate') ?? '') || null,
+  }, session.userId!);
+  revalidatePath(`/staff/${staffId}`);
+}
+
+export async function removeAssignmentAction(formData: FormData): Promise<void> {
+  const session = await requireStaff();
+  const staffId = Number(formData.get('staffId'));
+  await removeAssignment(Number(formData.get('assignmentId')), session.userId!);
   revalidatePath(`/staff/${staffId}`);
 }
 

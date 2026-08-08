@@ -205,7 +205,7 @@ export async function assignStaffToProgram(input: { staffId: number; programId: 
 
   const { data, error } = await db
     .from('staff_assignments')
-    .insert({ staff_id: input.staffId, program_id: input.programId, role_label: input.roleLabel ?? null, pay_mode: input.payMode, rate_cents: input.rateCents, frequency: input.frequency, show_public: input.showPublic ?? true })
+    .insert({ staff_id: input.staffId, program_id: input.programId, role_label: input.roleLabel ?? null, pay_mode: input.payMode, rate_cents: input.rateCents, frequency: input.frequency, show_public: input.showPublic ?? true, starts_on: startISO })
     .select('id')
     .single();
   if (error) throw new Error(error.message.includes('duplicate') ? 'Already assigned to this program.' : `assign failed: ${error.message}`);
@@ -246,13 +246,13 @@ async function reduceOutstandingPay(assignmentId: number, sessionDateISO: string
 }
 
 /** Find the staff's assignment on a program, or create a hidden substitute one. */
-async function getOrCreateSubAssignment(staffId: number, programId: number, rateCents: number): Promise<number> {
+async function getOrCreateSubAssignment(staffId: number, programId: number, rateCents: number, sessionDateISO: string): Promise<number> {
   const db = supabaseAdmin();
   const { data: existing } = await db.from('staff_assignments').select('id').eq('staff_id', staffId).eq('program_id', programId).maybeSingle();
   if (existing) return existing.id;
   const { data, error } = await db
     .from('staff_assignments')
-    .insert({ staff_id: staffId, program_id: programId, role_label: 'Substitute', pay_mode: 'per_session', rate_cents: rateCents, frequency: 'after_program', show_public: false })
+    .insert({ staff_id: staffId, program_id: programId, role_label: 'Substitute', pay_mode: 'per_session', rate_cents: rateCents, frequency: 'after_program', show_public: false, starts_on: sessionDateISO })
     .select('id')
     .single();
   if (error) throw new Error(`substitute assignment failed: ${error.message}`);
@@ -305,7 +305,7 @@ export async function recordAbsence(
 
   // Add the replacement's pay at the entered rate.
   if (replacementStaffId && (input.replacementRateCents ?? 0) > 0) {
-    const subAssignmentId = await getOrCreateSubAssignment(replacementStaffId, a.program_id, input.replacementRateCents!);
+    const subAssignmentId = await getOrCreateSubAssignment(replacementStaffId, a.program_id, input.replacementRateCents!, input.sessionDateISO);
     const { error: pErr } = await db.from('staff_pay_dates').insert({ assignment_id: subAssignmentId, due_date: input.sessionDateISO, amount_cents: input.replacementRateCents! });
     if (pErr) throw new Error(pErr.message);
     await refreshStaffStatus(replacementStaffId);
@@ -314,6 +314,101 @@ export async function recordAbsence(
   await audit({ actorId: actorClerkId, action: 'staff.absence-recorded', target: `staff_assignment:${input.assignmentId}`, meta: { session: input.sessionDateISO, replacement: replacementStaffId, deducted_cents: deducted, replacement_rate_cents: input.replacementRateCents ?? null } });
   await refreshStaffStatus(a.staff_id);
   return { adjusted: true, deductedCents: deducted, replacementStaffId };
+}
+
+/**
+ * Change an existing assignment's rate from a date forward (a raise, or a
+ * mis-entered rate). Paid pay dates are never touched: the outstanding
+ * balance is recomputed as old-rate-for-the-portion-worked plus
+ * new-rate-for-the-rest (absent sessions excluded on both sides), and the
+ * outstanding schedule is re-cut over the remaining window on the
+ * assignment's own frequency. Salary (amount per period) simply re-prices
+ * the outstanding periods due on/after the date.
+ */
+export async function updateAssignmentRate(
+  input: { assignmentId: number; newRateCents: number; fromDateISO?: string | null },
+  actorClerkId: string,
+): Promise<{ newOutstandingCents: number }> {
+  const db = supabaseAdmin();
+  const from = input.fromDateISO || torontoToday();
+  if (input.newRateCents < 0) throw new Error('Rate must be positive.');
+  const { data: a } = await db.from('staff_assignments').select('id, staff_id, program_id, pay_mode, rate_cents, frequency, active, starts_on').eq('id', input.assignmentId).single();
+  if (!a) throw new Error('Assignment not found.');
+  if (!a.active) throw new Error('This assignment was replaced - adjust the replacement instead.');
+
+  const { data: payRows } = await db.from('staff_pay_dates').select('id, due_date, amount_cents, status').eq('assignment_id', a.id);
+  const paidCents = (payRows ?? []).filter((p) => p.status === 'paid').reduce((s, p) => s + p.amount_cents, 0);
+  const outstandingIds = (payRows ?? []).filter((p) => p.status === 'outstanding').map((p) => p.id);
+
+  let newOutstanding: number;
+  if (a.pay_mode === 'salary') {
+    // Re-price the periods from the date on; earlier periods stand as generated.
+    const later = (payRows ?? []).filter((p) => p.status === 'outstanding' && p.due_date >= from);
+    for (const row of later) {
+      const { error } = await db.from('staff_pay_dates').update({ amount_cents: input.newRateCents }).eq('id', row.id);
+      if (error) throw new Error(error.message);
+    }
+    newOutstanding = (payRows ?? []).filter((p) => p.status === 'outstanding' && p.due_date < from).reduce((s, p) => s + p.amount_cents, 0) + later.length * input.newRateCents;
+  } else {
+    // Only this assignment's own window counts: a replacement hired
+    // mid-program (starts_on) is not owed for sessions before the handoff.
+    const { data: sess } = await db.from('program_sessions').select('starts_at, ends_at').eq('program_id', a.program_id).order('starts_at');
+    const sessions = (sess ?? []).filter((s) => !a.starts_on || torontoDate(s.starts_at) >= a.starts_on);
+    const { data: absRows } = await db.from('staff_session_absences').select('session_date').eq('assignment_id', a.id);
+    const absBefore = (absRows ?? []).filter((x) => x.session_date < from).length;
+    const absAfter = (absRows ?? []).length - absBefore;
+    const rawBefore = sessions.filter((s) => torontoDate(s.starts_at) < from).length;
+    const rawAfter = sessions.length - rawBefore;
+    const unitsBefore = Math.max(0, rawBefore - absBefore);
+    const unitsAfter = Math.max(0, rawAfter - absAfter);
+
+    let owedTotal: number;
+    if (a.pay_mode === 'flat') {
+      owedTotal = sessions.length
+        ? Math.round((a.rate_cents * rawBefore) / sessions.length) + Math.round((input.newRateCents * rawAfter) / sessions.length)
+        : input.newRateCents;
+    } else {
+      owedTotal = a.rate_cents * unitsBefore + input.newRateCents * unitsAfter;
+    }
+    newOutstanding = Math.max(0, owedTotal - paidCents);
+
+    if (outstandingIds.length) {
+      const { error } = await db.from('staff_pay_dates').delete().in('id', outstandingIds);
+      if (error) throw new Error(error.message);
+    }
+    if (newOutstanding > 0) {
+      const endISO = sessions.length ? torontoDate(sessions[sessions.length - 1].ends_at) : from;
+      const windowEnd = endISO > from ? endISO : from;
+      const schedule = a.frequency === 'after_program'
+        ? [{ dueDate: windowEnd, amountCents: newOutstanding }]
+        : generatePaySchedule({ mode: 'flat', rateCents: newOutstanding, frequency: a.frequency as PayFrequency, programStartISO: from, programEndISO: windowEnd });
+      const { error } = await db.from('staff_pay_dates').insert(schedule.map((p) => ({ assignment_id: a.id, due_date: p.dueDate, amount_cents: p.amountCents })));
+      if (error) throw new Error(error.message);
+    }
+  }
+
+  const { error: rErr } = await db.from('staff_assignments').update({ rate_cents: input.newRateCents }).eq('id', a.id);
+  if (rErr) throw new Error(rErr.message);
+  await audit({ actorId: actorClerkId, action: 'staff.rate-changed', target: `staff_assignment:${a.id}`, meta: { from, old_rate_cents: a.rate_cents, new_rate_cents: input.newRateCents, new_outstanding_cents: newOutstanding } });
+  await refreshStaffStatus(a.staff_id);
+  return { newOutstandingCents: newOutstanding };
+}
+
+/**
+ * Remove a mistaken assignment outright. Refused once anything has been
+ * PAID on it - paid history must stay on the books; use replace-for-
+ * remainder (or archive the staff member) instead.
+ */
+export async function removeAssignment(assignmentId: number, actorClerkId: string): Promise<void> {
+  const db = supabaseAdmin();
+  const { data: a } = await db.from('staff_assignments').select('id, staff_id, program_id').eq('id', assignmentId).single();
+  if (!a) throw new Error('Assignment not found.');
+  const { count: paidCount } = await db.from('staff_pay_dates').select('id', { count: 'exact', head: true }).eq('assignment_id', assignmentId).eq('status', 'paid');
+  if ((paidCount ?? 0) > 0) throw new Error('This assignment has paid pay dates - that history must stay. Replace for the remainder instead.');
+  const { error } = await db.from('staff_assignments').delete().eq('id', assignmentId);
+  if (error) throw new Error(error.message);
+  await audit({ actorId: actorClerkId, action: 'staff.assignment-removed', target: `staff_assignment:${assignmentId}`, meta: { staff_id: a.staff_id, program_id: a.program_id } });
+  await refreshStaffStatus(a.staff_id);
 }
 
 /**
@@ -328,7 +423,7 @@ export async function replaceForRemainder(
   actorClerkId: string,
 ): Promise<{ replacementAssignmentId: number; originalFinalOutstandingCents: number }> {
   const db = supabaseAdmin();
-  const { data: a } = await db.from('staff_assignments').select('id, staff_id, program_id, role_label, pay_mode, rate_cents, frequency, show_public, active').eq('id', input.assignmentId).single();
+  const { data: a } = await db.from('staff_assignments').select('id, staff_id, program_id, role_label, pay_mode, rate_cents, frequency, show_public, active, starts_on').eq('id', input.assignmentId).single();
   if (!a) throw new Error('Assignment not found.');
   if (!a.active) throw new Error('This assignment was already replaced.');
 
@@ -341,11 +436,13 @@ export async function replaceForRemainder(
   if (!replacementStaffId) throw new Error('Pick a replacement or enter a name.');
   if (replacementStaffId === a.staff_id) throw new Error('The replacement must be a different person.');
 
-  // Split the program's sessions at the handoff date. Sessions the original
-  // was already marked absent from don't count as worked - that pay moved to
-  // the per-session substitute when the absence was recorded.
+  // Split the program's sessions at the handoff date, within THIS
+  // assignment's own window (starts_on - the original may themselves have
+  // been a mid-program replacement). Sessions the original was already
+  // marked absent from don't count as worked - that pay moved to the
+  // per-session substitute when the absence was recorded.
   const { data: sess } = await db.from('program_sessions').select('starts_at, ends_at').eq('program_id', a.program_id).order('starts_at');
-  const sessions = sess ?? [];
+  const sessions = (sess ?? []).filter((s) => !a.starts_on || torontoDate(s.starts_at) >= a.starts_on);
   const { count: absencesBefore } = await db.from('staff_session_absences').select('id', { count: 'exact', head: true }).eq('assignment_id', a.id).lt('session_date', input.fromDateISO);
   const unitsBefore = Math.max(0, sessions.filter((s) => torontoDate(s.starts_at) < input.fromDateISO).length - (absencesBefore ?? 0));
   const unitsAfter = sessions.filter((s) => torontoDate(s.starts_at) >= input.fromDateISO).length;
@@ -376,7 +473,7 @@ export async function replaceForRemainder(
   if (existing) throw new Error('The replacement already has an assignment on this program - adjust theirs instead.');
   const { data: repl, error: rErr } = await db
     .from('staff_assignments')
-    .insert({ staff_id: replacementStaffId, program_id: a.program_id, role_label: a.role_label, pay_mode: a.pay_mode, rate_cents: input.newRateCents, frequency: a.frequency, show_public: a.show_public })
+    .insert({ staff_id: replacementStaffId, program_id: a.program_id, role_label: a.role_label, pay_mode: a.pay_mode, rate_cents: input.newRateCents, frequency: a.frequency, show_public: a.show_public, starts_on: input.fromDateISO })
     .select('id')
     .single();
   if (rErr) throw new Error(rErr.message);

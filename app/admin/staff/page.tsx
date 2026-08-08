@@ -16,10 +16,49 @@ export default async function StaffListPage({ searchParams }: { searchParams: { 
   const statusFilter = ['active', 'inactive', 'archived'].includes(searchParams.status ?? '') ? searchParams.status! : '';
 
   const db = supabaseAdmin();
+  const today = torontoToday();
   let query = db.from('staff').select('id, first_name, last_name, email, phone, status, profile_id, photo_url').order('last_name');
   if (q) query = query.or(`first_name.ilike.%${q}%,last_name.ilike.%${q}%,email.ilike.%${q}%`);
   if (statusFilter) query = query.eq('status', statusFilter);
-  const [{ data: staff }, unavailability] = await Promise.all([query, upcomingUnavailability()]);
+  const soon = new Date(Date.now() + 30 * 86400_000).toISOString().slice(0, 10);
+  const [{ data: staff }, unavailability, { data: certAlerts }, { data: overduePay }] = await Promise.all([
+    query,
+    upcomingUnavailability(),
+    db.from('staff_certifications').select('staff_id, name, expires_on, staff(first_name, last_name, status)').not('expires_on', 'is', null).lte('expires_on', soon).order('expires_on'),
+    db.from('staff_pay_dates').select('due_date, amount_cents, staff_assignments(staff(id, first_name, last_name))').eq('status', 'outstanding').lt('due_date', today).order('due_date'),
+  ]);
+
+  // The Needs-attention queue: expired/expiring certs, submitted
+  // unavailability, overdue pay, and coaches with no way to log in.
+  type Attention = { severity: 'bad' | 'warn' | 'info'; staffId: number; title: string; detail: string };
+  const attention: Attention[] = [];
+  for (const c of certAlerts ?? []) {
+    const s = c.staff as unknown as { first_name: string; last_name: string; status: string } | null;
+    if (!s || s.status === 'archived') continue;
+    const expired = c.expires_on! < today;
+    attention.push({
+      severity: expired ? 'bad' : 'warn',
+      staffId: c.staff_id,
+      title: `${s.first_name} ${s.last_name} — ${c.name} ${expired ? 'EXPIRED' : 'expiring'}`,
+      detail: `${expired ? 'since' : 'on'} ${fmt(c.expires_on!)} · warn-only, never blocks assignment`,
+    });
+  }
+  for (const u of unavailability) {
+    attention.push({ severity: 'warn', staffId: u.staff_id, title: `${u.name} unavailable ${fmt(u.date)}`, detail: u.note ?? 'no note' });
+  }
+  for (const p of overduePay ?? []) {
+    const s = (p.staff_assignments as unknown as { staff: { id: number; first_name: string; last_name: string } | null } | null)?.staff;
+    if (!s) continue;
+    attention.push({ severity: 'bad', staffId: s.id, title: `${s.first_name} ${s.last_name} — pay overdue`, detail: `${formatCAD(p.amount_cents)} was due ${fmt(p.due_date)}` });
+  }
+  for (const s of staff ?? []) {
+    if (s.status !== 'archived' && !s.profile_id && !s.email) {
+      attention.push({ severity: 'info', staffId: s.id, title: `${s.first_name} ${s.last_name} has no login yet`, detail: 'add an email to send an invite' });
+    }
+  }
+  const SEVERITY_ORDER = { bad: 0, warn: 1, info: 2 } as const;
+  attention.sort((a, b) => SEVERITY_ORDER[a.severity] - SEVERITY_ORDER[b.severity]);
+  const SEVERITY_COLOR = { bad: '#b4483c', warn: '#a08030', info: '#9ea1a1' } as const;
 
   // The quick-expand needs each coach's programs, and sessions + pay across
   // last/this/next bi-weekly periods.
@@ -103,6 +142,7 @@ export default async function StaffListPage({ searchParams }: { searchParams: { 
     return {
       id: s.id,
       name: `${s.first_name} ${s.last_name}`,
+      sortName: `${s.last_name}, ${s.first_name}`.toLowerCase(),
       initials: `${s.first_name[0] ?? ''}${s.last_name[0] ?? ''}`,
       photoUrl: s.photo_url,
       status: s.status,
@@ -124,6 +164,23 @@ export default async function StaffListPage({ searchParams }: { searchParams: { 
           <p className="text-body mt-2">Records, roles, per-program pay, certifications. Status derives itself: assigned to a current program or owed pay = active.</p>
         </div>
         <div className="flex items-start gap-2">
+          <details className="relative">
+            <summary className="btn-ghost btn-sm inline-block cursor-pointer list-none [&::-webkit-details-marker]:hidden">
+              Needs attention{attention.length > 0 && <span className="mono ml-1" style={{ color: attention.some((a) => a.severity === 'bad') ? '#b4483c' : '#a08030' }}>· {attention.length}</span>}
+            </summary>
+            <div className="absolute right-0 z-10 mt-2 flex w-[min(30rem,90vw)] flex-col border border-hairline bg-paper shadow-lg">
+              {attention.length === 0 && <p className="p-4 text-sm text-silver">All clear — no cert issues, overdue pay, or submitted unavailability.</p>}
+              {attention.map((a, i) => (
+                <Link key={i} href={`/staff/${a.staffId}`} className="flex gap-3 border-b border-hairline p-3 last:border-b-0 hover:bg-paper-panel">
+                  <span className="w-[3px] shrink-0 self-stretch" style={{ background: SEVERITY_COLOR[a.severity] }} />
+                  <span>
+                    <span className="block text-sm font-bold text-ink">{a.title}</span>
+                    <span className="block text-xs text-silver">{a.detail}</span>
+                  </span>
+                </Link>
+              ))}
+            </div>
+          </details>
           <Link href="/staff/permissions" className="btn-ghost btn-sm">Permission matrix</Link>
           <Link href="/staff/pay" className="btn-ghost btn-sm">Pay dashboard</Link>
           <details className="relative">
@@ -143,20 +200,6 @@ export default async function StaffListPage({ searchParams }: { searchParams: { 
           </details>
         </div>
       </header>
-
-      {unavailability.length > 0 && (
-        <section className="card flex flex-col gap-2 p-4">
-          <p className="label text-[11px]">Upcoming submitted unavailability</p>
-          <div className="flex flex-wrap gap-2">
-            {unavailability.slice(0, 12).map((u) => (
-              <Link key={`${u.staff_id}:${u.date}`} href={`/staff/${u.staff_id}`} className="tag hover:border-ink">
-                {u.name} · {fmt(u.date)}{u.note ? ` · ${u.note}` : ''}
-              </Link>
-            ))}
-            {unavailability.length > 12 && <span className="text-sm text-silver">+{unavailability.length - 12} more</span>}
-          </div>
-        </section>
-      )}
 
       <form method="get" action="/staff" className="flex flex-wrap items-end gap-3">
         <div className="min-w-56 flex-1">
