@@ -4,11 +4,11 @@ import { buildTree, DEFAULT_TIEBREAKS, flattenTree, type FacilityNode, type Spor
 import { supabaseAdmin } from '@ai/foundation/supabase';
 import RatingSelect from '@/components/admin/RatingSelect';
 import { divisionStandings, rosterWithRatings, TIEBREAK_OPTIONS } from '@/lib/competitive/competitive';
-import { buildScheduleAction, generatePlayoffsAction, runBuilderAction, saveBoxScoreAction, saveCompeteSettingsAction, saveScoreAction, saveStatsSettingsAction, saveTiebreaksAction, setSkillRatingAction } from '../actions';
+import { buildScheduleAction, generatePlayoffsAction, saveBoxScoreAction, saveCompeteSettingsAction, saveScoreAction, saveStatsSettingsAction, saveTiebreaksAction, setSkillRatingAction } from '../actions';
+import { CoachSection, DraftSection, OfficialsSection } from './sections';
 
 export const dynamic = 'force-dynamic';
 
-const ATTRS = ['skill', 'age', 'gender', 'experience', 'height'];
 const WD = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const fmt = (iso: string | null) => iso ? new Date(iso).toLocaleString('en-CA', { timeZone: 'America/Toronto', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }) : 'TBD';
 
@@ -38,29 +38,17 @@ export default async function DivisionAdminPage({ params }: { params: { id: stri
       <header className="flex flex-col gap-2 border-b border-hairline pb-5">
         <p className="label text-[11px]">Admin · Competitive · #{div.id}</p>
         <h1 className="text-4xl">{div.name}<span style={{ color: 'var(--accent)' }}>.</span></h1>
-        <div className="flex gap-2"><span className="tag">{div.sport}</span><span className="tag">{(div.programs as unknown as { name: string } | null)?.name}</span><span className="tag">{rosterCount} registered · {(teams ?? []).length} teams</span></div>
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="tag">{div.sport}</span><span className="tag">{(div.programs as unknown as { name: string } | null)?.name}</span><span className="tag">{rosterCount} registered · {(teams ?? []).length} teams</span>
+          <Link href={`/competitive/${divisionId}/media-day`} className="label ml-auto text-[10px] hover:text-ink">Media day →</Link>
+        </div>
       </header>
 
-      {/* Team builder */}
-      <section className="card flex flex-col gap-3 p-5">
-        <h2 className="text-2xl">Team builder</h2>
-        <form action={runBuilderAction} className="flex flex-wrap items-end gap-3">
-          <input type="hidden" name="divisionId" value={divisionId} />
-          <div><label className="field-label">Teams</label><input name="numTeams" type="number" defaultValue={2} min={1} className="input w-20" /></div>
-          <div className="flex items-end gap-3">
-            {ATTRS.map((a) => <label key={a} className="flex items-center gap-1 font-mono text-[11px] uppercase text-silver"><input type="checkbox" name="attributes" value={a} defaultChecked={a === 'skill'} /> {a}</label>)}
-          </div>
-          <button type="submit" className="btn-gold btn-sm">Run balancing draft</button>
-        </form>
-        <div className="grid gap-3 sm:grid-cols-3">
-          {(teams ?? []).map((t) => (
-            <div key={t.id} className="border border-hairline p-3">
-              <p className="label text-[10px]">{t.name}</p>
-              <p className="mono text-2xl text-ink">{(members ?? []).filter((m) => m.team_id === t.id).length}</p>
-            </div>
-          ))}
-        </div>
-      </section>
+      {/* Stage 1: coaches confirmed before anything else moves */}
+      <CoachSection divisionId={divisionId} />
+
+      {/* Team builder: preview -> approve (writes ai_proposals, then teams) */}
+      <DraftSection divisionId={divisionId} teamCount={(teams ?? []).length} />
 
       {/* Schedule builder */}
       <section className="card flex flex-col gap-3 p-5">
@@ -185,6 +173,9 @@ export default async function DivisionAdminPage({ params }: { params: { id: stri
         })}
         {(games ?? []).length === 0 && <p className="text-sm text-silver">No games scheduled yet.</p>}
       </section>
+
+      {/* Officials: auto-book the pool onto every scheduled game */}
+      <OfficialsSection divisionId={divisionId} />
 
       {/* Standings preview */}
       {standings.standings.some((s) => s.gp > 0) && (

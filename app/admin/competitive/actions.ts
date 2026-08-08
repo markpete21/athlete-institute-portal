@@ -247,6 +247,145 @@ export async function duplicateStandaloneEventAction(formData: FormData): Promis
   revalidatePath('/competitive');
 }
 
+/* ------------------------------------------------------------------ */
+/* Division ops (migration 0058): coaches, draft proposals, officials, */
+/* media day. Thin wrappers - the logic lives in lib/competitive/*.    */
+/* ------------------------------------------------------------------ */
+
+export async function setTeamCoachAction(formData: FormData): Promise<void> {
+  const session = await requireStaff();
+  const { setTeamCoach } = await import('@/lib/competitive/coachConfirmations');
+  const raw = String(formData.get('staffId') ?? '');
+  await setTeamCoach(Number(formData.get('teamId')), raw ? Number(raw) : null, session.userId!);
+  revalidatePath(`/competitive/${Number(formData.get('divisionId'))}`);
+}
+
+export async function saveCoachQuestionsAction(formData: FormData): Promise<void> {
+  const session = await requireStaff();
+  const { saveCoachQuestions } = await import('@/lib/competitive/coachConfirmations');
+  const divisionId = Number(formData.get('divisionId'));
+  const questions = String(formData.get('questions') ?? '').split('\n');
+  await saveCoachQuestions(divisionId, questions, session.userId!);
+  revalidatePath(`/competitive/${divisionId}`);
+}
+
+export async function sendCoachConfirmsAction(formData: FormData): Promise<void> {
+  const session = await requireStaff();
+  const { sendCoachConfirmations } = await import('@/lib/competitive/coachConfirmations');
+  const divisionId = Number(formData.get('divisionId'));
+  await sendCoachConfirmations(divisionId, session.userId!);
+  revalidatePath(`/competitive/${divisionId}`);
+}
+
+export async function remindCoachesAction(formData: FormData): Promise<void> {
+  const session = await requireStaff();
+  const { remindPendingCoaches } = await import('@/lib/competitive/coachConfirmations');
+  const divisionId = Number(formData.get('divisionId'));
+  await remindPendingCoaches(divisionId, session.userId!);
+  revalidatePath(`/competitive/${divisionId}`);
+}
+
+/** Preview draft: writes an ai_proposals row, never teams. Approve applies it. */
+export async function proposeDraftAction(formData: FormData): Promise<void> {
+  const session = await requireStaff();
+  const { proposeDraft } = await import('@/lib/competitive/draftProposals');
+  const divisionId = Number(formData.get('divisionId'));
+  const attributes = formData.getAll('attributes').map(String) as BalanceAttribute[];
+  await proposeDraft({ divisionId, numTeams: Number(formData.get('numTeams')) || 2, attributes, actorClerkId: session.userId! });
+  revalidatePath(`/competitive/${divisionId}`);
+}
+
+export async function applyDraftAction(formData: FormData): Promise<void> {
+  const session = await requireStaff();
+  const { applyDraft } = await import('@/lib/competitive/draftProposals');
+  const { divisionId } = await applyDraft(Number(formData.get('proposalId')), session.userId!);
+  revalidatePath(`/competitive/${divisionId}`);
+}
+
+export async function discardDraftAction(formData: FormData): Promise<void> {
+  const session = await requireStaff();
+  const { discardProposal } = await import('@/lib/competitive/draftProposals');
+  await discardProposal(Number(formData.get('proposalId')), session.userId!);
+  revalidatePath(`/competitive/${Number(formData.get('divisionId'))}`);
+}
+
+export async function upsertOfficialAction(formData: FormData): Promise<void> {
+  const session = await requireStaff();
+  const { upsertOfficial } = await import('@/lib/competitive/officials');
+  const idRaw = String(formData.get('officialId') ?? '');
+  const staffRaw = String(formData.get('staffId') ?? '');
+  await upsertOfficial({
+    id: idRaw ? Number(idRaw) : null,
+    firstName: String(formData.get('firstName') ?? ''),
+    lastName: String(formData.get('lastName') ?? ''),
+    email: String(formData.get('email') ?? ''),
+    phone: String(formData.get('phone') ?? ''),
+    availStart: String(formData.get('availStart') ?? '') || null,
+    availEnd: String(formData.get('availEnd') ?? '') || null,
+    maxPerDay: Number(formData.get('maxPerDay')) || 4,
+    payCents: Math.round((Number(formData.get('payDollars')) || 35) * 100),
+    staffId: staffRaw ? Number(staffRaw) : null,
+    notes: String(formData.get('notes') ?? ''),
+    active: formData.get('active') !== 'off' && formData.get('active') !== '0',
+  }, session.userId!);
+  revalidatePath('/competitive/officials');
+}
+
+export async function toggleOfficialAction(formData: FormData): Promise<void> {
+  const session = await requireStaff();
+  const { error } = await supabaseAdmin()
+    .from('officials')
+    .update({ active: formData.get('active') === 'on' })
+    .eq('id', Number(formData.get('officialId')));
+  if (error) throw new Error(error.message);
+  await audit({ actorId: session.userId!, action: 'official.toggled', target: `official:${Number(formData.get('officialId'))}` });
+  revalidatePath('/competitive/officials');
+}
+
+export async function bookOfficialsAction(formData: FormData): Promise<void> {
+  const session = await requireStaff();
+  const { assignOfficials } = await import('@/lib/competitive/officials');
+  const divisionId = Number(formData.get('divisionId'));
+  await assignOfficials({ divisionId, perGame: Number(formData.get('perGame')) || 2, actorClerkId: session.userId! });
+  revalidatePath(`/competitive/${divisionId}`);
+  revalidatePath(`/competitive/${divisionId}/officials`);
+}
+
+export async function emailOfficialSchedulesAction(formData: FormData): Promise<void> {
+  const session = await requireStaff();
+  const { emailOfficialSchedules } = await import('@/lib/competitive/officials');
+  const divisionId = Number(formData.get('divisionId'));
+  await emailOfficialSchedules(divisionId, session.userId!);
+  revalidatePath(`/competitive/${divisionId}/officials`);
+}
+
+export async function planMediaDayAction(formData: FormData): Promise<void> {
+  const session = await requireStaff();
+  const { planMediaDay } = await import('@/lib/competitive/mediaDay');
+  const divisionId = Number(formData.get('divisionId'));
+  await planMediaDay({
+    divisionId,
+    facilityId: Number(formData.get('facilityId')),
+    day: String(formData.get('day')),
+    startHHMM: String(formData.get('startTime') ?? '09:00'),
+    teamPhotoMinutes: Number(formData.get('teamPhotoMinutes')) || 10,
+    portraitMinutes: Number(formData.get('portraitMinutes')) || 2,
+    bufferMinutes: Number(formData.get('bufferMinutes')) || 10,
+    includePortraits: formData.get('includePortraits') === 'on',
+    includeCoach: formData.get('includeCoach') === 'on',
+    actorClerkId: session.userId!,
+  });
+  revalidatePath(`/competitive/${divisionId}/media-day`);
+}
+
+export async function notifyMediaDayAction(formData: FormData): Promise<void> {
+  const session = await requireStaff();
+  const { notifyMediaDayFamilies } = await import('@/lib/competitive/mediaDay');
+  const divisionId = Number(formData.get('divisionId'));
+  await notifyMediaDayFamilies(divisionId, session.userId!);
+  revalidatePath(`/competitive/${divisionId}/media-day`);
+}
+
 /** Per-location Compete display settings (migration 0057): layout mode +
  *  welcome banner. Auto renders simple under 8 published divisions. */
 export async function saveLocationDisplayAction(formData: FormData): Promise<void> {

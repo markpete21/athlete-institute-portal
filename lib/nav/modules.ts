@@ -55,6 +55,7 @@ export const MODULES: ModuleDef[] = [
   ] },
   { key: 'competitive', label: 'Competitive Play', group: 'Programs & Registration', href: '/competitive', actions: [
     { label: 'Divisions', href: '/competitive' },
+    { label: 'Officials', href: '/competitive/officials' },
   ] },
 
   { key: 'schedule', label: 'Schedule', group: 'Facilities & Scheduling', href: '/schedule', actions: [
