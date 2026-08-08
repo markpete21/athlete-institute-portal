@@ -1,5 +1,5 @@
 -- ============================================================================
--- Migration 0058 - Make the staff-photos bucket public.
+-- Migration 0059 - Make the staff-photos bucket public.
 -- Idempotent - safe to re-run. ASCII only.
 --
 -- WHY:
