@@ -3,6 +3,7 @@
 import { redirect } from 'next/navigation';
 import { revalidatePath } from 'next/cache';
 import { audit, type PayFrequency, type PayMode } from '@ai/foundation';
+import type { StaffEmployment } from '@/lib/staff/staff';
 import { supabaseAdmin } from '@ai/foundation/supabase';
 import { getPortalSession } from '@/lib/auth';
 import {
@@ -32,14 +33,29 @@ const cents = (v: FormDataEntryValue | null) => Math.round(Number(String(v ?? '0
 
 export async function createStaffAction(formData: FormData): Promise<void> {
   const session = await requireStaff();
-  const s = await createStaff({ firstName: String(formData.get('firstName') ?? ''), lastName: String(formData.get('lastName') ?? ''), email: String(formData.get('email') ?? '').trim() || null, phone: String(formData.get('phone') ?? '').trim() || null, bio: String(formData.get('bio') ?? '').trim() || null }, session.userId!);
+  const employment = String(formData.get('employment') ?? '');
+  const s = await createStaff({
+    firstName: String(formData.get('firstName') ?? ''),
+    lastName: String(formData.get('lastName') ?? ''),
+    email: String(formData.get('email') ?? '').trim() || null,
+    phone: String(formData.get('phone') ?? '').trim() || null,
+    bio: String(formData.get('bio') ?? '').trim() || null,
+    employment: ['employee', 'contractor', 'volunteer'].includes(employment) ? (employment as StaffEmployment) : null,
+  }, session.userId!);
   redirect(`/staff/${s.id}`);
 }
 
 export async function updateDetailsAction(formData: FormData): Promise<void> {
   const session = await requireStaff();
   const id = Number(formData.get('staffId'));
-  await updateStaffDetails(id, { firstName: String(formData.get('firstName') ?? ''), lastName: String(formData.get('lastName') ?? ''), phone: String(formData.get('phone') ?? ''), bio: String(formData.get('bio') ?? '') }, session.userId!);
+  const employment = String(formData.get('employment') ?? '');
+  await updateStaffDetails(id, {
+    firstName: String(formData.get('firstName') ?? ''),
+    lastName: String(formData.get('lastName') ?? ''),
+    phone: String(formData.get('phone') ?? ''),
+    bio: String(formData.get('bio') ?? ''),
+    employment: ['employee', 'contractor', 'volunteer'].includes(employment) ? (employment as StaffEmployment) : null,
+  }, session.userId!);
   revalidatePath(`/staff/${id}`);
 }
 

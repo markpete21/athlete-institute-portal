@@ -72,7 +72,7 @@ const shift = (days) => {
 const FAMILY_NAME = 'Staff Demo Family';
 {
   const staff = await get(`staff?select=id&created_by=eq.${ACTOR}`);
-  const progs = await get(`programs?select=id&share_token=eq.demo-staff-league`);
+  const progs = await get(`programs?select=id&share_token=like.demo-staff-league*`);
   if (staff?.length) {
     const ids = staff.map((s) => s.id).join(',');
     // assignments/pay/absences/certs/unavailability cascade off staff + program
@@ -108,22 +108,22 @@ const totalSessions = sessionDates.length;
 
 // --- staff -------------------------------------------------------------------
 const [marcus] = await post('staff', {
-  first_name: 'Marcus', last_name: 'Bell', email: 'marcus.bell@example.test', phone: '(519) 555-0184', status: 'active',
+  first_name: 'Marcus', last_name: 'Bell', email: 'marcus.bell@example.test', phone: '(519) 555-0184', status: 'active', employment: 'employee',
   bio: 'Head coach with 12 years of youth development experience. Former OCAA guard; runs the fall league\'s skills curriculum and coaches our U13 rep group.',
   created_by: ACTOR,
 });
 const [dana] = await post('staff', {
-  first_name: 'Dana', last_name: 'Okafor', status: 'active',
+  first_name: 'Dana', last_name: 'Okafor', status: 'active', employment: 'contractor',
   bio: 'Assistant coach for the fall league. Joined from the roster upload for the Bears Fall Classic.',
   created_by: ACTOR,
 });
 const [chris] = await post('staff', {
-  first_name: 'Chris', last_name: 'Yuen', email: 'chris.yuen@example.test', phone: '(519) 555-0142', status: 'active',
+  first_name: 'Chris', last_name: 'Yuen', email: 'chris.yuen@example.test', phone: '(519) 555-0142', status: 'active', employment: 'contractor',
   bio: 'Development coach and regular substitute across youth programs.',
   created_by: ACTOR,
 });
 const [priya] = await post('staff', {
-  first_name: 'Priya', last_name: 'Shah', email: 'priya.shah@example.test', phone: '(416) 555-0117', status: 'active',
+  first_name: 'Priya', last_name: 'Shah', email: 'priya.shah@example.test', phone: '(416) 555-0117', status: 'active', employment: 'employee',
   bio: 'League convenor - scheduling, scorekeeping and game-day operations.',
   created_by: ACTOR,
 });
@@ -206,11 +206,30 @@ const regs = await post('registrations', members.map((m) => ({
 })));
 const [round] = await post('feedback_rounds', { program_id: program.id, round: 'end', prompt_at: `${shift(-2)}T12:00:00-04:00` });
 const RATINGS = [5, 4, 5];
+const COMMENTS = ['Coach Marcus made every Saturday the highlight of the week.', null, 'Well run league, great communication about schedule changes.'];
 await post('feedback_responses', regs.map((r, i) => ({
   round_id: round.id, program_id: program.id, registration_id: r.id, family_id: family.id,
-  token: `demo-staff-fb-${r.id}`, rating: RATINGS[i], kind: 'quick', submitted_at: `${shift(-1)}T12:00:00-04:00`,
+  token: `demo-staff-fb-${r.id}`, rating: RATINGS[i], comment: COMMENTS[i], kind: RATINGS[i] && COMMENTS[i] ? 'full' : 'quick', submitted_at: `${shift(-1)}T12:00:00-04:00`,
 })));
 
-console.log(`seeded: program ${program.id} (${totalSessions} sessions), staff Marcus ${marcus.id} / Dana ${dana.id} / Chris ${chris.id} / Priya ${priya.id}`);
+// --- a COMPLETED winter season so the re-registration rate has history --------
+// Marcus coached 4 players in Jan-Apr; Avery/Blake/Casey came back for fall
+// (registered above on the current program), Drew did not -> 75%.
+const [winter] = await post('programs', {
+  name: 'Winter Development League', program_type_id: leagueType, category: 'Youth Sports',
+  sport_tag: 'basketball', season_key: '2026:jan-apr', year: 2026, brand_key: 'athlete-institute',
+  status: 'archived', share_token: 'demo-staff-league-winter', created_by: ACTOR,
+});
+const [drew] = await post('family_members', { family_id: family.id, first_name: 'Drew', last_name: 'Demo', member_role: 'dependent', dob: '2013-11-05' });
+await post('registrations', [...members, drew].map((m) => ({
+  program_id: winter.id, family_member_id: m.id, family_id: family.id, standing: 'brand_new', status: 'active',
+})));
+const [aWinter] = await post('staff_assignments', {
+  staff_id: marcus.id, program_id: winter.id, role_label: 'Head Coach',
+  pay_mode: 'per_session', rate_cents: 5000, frequency: 'after_program', show_public: true, starts_on: '2026-01-10',
+});
+await post('staff_pay_dates', [{ assignment_id: aWinter.id, due_date: '2026-04-25', amount_cents: 40000, status: 'paid', paid_at: '2026-04-27T12:00:00-04:00' }]);
+
+console.log(`seeded: program ${program.id} (${totalSessions} sessions) + winter ${winter.id}, staff Marcus ${marcus.id} / Dana ${dana.id} / Chris ${chris.id} / Priya ${priya.id}`);
 console.log(`absence ${absDate} covered by Chris @ $70; Marcus first pay date marked paid`);
 console.log(`feedback: 3 registrations + ratings ${RATINGS.join('/')} on program ${program.id} (family ${family.id})`);

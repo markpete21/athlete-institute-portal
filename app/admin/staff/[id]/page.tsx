@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { formatCAD, torontoToday } from '@ai/foundation';
 import { supabaseAdmin } from '@ai/foundation/supabase';
+import { staffReviewLog } from '@/lib/staff/staff';
 import {
   absenceAction,
   addCertAction,
@@ -38,8 +39,9 @@ const fmt = (d: string) => new Date(`${d}T12:00:00Z`).toLocaleDateString('en-CA'
 
 export default async function StaffDetailPage({ params }: { params: { id: string } }) {
   const db = supabaseAdmin();
-  const { data: staff } = await db.from('staff').select('id, first_name, last_name, email, phone, bio, photo_url, status, profile_id').eq('id', Number(params.id)).maybeSingle();
+  const { data: staff } = await db.from('staff').select('id, first_name, last_name, email, phone, bio, photo_url, status, profile_id, employment').eq('id', Number(params.id)).maybeSingle();
   if (!staff) notFound();
+  const reviews = await staffReviewLog(staff.id);
 
   const [{ data: assigns }, { data: certs }, { data: programs }, { data: allStaff }, { data: unav }, { data: roles }] = await Promise.all([
     db.from('staff_assignments').select('id, program_id, role_label, pay_mode, rate_cents, frequency, active, effective_until, show_public, programs(name)').eq('staff_id', staff.id).order('id'),
@@ -95,8 +97,14 @@ export default async function StaffDetailPage({ params }: { params: { id: string
             <div className="mt-2 flex flex-wrap gap-2">
               <span className="tag">{staff.status}</span>
               {!staff.profile_id && <span className="tag">account-less</span>}
+              {staff.employment && <span className="tag">{staff.employment}</span>}
               {staff.email && <span className="tag">{staff.email}</span>}
               {staff.phone && <span className="tag mono">{staff.phone}</span>}
+              {reviews.avg !== null && (
+                <span className="tag" style={{ color: 'var(--accent)', borderColor: 'var(--accent)' }} title={`${reviews.avg} / 5 from ${reviews.count} review${reviews.count === 1 ? '' : 's'}`}>
+                  ★ {reviews.avg} ({reviews.count})
+                </span>
+              )}
               {(roleAssignments as Array<{ id: number; roles: unknown }>).map((ra) => (
                 <span key={ra.id} className="tag" style={{ color: 'var(--accent)', borderColor: 'var(--accent)' }}>{(ra.roles as { name: string } | null)?.name}</span>
               ))}
@@ -118,7 +126,18 @@ export default async function StaffDetailPage({ params }: { params: { id: string
             <div><label className="field-label" htmlFor="firstName">First</label><input id="firstName" name="firstName" defaultValue={staff.first_name} required className="input text-sm" /></div>
             <div><label className="field-label" htmlFor="lastName">Last</label><input id="lastName" name="lastName" defaultValue={staff.last_name} required className="input text-sm" /></div>
           </div>
-          <div><label className="field-label" htmlFor="phone">Cell phone</label><input id="phone" name="phone" type="tel" defaultValue={staff.phone ?? ''} placeholder="(519) 555-0123" className="input text-sm" /></div>
+          <div className="grid grid-cols-2 gap-2">
+            <div><label className="field-label" htmlFor="phone">Cell phone</label><input id="phone" name="phone" type="tel" defaultValue={staff.phone ?? ''} placeholder="(519) 555-0123" className="input text-sm" /></div>
+            <div>
+              <label className="field-label" htmlFor="employment">Classification</label>
+              <select id="employment" name="employment" defaultValue={staff.employment ?? ''} className="input text-sm">
+                <option value="">— not set —</option>
+                <option value="employee">Employee (Wagepoint payroll)</option>
+                <option value="contractor">Contractor</option>
+                <option value="volunteer">Volunteer (no pay)</option>
+              </select>
+            </div>
+          </div>
           <div><label className="field-label" htmlFor="bio">Bio (global — shown with their photo on public pages)</label><textarea id="bio" name="bio" rows={3} defaultValue={staff.bio ?? ''} className="input text-sm" /></div>
           <button type="submit" className="btn-ghost btn-sm self-start">Save details</button>
         </form>
@@ -326,6 +345,37 @@ export default async function StaffDetailPage({ params }: { params: { id: string
         </form>
         <p className="text-xs text-silver">Expiry warns ops by email — it never blocks assignment.</p>
       </section>
+
+      {/* Reviews: compiled stars + the typed-feedback log (Module 15) */}
+      {reviews.count > 0 && (
+        <section className="flex flex-col gap-3">
+          <div className="flex flex-wrap items-baseline gap-3">
+            <h2 className="text-2xl">Reviews</h2>
+            <span style={{ color: 'var(--accent)', letterSpacing: '1px' }} aria-hidden>
+              {'★'.repeat(Math.round(reviews.avg ?? 0))}<span style={{ opacity: 0.25 }}>{'★'.repeat(5 - Math.round(reviews.avg ?? 0))}</span>
+            </span>
+            <span className="mono text-sm text-silver">{reviews.avg} / 5 · {reviews.count} review{reviews.count === 1 ? '' : 's'}</span>
+            <Link href="/staff/reviews" className="label text-[11px] hover:text-ink">All reviews ↗</Link>
+          </div>
+          {reviews.entries.length === 0 ? (
+            <p className="text-sm text-silver">No typed feedback yet — star ratings only.</p>
+          ) : (
+            <div className="flex flex-col gap-2">
+              {reviews.entries.map((e, i) => (
+                <div key={i} className="card flex flex-col gap-1 p-4 text-sm">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span style={{ color: 'var(--accent)', letterSpacing: '1px' }} aria-hidden>{'★'.repeat(e.rating)}<span style={{ opacity: 0.25 }}>{'★'.repeat(5 - e.rating)}</span></span>
+                    <span className="tag">{e.programName}</span>
+                    {e.submittedAt && <span className="mono text-xs text-silver">{fmt(e.submittedAt.slice(0, 10))}</span>}
+                  </div>
+                  <p className="text-body">{e.comment}</p>
+                </div>
+              ))}
+            </div>
+          )}
+          <p className="text-xs text-silver">Collected in the Feedback module. A program&apos;s responses count for each coach who publicly delivered it; per-coach questions land with the Feedback review.</p>
+        </section>
+      )}
 
       {/* Submitted unavailability */}
       {(unav ?? []).length > 0 && (

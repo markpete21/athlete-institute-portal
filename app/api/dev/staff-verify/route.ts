@@ -149,7 +149,7 @@ export async function GET() {
     const csv = qbPayoutCsv(mine);
     record(
       'QuickBooks CSV: header + a row per pay date in window',
-      csv.startsWith('DueDate,Staff,Email,Program,QuickBooksClass,AmountCAD,Status,PaidAt') && csv.includes('Staff Verify League') && csv.includes('70.00') && csv.split('\n').length === mine.length + 1,
+      csv.startsWith('DueDate,Staff,Email,Classification,Program,QuickBooksClass,AmountCAD,Status,PaidAt') && csv.includes('Staff Verify League') && csv.includes('70.00') && csv.split('\n').length === mine.length + 1,
       `${csv.split('\n').length - 1} rows`,
     );
 

@@ -51,12 +51,16 @@ whole periods.
 `GET /staff/pay/export?from=YYYY-MM-DD&to=YYYY-MM-DD` (staff-only) returns:
 
 ```csv
-DueDate,Staff,Email,Program,QuickBooksClass,AmountCAD,Status,PaidAt
-2026-10-03,Ben Sub,ben@example.com,Fall League U13,Youth Sports,60.00,outstanding,
+DueDate,Staff,Email,Classification,Program,QuickBooksClass,AmountCAD,Status,PaidAt
+2026-10-03,Ben Sub,ben@example.com,contractor,Fall League U13,Youth Sports,60.00,outstanding,
 ```
 
 - One row per pay date in the window (both paid and outstanding, so the
   import can reconcile).
+- `Classification` is the staff record's employment type and routes the row:
+  **employee** rows go to Wagepoint payroll, **contractor** rows to
+  QuickBooks bills. **volunteer** staff are never paid — the portal refuses
+  a paid assignment for them (assign at $0 or reclassify first).
 - `QuickBooksClass` is the program's `quickbooks_class` (programs map to QB
   Classes, locations to QB Locations — see Module 14).
 - `AmountCAD` is dollars with two decimals. `PaidAt` is the settle date, blank

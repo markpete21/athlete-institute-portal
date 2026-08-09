@@ -2,6 +2,7 @@ import 'server-only';
 import {
   audit,
   can,
+  currentSeason,
   deriveStaffStatus,
   generatePaySchedule,
   originalOwedAfterReplacement,
@@ -24,6 +25,8 @@ import { supabaseAdmin } from '@ai/foundation/supabase';
  * pay-cost feed for Module 4 margin. Pay is TRACKED, never moved.
  */
 
+export type StaffEmployment = 'employee' | 'contractor' | 'volunteer';
+
 export interface Staff {
   id: number;
   profile_id: number | null;
@@ -34,14 +37,16 @@ export interface Staff {
   bio: string | null;
   photo_url: string | null;
   status: 'active' | 'inactive' | 'archived';
+  /** employee = Wagepoint payroll, contractor = invoices/QB bills, volunteer = no pay. */
+  employment: StaffEmployment | null;
 }
 
-const S_COLS = 'id, profile_id, first_name, last_name, email, phone, bio, photo_url, status';
+const S_COLS = 'id, profile_id, first_name, last_name, email, phone, bio, photo_url, status, employment';
 
-export async function createStaff(input: { firstName: string; lastName: string; email?: string | null; phone?: string | null; bio?: string | null; photoUrl?: string | null; profileId?: number | null }, actorClerkId: string): Promise<Staff> {
+export async function createStaff(input: { firstName: string; lastName: string; email?: string | null; phone?: string | null; bio?: string | null; photoUrl?: string | null; profileId?: number | null; employment?: StaffEmployment | null }, actorClerkId: string): Promise<Staff> {
   const { data, error } = await supabaseAdmin()
     .from('staff')
-    .insert({ first_name: input.firstName.trim(), last_name: input.lastName.trim(), email: input.email ?? null, phone: input.phone?.trim() || null, bio: input.bio ?? null, photo_url: input.photoUrl ?? null, profile_id: input.profileId ?? null, created_by: actorClerkId })
+    .insert({ first_name: input.firstName.trim(), last_name: input.lastName.trim(), email: input.email ?? null, phone: input.phone?.trim() || null, bio: input.bio ?? null, photo_url: input.photoUrl ?? null, profile_id: input.profileId ?? null, employment: input.employment ?? null, created_by: actorClerkId })
     .select(S_COLS)
     .single();
   if (error) throw new Error(`staff create failed: ${error.message}`);
@@ -67,13 +72,14 @@ export async function addStaffEmail(staffId: number, email: string, actorClerkId
   return { linkedProfileId: existing?.id ?? null };
 }
 
-export async function updateStaffDetails(staffId: number, input: { firstName?: string; lastName?: string; email?: string | null; phone?: string | null; bio?: string | null }, actorClerkId: string): Promise<void> {
+export async function updateStaffDetails(staffId: number, input: { firstName?: string; lastName?: string; email?: string | null; phone?: string | null; bio?: string | null; employment?: StaffEmployment | null }, actorClerkId: string): Promise<void> {
   const db = supabaseAdmin();
   const patch: Record<string, unknown> = {};
   if (input.firstName !== undefined) patch.first_name = input.firstName.trim();
   if (input.lastName !== undefined) patch.last_name = input.lastName.trim();
   if (input.phone !== undefined) patch.phone = input.phone?.trim() || null;
   if (input.bio !== undefined) patch.bio = input.bio?.trim() || null;
+  if (input.employment !== undefined) patch.employment = input.employment;
   if (input.email !== undefined) {
     const email = input.email?.trim().toLowerCase() || null;
     patch.email = email;
@@ -191,6 +197,14 @@ export async function programRun(programId: number): Promise<{ startISO: string 
 
 export async function assignStaffToProgram(input: { staffId: number; programId: number; roleLabel?: string | null; payMode: PayMode; rateCents: number; frequency: PayFrequency; units?: number; showPublic?: boolean; programStartISO?: string | null; programEndISO?: string | null }, actorClerkId: string): Promise<number> {
   const db = supabaseAdmin();
+
+  // Volunteers are never paid - a volunteer assignment must be $0.
+  if (input.rateCents > 0) {
+    const { data: person } = await db.from('staff').select('employment, first_name').eq('id', input.staffId).single();
+    if (person?.employment === 'volunteer') {
+      throw new Error(`${person.first_name} is classified as a volunteer (no pay) - assign at $0 or change their classification first.`);
+    }
+  }
 
   // The run window and default units come from the program's own sessions;
   // explicit dates are only needed for a program with no sessions yet.
@@ -729,6 +743,150 @@ export async function staffRatings(staffIds: number[]): Promise<Map<number, { av
   return out;
 }
 
+// --- Tenure stats --------------------------------------------------------------
+
+/** '2026:may-aug' -> a comparable index (3 seasons per year, in calendar order). */
+function seasonIndex(seasonKey: string): number | null {
+  const m = seasonKey.match(/^(\d{4}):(jan-apr|may-aug|sep-dec)$/);
+  if (!m) return null;
+  return Number(m[1]) * 3 + ['jan-apr', 'may-aug', 'sep-dec'].indexOf(m[2]);
+}
+
+export interface StaffStats {
+  /** Earliest assignment start (starts_on, falling back to when it was recorded). */
+  startDate: string | null;
+  /** Distinct seasons they've worked (from their programs' season keys). */
+  totalSeasons: number;
+  /** Consecutive-season run counting back from their most recent season. */
+  consecutiveSeasons: number;
+}
+
+export async function staffStats(staffIds: number[]): Promise<Map<number, StaffStats>> {
+  const out = new Map<number, StaffStats>();
+  if (!staffIds.length) return out;
+  const { data: assigns } = await supabaseAdmin()
+    .from('staff_assignments')
+    .select('staff_id, starts_on, created_at, programs(season_key)')
+    .in('staff_id', staffIds);
+
+  const byStaff = new Map<number, { starts: string[]; seasons: Set<number> }>();
+  for (const a of assigns ?? []) {
+    const cur = byStaff.get(a.staff_id) ?? { starts: [], seasons: new Set<number>() };
+    cur.starts.push(a.starts_on ?? a.created_at.slice(0, 10));
+    const key = (a.programs as unknown as { season_key: string | null } | null)?.season_key;
+    const idx = key ? seasonIndex(key) : null;
+    if (idx !== null) cur.seasons.add(idx);
+    byStaff.set(a.staff_id, cur);
+  }
+  for (const [staffId, v] of byStaff) {
+    let streak = 0;
+    if (v.seasons.size) {
+      let at = Math.max(...v.seasons);
+      while (v.seasons.has(at)) { streak++; at--; }
+    }
+    out.set(staffId, { startDate: v.starts.sort()[0] ?? null, totalSeasons: v.seasons.size, consecutiveSeasons: streak });
+  }
+  return out;
+}
+
+/**
+ * One coach's review log: the compiled star rating plus every piece of TYPED
+ * feedback from their public programs, newest first. Read-only view over
+ * Module 15 responses.
+ */
+export async function staffReviewLog(staffId: number): Promise<{
+  avg: number | null;
+  count: number;
+  entries: Array<{ programName: string; rating: number; comment: string; submittedAt: string | null }>;
+}> {
+  const db = supabaseAdmin();
+  const { data: assigns } = await db.from('staff_assignments').select('program_id').eq('staff_id', staffId).eq('show_public', true);
+  const programIds = [...new Set((assigns ?? []).map((a) => a.program_id))];
+  if (!programIds.length) return { avg: null, count: 0, entries: [] };
+  const { data: responses } = await db
+    .from('feedback_responses')
+    .select('rating, comment, submitted_at, programs(name)')
+    .in('program_id', programIds)
+    .not('rating', 'is', null)
+    .order('submitted_at', { ascending: false });
+  const all = responses ?? [];
+  const avg = all.length ? Math.round((all.reduce((s, r) => s + r.rating!, 0) / all.length) * 10) / 10 : null;
+  const entries = all
+    .filter((r) => r.comment?.trim())
+    .map((r) => ({
+      programName: (r.programs as unknown as { name: string } | null)?.name ?? '—',
+      rating: r.rating!,
+      comment: r.comment!.trim(),
+      submittedAt: r.submitted_at,
+    }));
+  return { avg, count: all.length, entries };
+}
+
+// --- Re-registration rate ------------------------------------------------------
+
+/**
+ * Per-coach retention: of the players a coach coached in COMPLETED seasons,
+ * how many registered for anything again in a later season? Builds over time -
+ * programs in the current/future season aren't eligible yet (their players
+ * haven't had a chance to re-register), so a new coach shows a dash until
+ * their first season closes out.
+ */
+export async function staffReregistrationRates(staffIds: number[]): Promise<Map<number, { rate: number; eligible: number; returned: number }>> {
+  const out = new Map<number, { rate: number; eligible: number; returned: number }>();
+  if (!staffIds.length) return out;
+  const db = supabaseAdmin();
+  const season = currentSeason();
+  const nowIdx = seasonIndex(`${season.year}:${season.key}`)!;
+
+  const { data: assigns } = await db.from('staff_assignments').select('staff_id, program_id, programs(season_key)').in('staff_id', staffIds).eq('show_public', true);
+  // Programs from completed seasons only, with their season index.
+  const pastPrograms = new Map<number, number>(); // program_id -> season idx
+  for (const a of assigns ?? []) {
+    const key = (a.programs as unknown as { season_key: string | null } | null)?.season_key;
+    const idx = key ? seasonIndex(key) : null;
+    if (idx !== null && idx < nowIdx) pastPrograms.set(a.program_id, idx);
+  }
+  if (!pastPrograms.size) return out;
+
+  const { data: regs } = await db.from('registrations').select('program_id, family_member_id').in('program_id', [...pastPrograms.keys()]).eq('status', 'active').not('family_member_id', 'is', null);
+  const memberIds = [...new Set((regs ?? []).map((r) => r.family_member_id as number))];
+  if (!memberIds.length) return out;
+
+  // Every season each member has ANY active registration in, org-wide.
+  const { data: allRegs } = await db.from('registrations').select('family_member_id, programs(season_key)').in('family_member_id', memberIds).eq('status', 'active');
+  const seasonsByMember = new Map<number, Set<number>>();
+  for (const r of allRegs ?? []) {
+    const key = (r.programs as unknown as { season_key: string | null } | null)?.season_key;
+    const idx = key ? seasonIndex(key) : null;
+    if (idx === null) continue;
+    const set = seasonsByMember.get(r.family_member_id as number) ?? new Set<number>();
+    set.add(idx);
+    seasonsByMember.set(r.family_member_id as number, set);
+  }
+
+  // A coached (member, program) pair counts as returned if the member has a
+  // registration in ANY season after that program's.
+  const regsByProgram = new Map<number, number[]>();
+  for (const r of regs ?? []) regsByProgram.set(r.program_id, [...(regsByProgram.get(r.program_id) ?? []), r.family_member_id as number]);
+  for (const a of assigns ?? []) {
+    const progIdx = pastPrograms.get(a.program_id);
+    if (progIdx === undefined) continue;
+    const members = regsByProgram.get(a.program_id) ?? [];
+    const cur = out.get(a.staff_id) ?? { rate: 0, eligible: 0, returned: 0 };
+    for (const m of members) {
+      cur.eligible++;
+      const seasons = seasonsByMember.get(m);
+      if (seasons && [...seasons].some((idx) => idx > progIdx)) cur.returned++;
+    }
+    out.set(a.staff_id, cur);
+  }
+  for (const [id, v] of out) {
+    if (!v.eligible) out.delete(id);
+    else out.set(id, { ...v, rate: Math.round((v.returned / v.eligible) * 100) });
+  }
+  return out;
+}
+
 // --- Pay reporting + QuickBooks export ---------------------------------------
 
 export interface PayReportRow {
@@ -740,6 +898,7 @@ export interface PayReportRow {
   staffId: number;
   staffName: string;
   staffEmail: string | null;
+  employment: StaffEmployment | null;
   programId: number;
   programName: string;
   quickbooksClass: string | null;
@@ -748,7 +907,7 @@ export interface PayReportRow {
 export async function payRows(filter?: { fromISO?: string; toISO?: string }): Promise<PayReportRow[]> {
   let q = supabaseAdmin()
     .from('staff_pay_dates')
-    .select('id, due_date, amount_cents, status, paid_at, staff_assignments(program_id, staff(id, first_name, last_name, email), programs(id, name, quickbooks_class))')
+    .select('id, due_date, amount_cents, status, paid_at, staff_assignments(program_id, staff(id, first_name, last_name, email, employment), programs(id, name, quickbooks_class))')
     .order('due_date');
   if (filter?.fromISO) q = q.gte('due_date', filter.fromISO);
   if (filter?.toISO) q = q.lte('due_date', filter.toISO);
@@ -756,7 +915,7 @@ export async function payRows(filter?: { fromISO?: string; toISO?: string }): Pr
   return (data ?? []).map((r) => {
     const a = r.staff_assignments as unknown as {
       program_id: number;
-      staff: { id: number; first_name: string; last_name: string; email: string | null } | null;
+      staff: { id: number; first_name: string; last_name: string; email: string | null; employment: StaffEmployment | null } | null;
       programs: { id: number; name: string; quickbooks_class: string | null } | null;
     } | null;
     return {
@@ -768,6 +927,7 @@ export async function payRows(filter?: { fromISO?: string; toISO?: string }): Pr
       staffId: a?.staff?.id ?? 0,
       staffName: a?.staff ? `${a.staff.first_name} ${a.staff.last_name}` : '-',
       staffEmail: a?.staff?.email ?? null,
+      employment: a?.staff?.employment ?? null,
       programId: a?.programs?.id ?? a?.program_id ?? 0,
       programName: a?.programs?.name ?? '-',
       quickbooksClass: a?.programs?.quickbooks_class ?? null,
@@ -786,9 +946,9 @@ const csvCell = (v: string | number | null) => {
  * is where money actually moves.
  */
 export function qbPayoutCsv(rows: PayReportRow[]): string {
-  const header = 'DueDate,Staff,Email,Program,QuickBooksClass,AmountCAD,Status,PaidAt';
+  const header = 'DueDate,Staff,Email,Classification,Program,QuickBooksClass,AmountCAD,Status,PaidAt';
   const lines = rows.map((r) =>
-    [r.dueDate, r.staffName, r.staffEmail ?? '', r.programName, r.quickbooksClass ?? '', (r.amountCents / 100).toFixed(2), r.status, r.paidAt ? r.paidAt.slice(0, 10) : '']
+    [r.dueDate, r.staffName, r.staffEmail ?? '', r.employment ?? '', r.programName, r.quickbooksClass ?? '', (r.amountCents / 100).toFixed(2), r.status, r.paidAt ? r.paidAt.slice(0, 10) : '']
       .map(csvCell)
       .join(','),
   );

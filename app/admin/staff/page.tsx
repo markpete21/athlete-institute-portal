@@ -2,24 +2,50 @@ import Link from 'next/link';
 import { biWeeklyPeriod, formatCAD, shiftPeriod, torontoDate, torontoToday, type PayPeriod } from '@ai/foundation';
 import { supabaseAdmin } from '@ai/foundation/supabase';
 import { StaffListTable, type StaffListRow, type StaffPeriodSummary } from '@/components/admin/StaffListTable';
-import { staffRatings, upcomingUnavailability } from '@/lib/staff/staff';
+import { staffRatings, staffStats, upcomingUnavailability } from '@/lib/staff/staff';
 import { createStaffAction } from './actions';
 
 export const dynamic = 'force-dynamic';
 
 const STATUS_COLOR: Record<string, string> = { active: '#3f7a5b', inactive: '#9ea1a1', archived: '#1e1e1e' };
 const fmt = (d: string) => new Date(`${d}T12:00:00Z`).toLocaleDateString('en-CA', { month: 'short', day: 'numeric' });
+const fmtLong = (d: string) => new Date(`${d}T12:00:00Z`).toLocaleDateString('en-CA', { month: 'short', day: 'numeric', year: 'numeric' });
 
 /** Staff list + create (Module 5 Stage 1). Account-less coaches allowed. */
-export default async function StaffListPage({ searchParams }: { searchParams: { q?: string; status?: string } }) {
+export default async function StaffListPage({ searchParams }: { searchParams: { q?: string; status?: string; location?: string; type?: string } }) {
   const q = (searchParams.q ?? '').trim();
   const statusFilter = ['active', 'inactive', 'archived'].includes(searchParams.status ?? '') ? searchParams.status! : '';
+  const locationFilter = Number(searchParams.location) || 0;
+  const typeFilter = Number(searchParams.type) || 0;
 
   const db = supabaseAdmin();
   const today = torontoToday();
-  let query = db.from('staff').select('id, first_name, last_name, email, phone, status, profile_id, photo_url').order('last_name');
+
+  const [{ data: locations }, { data: programTypes }] = await Promise.all([
+    db.from('locations').select('id, name').order('name'),
+    db.from('program_types').select('id, name').eq('active', true).order('sort_order'),
+  ]);
+
+  // Location / league-type filters resolve through active assignments:
+  // matching programs -> their staff.
+  let idFilter: number[] | null = null;
+  if (locationFilter || typeFilter) {
+    let progQ = db.from('programs').select('id');
+    if (locationFilter) progQ = progQ.eq('location_id', locationFilter);
+    if (typeFilter) progQ = progQ.eq('program_type_id', typeFilter);
+    const { data: progs } = await progQ;
+    const progIds = (progs ?? []).map((p) => p.id);
+    if (!progIds.length) idFilter = [];
+    else {
+      const { data: matches } = await db.from('staff_assignments').select('staff_id').in('program_id', progIds).eq('active', true);
+      idFilter = [...new Set((matches ?? []).map((m) => m.staff_id))];
+    }
+  }
+
+  let query = db.from('staff').select('id, first_name, last_name, email, phone, status, profile_id, photo_url, employment').order('last_name');
   if (q) query = query.or(`first_name.ilike.%${q}%,last_name.ilike.%${q}%,email.ilike.%${q}%`);
   if (statusFilter) query = query.eq('status', statusFilter);
+  if (idFilter !== null) query = query.in('id', idFilter.length ? idFilter : [-1]);
   const soon = new Date(Date.now() + 30 * 86400_000).toISOString().slice(0, 10);
   const [{ data: staff }, unavailability, { data: certAlerts }, { data: overduePay }] = await Promise.all([
     query,
@@ -72,7 +98,7 @@ export default async function StaffListPage({ searchParams }: { searchParams: { 
   const spanEnd = windows[2].p.endISO;
 
   const staffIds = (staff ?? []).map((s) => s.id);
-  const ratings = await staffRatings(staffIds);
+  const [ratings, tenure] = await Promise.all([staffRatings(staffIds), staffStats(staffIds)]);
   const assignmentsByStaff = new Map<number, Array<{ program: string; role: string | null }>>();
   const staffByAssignment = new Map<number, number>();
   const programsByStaff = new Map<number, Set<number>>();
@@ -149,10 +175,15 @@ export default async function StaffListPage({ searchParams }: { searchParams: { 
       status: s.status,
       statusColor: STATUS_COLOR[s.status] ?? '#9ea1a1',
       hasLogin: !!s.profile_id,
+      employment: s.employment,
       email: s.email,
       phone: s.phone,
       assignments: assignmentsByStaff.get(s.id) ?? [],
       rating: ratings.get(s.id) ?? null,
+      stats: (() => {
+        const t = tenure.get(s.id);
+        return t ? { startDate: t.startDate ? fmtLong(t.startDate) : '—', totalSeasons: t.totalSeasons, consecutiveSeasons: t.consecutiveSeasons } : null;
+      })(),
       periods,
     };
   });
@@ -183,7 +214,8 @@ export default async function StaffListPage({ searchParams }: { searchParams: { 
               ))}
             </div>
           </details>
-          <Link href="/staff/permissions" className="btn-ghost btn-sm">Permission matrix</Link>
+          <Link href="/staff/reviews" className="btn-ghost btn-sm">Reviews</Link>
+          <Link href="/staff/permissions" className="btn-ghost btn-sm">Permissions</Link>
           <Link href="/staff/pay" className="btn-ghost btn-sm">Pay dashboard</Link>
           <details className="relative">
             <summary className="btn-gold btn-sm inline-block cursor-pointer list-none [&::-webkit-details-marker]:hidden">Add staff</summary>
@@ -194,6 +226,15 @@ export default async function StaffListPage({ searchParams }: { searchParams: { 
                 <div><label className="field-label" htmlFor="lastName">Last</label><input id="lastName" name="lastName" required className="input text-sm" /></div>
                 <div><label className="field-label" htmlFor="email">Email (optional — add later to invite)</label><input id="email" name="email" type="email" className="input text-sm" /></div>
                 <div><label className="field-label" htmlFor="phone">Cell phone</label><input id="phone" name="phone" type="tel" placeholder="(519) 555-0123" className="input text-sm" /></div>
+                <div>
+                  <label className="field-label" htmlFor="employment">Classification</label>
+                  <select id="employment" name="employment" className="input text-sm">
+                    <option value="">— set later —</option>
+                    <option value="employee">Employee (Wagepoint payroll)</option>
+                    <option value="contractor">Contractor</option>
+                    <option value="volunteer">Volunteer (no pay)</option>
+                  </select>
+                </div>
                 <div className="sm:col-span-2"><label className="field-label" htmlFor="bio">Bio (global)</label><textarea id="bio" name="bio" rows={2} className="input text-sm" /></div>
                 <p className="text-xs text-silver sm:col-span-2">A coach can be added with no account or email now (e.g. from a roster upload) and upgraded to a login later.</p>
                 <button type="submit" className="btn-gold btn-sm justify-self-start">Add</button>
@@ -209,6 +250,20 @@ export default async function StaffListPage({ searchParams }: { searchParams: { 
           <input id="q" name="q" defaultValue={q} placeholder="Name or email…" className="input h-9 text-sm" />
         </div>
         <div>
+          <label className="field-label" htmlFor="location">Location</label>
+          <select id="location" name="location" defaultValue={locationFilter || ''} className="input h-9 text-sm">
+            <option value="">All</option>
+            {(locations ?? []).map((l) => <option key={l.id} value={l.id}>{l.name}</option>)}
+          </select>
+        </div>
+        <div>
+          <label className="field-label" htmlFor="type">Program type</label>
+          <select id="type" name="type" defaultValue={typeFilter || ''} className="input h-9 text-sm">
+            <option value="">All</option>
+            {(programTypes ?? []).map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
+          </select>
+        </div>
+        <div>
           <label className="field-label" htmlFor="status">Status</label>
           <select id="status" name="status" defaultValue={statusFilter} className="input h-9 text-sm">
             <option value="">All</option>
@@ -218,6 +273,7 @@ export default async function StaffListPage({ searchParams }: { searchParams: { 
           </select>
         </div>
         <button type="submit" className="btn-ghost btn-sm">Filter</button>
+        {(q || statusFilter || locationFilter || typeFilter) ? <Link href="/staff" className="btn-ghost btn-sm">Clear</Link> : null}
       </form>
 
       <StaffListTable rows={rows} />

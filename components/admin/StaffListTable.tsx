@@ -29,11 +29,15 @@ export interface StaffListRow {
   status: string;
   statusColor: string;
   hasLogin: boolean;
+  /** employee (Wagepoint) / contractor / volunteer (no pay) / null = unset. */
+  employment: string | null;
   email: string | null;
   phone: string | null;
   assignments: Array<{ program: string; role: string | null }>;
   /** From Module 15 feedback — pooled across their public programs. */
   rating: { avg: number; count: number } | null;
+  /** Tenure, from assignment history (preformatted start date). */
+  stats: { startDate: string; totalSeasons: number; consecutiveSeasons: number } | null;
   periods: StaffPeriodSummary[];
 }
 
@@ -160,7 +164,12 @@ function RowPair({ s, open, editing, onToggle, onEdit }: { s: StaffListRow; open
           )}
         </td>
         <td><Stars rating={s.rating} /></td>
-        <td>{s.hasLogin ? <span className="tag">login</span> : <span className="tag">account-less</span>}</td>
+        <td>
+          <span className="flex flex-wrap gap-1">
+            {s.hasLogin ? <span className="tag">login</span> : <span className="tag">account-less</span>}
+            {s.employment && <span className="tag">{s.employment}</span>}
+          </span>
+        </td>
         <td><span className="tag" style={{ color: s.statusColor, borderColor: s.statusColor }}>{s.status}</span></td>
         <td>
           <span className="flex justify-end gap-1">
@@ -172,7 +181,7 @@ function RowPair({ s, open, editing, onToggle, onEdit }: { s: StaffListRow; open
       {open && (
         <tr>
           <td colSpan={7} className="!bg-paper-panel">
-            <div className="grid gap-6 p-4 sm:grid-cols-2">
+            <div className="grid gap-6 p-4 sm:grid-cols-3">
               <div className="flex flex-col gap-2">
                 <p className="label text-[11px]">Contact</p>
                 {editing ? (
@@ -197,6 +206,18 @@ function RowPair({ s, open, editing, onToggle, onEdit }: { s: StaffListRow; open
                     </div>
                     <button type="button" className="label self-start text-[11px] hover:text-ink" onClick={onEdit}>Edit contact ↗</button>
                   </>
+                )}
+              </div>
+              <div className="flex flex-col gap-2">
+                <p className="label text-[11px]">Staff stats</p>
+                {s.stats ? (
+                  <>
+                    <div className="flex justify-between border-b border-hairline pb-1 text-sm"><span className="text-silver">Start date</span><span className="mono text-ink">{s.stats.startDate}</span></div>
+                    <div className="flex justify-between border-b border-hairline pb-1 text-sm"><span className="text-silver">Total seasons</span><span className="mono text-ink">{s.stats.totalSeasons}</span></div>
+                    <div className="flex justify-between pb-1 text-sm"><span className="text-silver">Consecutive seasons</span><span className="mono text-ink">{s.stats.consecutiveSeasons}</span></div>
+                  </>
+                ) : (
+                  <p className="text-sm text-silver">No assignment history yet.</p>
                 )}
               </div>
               <div className="flex flex-col gap-2">
