@@ -636,14 +636,14 @@ export interface SelfViewProgram {
  * roster names behind roster_names, DOB + custom-question answers behind
  * roster_sensitive (the PIPEDA-critical toggle), schedule behind schedule.
  */
-export async function staffSelfView(staff: Staff): Promise<{
+export async function staffSelfView(staff: Staff, opts?: { capsOverride?: Record<string, ResolvedCapability> }): Promise<{
   caps: Record<string, ResolvedCapability>;
   programs: SelfViewProgram[];
   pay: Array<{ dueDate: string; amountCents: number; status: string; programName: string }>;
   unavailability: Array<{ date: string; note: string | null }>;
 }> {
   const db = supabaseAdmin();
-  const caps = staff.profile_id ? await capabilitiesForProfile(staff.profile_id) : {};
+  const caps = opts?.capsOverride ?? (staff.profile_id ? await capabilitiesForProfile(staff.profile_id) : {});
   const showSchedule = can(caps, 'schedule');
   const showNames = can(caps, 'roster_names');
   const showSensitive = can(caps, 'roster_sensitive');
