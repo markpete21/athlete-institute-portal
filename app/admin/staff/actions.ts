@@ -11,6 +11,7 @@ import {
   addStaffEmail,
   archiveStaff,
   assignStaffToProgram,
+  createCertType,
   createStaff,
   deleteCertification,
   markPayDatePaid,
@@ -19,7 +20,9 @@ import {
   removeStaffPhoto,
   replaceForRemainder,
   setCapability,
+  setProgramRoleCert,
   updateAssignmentRate,
+  updateCertType,
   updateStaffDetails,
   uploadStaffPhoto,
 } from '@/lib/staff/staff';
@@ -135,8 +138,55 @@ export async function assignAction(formData: FormData): Promise<void> {
 export async function addCertAction(formData: FormData): Promise<void> {
   const session = await requireStaff();
   const id = Number(formData.get('staffId'));
-  await addCertification({ staffId: id, name: String(formData.get('name') ?? ''), obtainedOn: String(formData.get('obtainedOn') ?? '') || null, expiresOn: String(formData.get('expiresOn') ?? '') || null }, session.userId!);
+  await addCertification({
+    staffId: id,
+    certTypeId: Number(formData.get('certTypeId')) || null,
+    name: String(formData.get('name') ?? '').trim() || null,
+    obtainedOn: String(formData.get('obtainedOn') ?? '') || null,
+    expiresOn: String(formData.get('expiresOn') ?? '') || null,
+  }, session.userId!);
   revalidatePath(`/staff/${id}`);
+}
+
+// --- Certification catalog (/staff/certifications) -----------------------------
+
+export async function createCertTypeAction(formData: FormData): Promise<void> {
+  const session = await requireStaff();
+  await createCertType({
+    name: String(formData.get('name') ?? ''),
+    description: String(formData.get('description') ?? '').trim() || null,
+    validityMonths: Number(formData.get('validityMonths')) || null,
+  }, session.userId!);
+  revalidatePath('/staff/certifications');
+}
+
+export async function updateCertTypeAction(formData: FormData): Promise<void> {
+  const session = await requireStaff();
+  await updateCertType(Number(formData.get('certTypeId')), {
+    description: String(formData.get('description') ?? '').trim() || null,
+    validityMonths: Number(formData.get('validityMonths')) || null,
+  }, session.userId!);
+  revalidatePath('/staff/certifications');
+}
+
+export async function toggleCertTypeAction(formData: FormData): Promise<void> {
+  const session = await requireStaff();
+  await updateCertType(Number(formData.get('certTypeId')), { active: formData.get('active') === 'on' }, session.userId!);
+  revalidatePath('/staff/certifications');
+}
+
+/** Toggle one required cert for a role on a program (program builder). */
+export async function setProgramRoleCertAction(formData: FormData): Promise<void> {
+  const session = await requireStaff();
+  const programId = Number(formData.get('programId'));
+  await setProgramRoleCert(
+    programId,
+    String(formData.get('roleLabel') ?? ''),
+    Number(formData.get('certTypeId')),
+    formData.get('required') === 'on',
+    session.userId!,
+  );
+  revalidatePath(`/programs/${programId}`);
 }
 
 export async function deleteCertAction(formData: FormData): Promise<void> {

@@ -38,6 +38,11 @@ export interface StaffListRow {
   rating: { avg: number; count: number } | null;
   /** Tenure, from assignment history (preformatted start date). */
   stats: { startDate: string; totalSeasons: number; consecutiveSeasons: number } | null;
+  /** Held certs w/ expiry state + required-but-missing ones (derived). */
+  certs: {
+    held: Array<{ name: string; expires: string | null; state: 'ok' | 'expiring' | 'expired' }>;
+    outstanding: Array<{ name: string; context: string; expired: boolean }>;
+  } | null;
   periods: StaffPeriodSummary[];
 }
 
@@ -181,7 +186,7 @@ function RowPair({ s, open, editing, onToggle, onEdit }: { s: StaffListRow; open
       {open && (
         <tr>
           <td colSpan={7} className="!bg-paper-panel">
-            <div className="grid gap-6 p-4 sm:grid-cols-3">
+            <div className="grid gap-6 p-4 sm:grid-cols-2 lg:grid-cols-4">
               <div className="flex flex-col gap-2">
                 <p className="label text-[11px]">Contact</p>
                 {editing ? (
@@ -218,6 +223,32 @@ function RowPair({ s, open, editing, onToggle, onEdit }: { s: StaffListRow; open
                   </>
                 ) : (
                   <p className="text-sm text-silver">No assignment history yet.</p>
+                )}
+              </div>
+              <div className="flex flex-col gap-2">
+                <p className="label text-[11px]">Certifications</p>
+                {!s.certs || (s.certs.held.length === 0 && s.certs.outstanding.length === 0) ? (
+                  <p className="text-sm text-silver">None held, none required.</p>
+                ) : (
+                  <>
+                    {s.certs.held.map((c, i) => {
+                      const color = c.state === 'expired' ? '#b4483c' : c.state === 'expiring' ? '#a08030' : '#3f7a5b';
+                      return (
+                        <div key={i} className="flex items-baseline justify-between gap-2 border-b border-hairline pb-1 text-sm">
+                          <span className="text-ink">{c.name}</span>
+                          <span className="mono whitespace-nowrap text-xs" style={{ color }}>
+                            {c.state === 'expired' ? 'EXPIRED ' : ''}{c.expires ?? '✓'}
+                          </span>
+                        </div>
+                      );
+                    })}
+                    {s.certs.outstanding.map((o, i) => (
+                      <div key={`o-${i}`} className="flex flex-col border-b border-hairline pb-1 text-sm last:border-b-0">
+                        <span style={{ color: o.expired ? '#b4483c' : '#a08030' }}>⚠ {o.name} outstanding</span>
+                        <span className="text-xs text-silver">{o.context}</span>
+                      </div>
+                    ))}
+                  </>
                 )}
               </div>
               <div className="flex flex-col gap-2">

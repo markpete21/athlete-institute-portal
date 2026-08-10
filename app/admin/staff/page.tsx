@@ -2,7 +2,7 @@ import Link from 'next/link';
 import { biWeeklyPeriod, formatCAD, shiftPeriod, torontoDate, torontoToday, type PayPeriod } from '@ai/foundation';
 import { supabaseAdmin } from '@ai/foundation/supabase';
 import { StaffListTable, type StaffListRow, type StaffPeriodSummary } from '@/components/admin/StaffListTable';
-import { staffRatings, staffStats, upcomingUnavailability } from '@/lib/staff/staff';
+import { staffCertStatuses, staffRatings, staffStats, upcomingUnavailability } from '@/lib/staff/staff';
 import { createStaffAction } from './actions';
 
 export const dynamic = 'force-dynamic';
@@ -98,7 +98,20 @@ export default async function StaffListPage({ searchParams }: { searchParams: { 
   const spanEnd = windows[2].p.endISO;
 
   const staffIds = (staff ?? []).map((s) => s.id);
-  const [ratings, tenure] = await Promise.all([staffRatings(staffIds), staffStats(staffIds)]);
+  const [ratings, tenure, certStatuses] = await Promise.all([staffRatings(staffIds), staffStats(staffIds), staffCertStatuses(staffIds)]);
+
+  // Required-but-missing certs join the attention queue.
+  for (const s of staff ?? []) {
+    for (const o of certStatuses.get(s.id)?.outstanding ?? []) {
+      attention.push({
+        severity: o.expired ? 'bad' : 'warn',
+        staffId: s.id,
+        title: `${s.first_name} ${s.last_name} — ${o.name} outstanding`,
+        detail: `required for ${o.roleLabel} on ${o.programName}${o.expired ? ' (theirs expired)' : ''}`,
+      });
+    }
+  }
+  attention.sort((a, b) => SEVERITY_ORDER[a.severity] - SEVERITY_ORDER[b.severity]);
   const assignmentsByStaff = new Map<number, Array<{ program: string; role: string | null }>>();
   const staffByAssignment = new Map<number, number>();
   const programsByStaff = new Map<number, Set<number>>();
@@ -184,6 +197,14 @@ export default async function StaffListPage({ searchParams }: { searchParams: { 
         const t = tenure.get(s.id);
         return t ? { startDate: t.startDate ? fmtLong(t.startDate) : '—', totalSeasons: t.totalSeasons, consecutiveSeasons: t.consecutiveSeasons } : null;
       })(),
+      certs: (() => {
+        const c = certStatuses.get(s.id);
+        if (!c) return null;
+        return {
+          held: c.held.map((h) => ({ name: h.name, expires: h.expiresOn ? fmtLong(h.expiresOn) : null, state: h.state })),
+          outstanding: c.outstanding.map((o) => ({ name: o.name, context: `${o.roleLabel} · ${o.programName}${o.expired ? ' — expired' : ''}`, expired: o.expired })),
+        };
+      })(),
       periods,
     };
   });
@@ -215,6 +236,7 @@ export default async function StaffListPage({ searchParams }: { searchParams: { 
             </div>
           </details>
           <Link href="/staff/reviews" className="btn-ghost btn-sm">Reviews</Link>
+          <Link href="/staff/certifications" className="btn-ghost btn-sm">Certifications</Link>
           <Link href="/staff/permissions" className="btn-ghost btn-sm">Permissions</Link>
           <Link href="/staff/pay" className="btn-ghost btn-sm">Pay dashboard</Link>
           <details className="relative">

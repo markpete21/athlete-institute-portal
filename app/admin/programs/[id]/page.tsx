@@ -3,6 +3,8 @@ import { notFound } from 'next/navigation';
 import { BRANDS, PROGRAM_CATEGORIES, buildTree, flattenTree, formatCAD, type FacilityNode } from '@ai/foundation';
 import { supabaseAdmin } from '@ai/foundation/supabase';
 import { getProgram } from '@/lib/programs/programs';
+import { listCertTypes, programRoleCerts } from '@/lib/staff/staff';
+import { setProgramRoleCertAction } from '@/app/admin/staff/actions';
 import { listSeasons } from '@/lib/seasons/seasons';
 import { listQuestions, programQuestions } from '@/lib/programs/questions';
 import { listWaivers } from '@/lib/waivers';
@@ -42,8 +44,16 @@ export default async function ProgramBuilderPage({ params }: { params: { id: str
   const sponsors = sponsorRows ?? [];
   const ordered = flattenTree(buildTree((facRows ?? []) as FacilityNode[]));
   const playBase = process.env.NEXT_PUBLIC_PLAY_URL ?? 'https://play.athleteinstitute.ca';
-  const [attachedQuestions, allQuestions, waivers, seasons] = await Promise.all([programQuestions(program.id), listQuestions(), listWaivers(), listSeasons()]);
+  const [attachedQuestions, allQuestions, waivers, seasons, certTypes, roleCerts] = await Promise.all([
+    programQuestions(program.id), listQuestions(), listWaivers(), listSeasons(), listCertTypes(), programRoleCerts(program.id),
+  ]);
   const attachedIds = new Set(attachedQuestions.map((q) => q.id));
+
+  // Roles shown in the Required-certifications grid: the standard set plus any
+  // custom role label already assigned on this program (Module 5 assignments).
+  const { data: assignRoles } = await db.from('staff_assignments').select('role_label').eq('program_id', program.id).not('role_label', 'is', null);
+  const CERT_ROLES = [...new Set(['Head Coach', 'Assistant Coach', 'Convenor', 'Volunteer', ...(assignRoles ?? []).map((r) => r.role_label as string)])];
+  const requiredSet = new Set(roleCerts.map((rc) => `${rc.role_label}:${rc.cert_type_id}`));
 
   return (
     <main className="mx-auto flex min-h-screen max-w-4xl flex-col gap-8 px-6 py-14">
@@ -194,6 +204,49 @@ export default async function ProgramBuilderPage({ params }: { params: { id: str
           <div><label className="field-label">Role</label><input name="roleLabel" placeholder="Coach" className="input text-sm w-32" /></div>
           <button type="submit" className="btn-ghost btn-sm">Assign</button>
         </form>
+      </section>
+
+      {/* Required certifications per role (Module 5 catalog) */}
+      <section className="card flex flex-col gap-3 p-6">
+        <h2 className="text-2xl">Required certifications</h2>
+        <p className="text-sm text-silver">
+          Which certifications each role needs on this program. Staff missing one show it as outstanding on the
+          staff list — warn-only, never blocks assignment. Catalog lives under Staff → Certifications.
+        </p>
+        <div className="overflow-x-auto">
+          <table className="data-table">
+            <thead>
+              <tr>
+                <th>Role</th>
+                {certTypes.map((t) => <th key={t.id}>{t.name}</th>)}
+              </tr>
+            </thead>
+            <tbody>
+              {CERT_ROLES.map((role) => (
+                <tr key={role}>
+                  <td className="text-ink">{role}</td>
+                  {certTypes.map((t) => {
+                    const required = requiredSet.has(`${role}:${t.id}`);
+                    return (
+                      <td key={t.id}>
+                        <form action={setProgramRoleCertAction} className="flex items-center gap-2">
+                          <input type="hidden" name="programId" value={program.id} />
+                          <input type="hidden" name="roleLabel" value={role} />
+                          <input type="hidden" name="certTypeId" value={t.id} />
+                          {required ? (
+                            <button type="submit" className="tag" style={{ color: 'var(--accent)', borderColor: 'var(--accent)' }} title="Click to remove requirement">✓ required</button>
+                          ) : (
+                            <><input type="hidden" name="required" value="on" /><button type="submit" className="tag hover:border-ink" title="Click to require">—</button></>
+                          )}
+                        </form>
+                      </td>
+                    );
+                  })}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </section>
 
       {/* Custom questions (Stage 2) */}

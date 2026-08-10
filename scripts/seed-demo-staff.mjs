@@ -188,6 +188,24 @@ await post('staff_certifications', [
   { staff_id: priya.id, name: 'Vulnerable Sector Check', obtained_on: shift(-100), expires_on: shift(630) },   // ok
 ]);
 
+// --- required certifications per role (fall program) --------------------------
+// Head Coach needs VSC + Safe Sport (Marcus holds both); Assistant needs VSC
+// (Dana holds none -> outstanding); Substitute needs First Aid (Chris's is
+// EXPIRED -> outstanding, red).
+const certTypes = await get('staff_certification_types?select=id,name');
+const typeId = (n) => certTypes.find((t) => t.name === n)?.id;
+await post('program_role_certifications', [
+  { program_id: program.id, role_label: 'Head Coach', cert_type_id: typeId('Vulnerable Sector Check') },
+  { program_id: program.id, role_label: 'Head Coach', cert_type_id: typeId('Safe Sport Training') },
+  { program_id: program.id, role_label: 'Assistant Coach', cert_type_id: typeId('Vulnerable Sector Check') },
+  { program_id: program.id, role_label: 'Convenor', cert_type_id: typeId('Vulnerable Sector Check') },
+  { program_id: program.id, role_label: 'Substitute', cert_type_id: typeId('First Aid / CPR') },
+]);
+// link held demo certs to their catalog types (insert order matches names)
+for (const [staffId, certName] of [[marcus.id, 'Vulnerable Sector Check'], [marcus.id, 'Safe Sport Training'], [chris.id, 'First Aid / CPR'], [priya.id, 'Vulnerable Sector Check']]) {
+  await patch(`staff_certifications?staff_id=eq.${staffId}&name=eq.${encodeURIComponent(certName)}`, { cert_type_id: typeId(certName) });
+}
+
 // --- unavailability -------------------------------------------------------------
 await post('staff_unavailability', [
   { staff_id: priya.id, date: shift(nextSat), note: 'family wedding' },

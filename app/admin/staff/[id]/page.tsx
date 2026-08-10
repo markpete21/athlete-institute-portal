@@ -2,7 +2,7 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { formatCAD, torontoToday } from '@ai/foundation';
 import { supabaseAdmin } from '@ai/foundation/supabase';
-import { staffReviewLog } from '@/lib/staff/staff';
+import { listCertTypes, staffCertStatuses, staffReviewLog } from '@/lib/staff/staff';
 import {
   absenceAction,
   addCertAction,
@@ -41,7 +41,8 @@ export default async function StaffDetailPage({ params }: { params: { id: string
   const db = supabaseAdmin();
   const { data: staff } = await db.from('staff').select('id, first_name, last_name, email, phone, bio, photo_url, status, profile_id, employment').eq('id', Number(params.id)).maybeSingle();
   if (!staff) notFound();
-  const reviews = await staffReviewLog(staff.id);
+  const [reviews, certTypes, certStatuses] = await Promise.all([staffReviewLog(staff.id), listCertTypes(), staffCertStatuses([staff.id])]);
+  const outstandingCerts = certStatuses.get(staff.id)?.outstanding ?? [];
 
   const [{ data: assigns }, { data: certs }, { data: programs }, { data: allStaff }, { data: unav }, { data: roles }] = await Promise.all([
     db.from('staff_assignments').select('id, program_id, role_label, pay_mode, rate_cents, frequency, active, effective_until, show_public, programs(name)').eq('staff_id', staff.id).order('id'),
@@ -335,15 +336,31 @@ export default async function StaffDetailPage({ params }: { params: { id: string
             </div>
           );
         })}
+        {outstandingCerts.length > 0 && (
+          <div className="flex flex-wrap gap-2">
+            {outstandingCerts.map((o, i) => (
+              <span key={i} className="tag" style={{ color: o.expired ? '#b4483c' : '#a08030', borderColor: o.expired ? '#b4483c' : '#a08030' }}>
+                outstanding: {o.name} ({o.roleLabel} · {o.programName}{o.expired ? ' — expired' : ''})
+              </span>
+            ))}
+          </div>
+        )}
         <form action={addCertAction} className="flex flex-wrap items-end gap-2">
           <input type="hidden" name="staffId" value={staff.id} />
-          <div className="min-w-52 flex-1"><label className="field-label">Certification</label><input name="name" required list="cert-names" placeholder="Vulnerable Sector Check" className="input text-sm" /></div>
-          <datalist id="cert-names"><option value="Vulnerable Sector Check" /><option value="Safe Sport Training" /><option value="First Aid / CPR" /></datalist>
+          <div className="min-w-52 flex-1">
+            <label className="field-label">Certification (mark as obtained)</label>
+            <select name="certTypeId" required className="input text-sm">
+              {certTypes.map((t) => <option key={t.id} value={t.id}>{t.name}{t.validity_months ? ` (valid ${t.validity_months}mo)` : ''}</option>)}
+            </select>
+          </div>
           <div><label className="field-label">Obtained</label><input name="obtainedOn" type="date" className="input text-sm" /></div>
           <div><label className="field-label">Expires</label><input name="expiresOn" type="date" className="input text-sm" /></div>
           <button type="submit" className="btn-ghost btn-sm">Add</button>
         </form>
-        <p className="text-xs text-silver">Expiry warns ops by email — it never blocks assignment.</p>
+        <p className="text-xs text-silver">
+          Expiry is required — it auto-fills from the obtained date for certs with a standard validity period.
+          Manage the catalog under <Link href="/staff/certifications" className="underline">Certifications</Link>; which roles need which certs is set per program. Expiry warns — it never blocks assignment.
+        </p>
       </section>
 
       {/* Reviews: compiled stars + the typed-feedback log (Module 15) */}

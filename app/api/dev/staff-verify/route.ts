@@ -19,6 +19,8 @@ import {
   removeAssignment,
   replaceForRemainder,
   setCapability,
+  setProgramRoleCert,
+  staffCertStatuses,
   submitUnavailability,
   upcomingUnavailability,
   updateAssignmentRate,
@@ -184,6 +186,26 @@ export async function GET() {
     await addCertification({ staffId: coach.id, name: 'Vulnerable Sector Check', expiresOn: new Date(Date.now() + 10 * 86400_000).toISOString().slice(0, 10) }, 'system:verify');
     const warn = await processCertExpiries();
     record('cert expiry warns (warn-only)', warn.warned >= 1, `${warn.warned} warned`);
+
+    // 18. required certs per role derive OUTSTANDING until obtained w/ expiry
+    const { data: vsc } = await db.from('staff_certification_types').select('id, validity_months').eq('name', 'Vulnerable Sector Check').single();
+    await setProgramRoleCert(prog.id, 'Head Coach', vsc!.id, true, 'system:verify');
+    const before = (await staffCertStatuses([cara.id])).get(cara.id);
+    record('required cert shows outstanding for the role', !!before?.outstanding.some((o) => o.name === 'Vulnerable Sector Check' && o.roleLabel === 'Head Coach'), JSON.stringify(before?.outstanding ?? []));
+
+    let expiryEnforced = false;
+    try { await addCertification({ staffId: cara.id, certTypeId: vsc!.id }, 'system:verify'); } catch { expiryEnforced = true; }
+    record('obtained cert without expiry (or obtained date) is refused', expiryEnforced, expiryEnforced ? 'rejected as expected' : 'ACCEPTED WITHOUT EXPIRY');
+
+    const today2 = new Date().toISOString().slice(0, 10);
+    await addCertification({ staffId: cara.id, certTypeId: vsc!.id, obtainedOn: today2 }, 'system:verify');
+    const { data: caraCert } = await db.from('staff_certifications').select('expires_on').eq('staff_id', cara.id).eq('cert_type_id', vsc!.id).single();
+    const after = (await staffCertStatuses([cara.id])).get(cara.id);
+    record(
+      'expiry auto-computed from validity; outstanding clears once obtained',
+      !!caraCert?.expires_on && caraCert.expires_on > today2 && !(after?.outstanding ?? []).some((o) => o.name === 'Vulnerable Sector Check'),
+      `expires ${caraCert?.expires_on}, outstanding ${(after?.outstanding ?? []).length}`,
+    );
 
     // 15. archive retains history, removes from active
     await archiveStaff(coach.id, 'system:verify');
