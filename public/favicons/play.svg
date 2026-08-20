@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Play">
+  <!-- Still favicon distilled from the Play lockup: the red P with the gold
+       ball (its dribbling period) resting on the baseline beside it. -->
+  <rect width="64" height="64" rx="14" fill="#1E1E1E"/>
+  <text x="27" y="44" text-anchor="middle" font-family="Helvetica, Arial, sans-serif" font-size="40" font-weight="900" fill="#D2232A">P</text>
+  <circle cx="45" cy="39" r="6" fill="#9E8959"/>
+</svg>

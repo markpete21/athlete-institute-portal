@@ -5,10 +5,21 @@ import { brandCssVars, DEFAULT_BRAND } from '@ai/foundation';
 import './globals.css';
 import './print.css';
 
-export const metadata: Metadata = {
-  title: 'Athlete Institute Portal',
-  description: 'Facility management and registration for Athlete Institute.',
-};
+/**
+ * One Next app serves three hosts (play./admin./compete.), so the favicon is
+ * resolved per request from the middleware's x-portal-app header — a static
+ * `metadata` export would pin every tab to the same icon. The icons are still
+ * SVG distillations of each app's animated mark (public/favicons/).
+ */
+export async function generateMetadata(): Promise<Metadata> {
+  const app = headers().get('x-portal-app') ?? 'play';
+  const icon = ['play', 'admin', 'compete'].includes(app) ? app : 'play';
+  return {
+    title: 'Athlete Institute Portal',
+    description: 'Facility management and registration for Athlete Institute.',
+    icons: { icon: [{ url: `/favicons/${icon}.svg`, type: 'image/svg+xml' }] },
+  };
+}
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   // Set by middleware from the request host: 'play' | 'admin'.
