@@ -29,12 +29,12 @@ export async function dunningConfig(): Promise<DunningConfig> {
 }
 
 export async function updateDunningConfig(patch: Partial<DunningConfig>, actorClerkId: string): Promise<void> {
-  const map: Record<string, unknown> = {};
+  const map: Record<string, unknown> = { updated_by: actorClerkId, updated_at: new Date().toISOString() };
   if (patch.retryAfterDays != null) map.retry_after_days = patch.retryAfterDays;
   if (patch.emailAfterDays != null) map.email_after_days = patch.emailAfterDays;
   if (patch.smsAfterDays != null) map.sms_after_days = patch.smsAfterDays;
   if (patch.taskAfterDays != null) map.task_after_days = patch.taskAfterDays;
-  await supabaseAdmin().from('dunning_config').update({ ...map, updated_by: actorClerkId, updated_at: new Date().toISOString() }).eq('id', 1);
+  await supabaseAdmin().from('dunning_config').update(map).eq('id', 1);
   await audit({ actorId: actorClerkId, action: 'dunning.config-updated', target: 'dunning_config', meta: patch });
 }
 

@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache';
 import { getPortalSession } from '@/lib/auth';
 import { updateDunningConfig } from '@/lib/dunning/dunning';
+import { profileCan } from '@/lib/staff/staff';
 import { explainDraft } from '@/lib/team-explainer/explainer';
 
 async function requireStaff() {
@@ -13,6 +14,8 @@ async function requireStaff() {
 
 export async function configAction(formData: FormData): Promise<void> {
   const s = await requireStaff();
+  // Escalation timing drives real charges + collections — Module 5 pay capability.
+  if (s.profileId && !(await profileCan(s.profileId, 'pay', 'edit'))) throw new Error('You lack the pay capability.');
   await updateDunningConfig({
     retryAfterDays: Number(formData.get('retryAfterDays')),
     emailAfterDays: Number(formData.get('emailAfterDays')),

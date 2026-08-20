@@ -320,11 +320,24 @@ export async function createRecurringBookings(input: CreateSeriesInput): Promise
 
   const results: SeriesResult['occurrences'] = [];
   for (const occ of occurrences) {
+    // Explicit field pass-through (no ...input spread): only the booking
+    // fields travel, never whatever else the caller's object carries.
     const created = await createBooking({
-      ...input,
+      facilityId: input.facilityId,
       startsAt: occ.starts_at,
       endsAt: occ.ends_at,
+      source: input.source,
+      title: input.title,
+      status: input.status,
+      isInternal: input.isInternal,
+      logoUrl: input.logoUrl,
+      showOnPublicSchedule: input.showOnPublicSchedule,
+      sourceRef: input.sourceRef,
+      setupMinutes: input.setupMinutes,
+      cleanupMinutes: input.cleanupMinutes,
       seriesId: series.id,
+      familyId: input.familyId,
+      actorClerkId: input.actorClerkId,
     });
     results.push({
       date: occ.date,

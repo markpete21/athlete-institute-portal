@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getPortalSession } from '@/lib/auth';
-import { payRows, qbPayoutCsv } from '@/lib/staff/staff';
+import { payRows, profileCan, qbPayoutCsv } from '@/lib/staff/staff';
 
 export const dynamic = 'force-dynamic';
 
@@ -13,6 +13,10 @@ export const dynamic = 'force-dynamic';
 export async function GET(req: NextRequest) {
   const session = await getPortalSession();
   if (!session.isStaff) return NextResponse.json({ error: 'Staff only.' }, { status: 403 });
+  // Every staff rate in one file — gated by the Module 5 pay capability.
+  if (session.profileId && !(await profileCan(session.profileId, 'pay'))) {
+    return NextResponse.json({ error: 'You lack the pay capability.' }, { status: 403 });
+  }
 
   const from = req.nextUrl.searchParams.get('from') ?? undefined;
   const to = req.nextUrl.searchParams.get('to') ?? undefined;

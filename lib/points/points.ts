@@ -36,7 +36,11 @@ export async function earnRules(): Promise<EarnRule[]> {
 }
 
 export async function updateEarnRule(ruleKey: string, patch: { enabled?: boolean; points?: number }, actorClerkId: string): Promise<void> {
-  await supabaseAdmin().from('points_earn_rules').update({ ...patch, updated_by: actorClerkId, updated_at: new Date().toISOString() }).eq('rule_key', ruleKey);
+  // Explicit column whitelist — never spread a caller-shaped object into a write.
+  const row: Record<string, unknown> = { updated_by: actorClerkId, updated_at: new Date().toISOString() };
+  if (patch.enabled !== undefined) row.enabled = patch.enabled;
+  if (patch.points !== undefined) row.points = patch.points;
+  await supabaseAdmin().from('points_earn_rules').update(row).eq('rule_key', ruleKey);
   await audit({ actorId: actorClerkId, action: 'points.rule-updated', target: `rule:${ruleKey}`, meta: patch });
 }
 

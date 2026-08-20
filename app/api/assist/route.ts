@@ -19,7 +19,13 @@ export async function POST(req: NextRequest) {
 
   const session = await getPortalSession();
   let surface: Surface = 'public';
-  let rateKey = `ip:${req.headers.get('x-forwarded-for')?.split(',')[0] ?? req.headers.get('x-real-ip') ?? 'unknown'}`;
+  // Anonymous fallback only: the leftmost x-forwarded-for hop is client-supplied
+  // and spoofable, so it's a soft limit at best — the global hourly cap in
+  // runAssist() is what actually bounds spend. Any signed-in caller is keyed on
+  // their Clerk user id instead.
+  let rateKey = session.userId
+    ? `user:${session.userId}`
+    : `ip:${req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ?? req.headers.get('x-real-ip') ?? 'unknown'}`;
   const ctx = { familyId: session.familyId, profileId: session.profileId, isStaff: session.isStaff };
 
   if (requested === 'admin' && session.isStaff) {

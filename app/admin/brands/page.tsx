@@ -59,7 +59,7 @@ export default async function BrandsPage() {
                       type="file"
                       name="logo"
                       required
-                      accept="image/svg+xml,image/png,image/webp,image/jpeg"
+                      accept="image/png,image/webp,image/jpeg"
                       className="input text-sm"
                     />
                   </div>

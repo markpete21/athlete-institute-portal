@@ -68,7 +68,7 @@ async function moveRefs(table: string, col: string, sourceId: number, targetId: 
   if (!error) return;
   if (error.code !== '23505') throw new Error(`merge: ${table}.${col} move failed: ${error.message}`);
   // Unique collision — move what can move (row by row), delete what can't.
-  const { data: rows, error: e2 } = await db.from(table).select('*').eq(col, sourceId);
+  const { data: rows, error: e2 } = await db.from(table).select('id').eq(col, sourceId);
   if (e2) throw new Error(`merge: ${table} re-read failed: ${e2.message}`);
   for (const row of rows ?? []) {
     const { error: e3 } = await db.from(table).update({ [col]: targetId }).eq(col, sourceId).eq('id', (row as { id: number }).id);
@@ -145,9 +145,10 @@ async function mergeFamilies(sourceFamilyId: number, targetFamilyId: number, act
 export async function mergeAccounts(sourceProfileId: number, targetProfileId: number, actorClerkId: string): Promise<MergeResult> {
   if (sourceProfileId === targetProfileId) throw new Error('Pick two different accounts.');
   const db = supabaseAdmin();
-  const { data: source, error: sErr } = await db.from('profiles').select('*').eq('id', sourceProfileId).single();
+  const PROFILE_COLS = 'id, family_id, email, settings';
+  const { data: source, error: sErr } = await db.from('profiles').select(PROFILE_COLS).eq('id', sourceProfileId).single();
   if (sErr) throw new Error(`merge: source read failed: ${sErr.message}`);
-  const { data: target, error: tErr } = await db.from('profiles').select('*').eq('id', targetProfileId).single();
+  const { data: target, error: tErr } = await db.from('profiles').select(PROFILE_COLS).eq('id', targetProfileId).single();
   if (tErr) throw new Error(`merge: target read failed: ${tErr.message}`);
   if ((source.settings as Record<string, unknown>)?.merged_into) throw new Error('That account was already merged.');
   if ((target.settings as Record<string, unknown>)?.merged_into) throw new Error('The target account was itself merged — pick its survivor.');

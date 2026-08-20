@@ -9,6 +9,7 @@ import { mergeAccounts } from '@/lib/accounts/merge';
 import { getPortalSession, type PortalSession } from '@/lib/auth';
 import { applyPlayPoints, ensureSeasonCredit, setCreditCapOverride } from '@/lib/credits';
 import { shareDependent } from '@/lib/family';
+import { profileCan } from '@/lib/staff/staff';
 import { updateTypeSettings } from '@/lib/type-settings';
 
 async function requireStaff(): Promise<PortalSession> {
@@ -159,6 +160,11 @@ export async function resendClaimAction(formData: FormData): Promise<void> {
 /** Merge another (duplicate) account INTO this one. */
 export async function mergeIntoThisAction(formData: FormData): Promise<void> {
   const session = await requireStaff();
+  // A merge re-points a whole household's PII + money history — gated by the
+  // Module 5 sensitive-data capability (edit).
+  if (session.profileId && !(await profileCan(session.profileId, 'roster_sensitive', 'edit'))) {
+    throw new Error('You lack the sensitive-data capability required to merge accounts.');
+  }
   const targetProfileId = Number(formData.get('profileId'));
   const sourceProfileId = Number(formData.get('sourceProfileId'));
   if (!sourceProfileId) throw new Error('Pick the duplicate account to merge in.');

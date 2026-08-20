@@ -15,6 +15,12 @@ import { fireTrigger } from '@/lib/comms/notifications';
 
 const BUCKET = BUCKETS.galleryMedia;
 
+// Upload guardrails (same shape as the brands module): raster images only —
+// SVG stays out (script-capable), and originals are capped so one upload
+// can't blow up Storage or the download path.
+const ALLOWED = ['image/png', 'image/webp', 'image/jpeg', 'image/gif'];
+const MAX_BYTES = 20 * 1024 * 1024; // 20 MB — full-res camera shots fit, raw dumps don't
+
 // --- staff: create + upload -------------------------------------------------
 
 export async function createGallery(input: { programId: number; sessionId?: number | null; title: string }, actorClerkId: string): Promise<number> {
@@ -29,11 +35,18 @@ export async function createGallery(input: { programId: number; sessionId?: numb
 
 /** Upload a photo (original into Storage; browse always uses transforms). */
 export async function addPhoto(galleryId: number, file: { name: string; body: Buffer | ArrayBuffer; contentType: string }, actorClerkId: string, caption?: string | null): Promise<number> {
+  if (!ALLOWED.includes(file.contentType)) {
+    throw new Error(`Photos must be PNG, WebP, JPEG or GIF (got ${file.contentType || 'unknown'}).`);
+  }
+  const bytes = 'byteLength' in file.body ? file.body.byteLength : (file.body as Buffer).length;
+  if (bytes > MAX_BYTES) {
+    throw new Error(`Photos must be under 20 MB (got ${(bytes / 1024 / 1024).toFixed(1)} MB).`);
+  }
   const path = `${galleryId}/${Date.now()}-${file.name.replace(/[^a-zA-Z0-9_.-]/g, '_')}`;
   await uploadFile(BUCKET, path, file.body, { contentType: file.contentType });
   const { data, error } = await supabaseAdmin()
     .from('gallery_media')
-    .insert({ gallery_id: galleryId, kind: 'photo', storage_path: path, caption: caption ?? null, bytes: 'byteLength' in file.body ? file.body.byteLength : (file.body as Buffer).length })
+    .insert({ gallery_id: galleryId, kind: 'photo', storage_path: path, caption: caption ?? null, bytes })
     .select('id').single();
   if (error) throw new Error(error.message);
   await audit({ actorId: actorClerkId, action: 'gallery.photo-added', target: `gallery:${galleryId}` });

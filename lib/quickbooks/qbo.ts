@@ -63,7 +63,7 @@ export async function qboExchangeCode(code: string, realmId: string): Promise<vo
 /** Valid access token (refreshes if expired). Null when not connected. */
 async function accessToken(): Promise<{ token: string; realmId: string } | null> {
   const db = supabaseAdmin();
-  const { data: c } = await db.from('qbo_connection').select('*').eq('id', 1).maybeSingle();
+  const { data: c } = await db.from('qbo_connection').select('realm_id, access_token, refresh_token, expires_at').eq('id', 1).maybeSingle();
   if (!c?.access_token || !c.realm_id) return null;
   if (c.expires_at && Date.parse(c.expires_at) > Date.now() + 60_000) return { token: c.access_token, realmId: c.realm_id };
 

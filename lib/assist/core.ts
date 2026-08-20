@@ -64,6 +64,22 @@ export async function checkRateLimit(surface: Surface, rateKey: string): Promise
   return { allowed: (count ?? 0) < limit, used: count ?? 0, limit };
 }
 
+/**
+ * Global hourly cap across ALL callers — the per-key limits keep one caller
+ * honest, this bounds total Anthropic spend (the anonymous rate key is
+ * IP-derived and spoofable, so per-key alone is not a spend bound).
+ */
+export const ASSIST_GLOBAL_HOURLY_DEFAULT = 300;
+
+export async function checkGlobalRateLimit(): Promise<{ allowed: boolean; used: number; limit: number }> {
+  const limit = Number(process.env.ASSIST_GLOBAL_HOURLY_LIMIT) || ASSIST_GLOBAL_HOURLY_DEFAULT;
+  const { count } = await supabaseAdmin()
+    .from('assist_logs')
+    .select('id', { count: 'exact', head: true })
+    .gte('created_at', new Date(Date.now() - 3_600_000).toISOString());
+  return { allowed: (count ?? 0) < limit, used: count ?? 0, limit };
+}
+
 // --- the loop ------------------------------------------------------------------------
 
 export interface AssistMessage { role: 'user' | 'assistant'; content: string }
@@ -104,6 +120,10 @@ export async function runAssist(
   const rate = await checkRateLimit(surface, rateKey);
   if (!rate.allowed) {
     return { reply: `You've hit the hourly question limit - give it a little while, or reach us directly: text/call ${cfg.phone} or email ${cfg.email}.`, toolCalls: 0, handedOff: true };
+  }
+  const global = await checkGlobalRateLimit();
+  if (!global.allowed) {
+    return { reply: `Assist is very busy right now - try again in a little while, or reach us directly: text/call ${cfg.phone} or email ${cfg.email}.`, toolCalls: 0, handedOff: true };
   }
 
   const tools = TOOLS_BY_SURFACE[surface];

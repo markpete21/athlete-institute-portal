@@ -25,7 +25,13 @@ export async function listTriggers(): Promise<AutoNotification[]> {
 }
 
 export async function updateTrigger(triggerKey: string, patch: Partial<Pick<AutoNotification, 'enabled' | 'channels' | 'subject' | 'body_template'>>, actorClerkId: string): Promise<void> {
-  const { error } = await supabaseAdmin().from('comms_auto_notifications').update({ ...patch, updated_by: actorClerkId, updated_at: new Date().toISOString() }).eq('trigger_key', triggerKey);
+  // Explicit column whitelist — never spread a caller-shaped object into a write.
+  const row: Record<string, unknown> = { updated_by: actorClerkId, updated_at: new Date().toISOString() };
+  if (patch.enabled !== undefined) row.enabled = patch.enabled;
+  if (patch.channels !== undefined) row.channels = patch.channels;
+  if (patch.subject !== undefined) row.subject = patch.subject;
+  if (patch.body_template !== undefined) row.body_template = patch.body_template;
+  const { error } = await supabaseAdmin().from('comms_auto_notifications').update(row).eq('trigger_key', triggerKey);
   if (error) throw new Error(error.message);
   await audit({ actorId: actorClerkId, action: 'comms.trigger-updated', target: `trigger:${triggerKey}`, meta: patch });
 }

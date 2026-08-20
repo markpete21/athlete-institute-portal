@@ -54,7 +54,9 @@ export async function headerBrands(): Promise<BrandRow[]> {
   return (await listBrands()).filter((b) => b.showInHeader);
 }
 
-const ALLOWED = ['image/svg+xml', 'image/png', 'image/webp', 'image/jpeg'];
+// SVG is deliberately NOT allowed: the bucket is public and SVG can carry
+// scripts (stored-XSS vector). Raster formats only.
+const ALLOWED = ['image/png', 'image/webp', 'image/jpeg'];
 const MAX_BYTES = 2 * 1024 * 1024; // 2 MB — a logo has no business being bigger
 
 /**
@@ -69,7 +71,7 @@ export async function uploadBrandLogo(input: {
 }): Promise<{ logoUrl: string; logoPath: string }> {
   const { key, file } = input;
   if (!ALLOWED.includes(file.type)) {
-    throw new Error(`Logo must be SVG, PNG, WebP or JPEG (got ${file.type || 'unknown'}).`);
+    throw new Error(`Logo must be PNG, WebP or JPEG (got ${file.type || 'unknown'}).`);
   }
   if (file.size > MAX_BYTES) {
     throw new Error(`Logo must be under 2 MB (got ${(file.size / 1024 / 1024).toFixed(1)} MB).`);
@@ -78,7 +80,7 @@ export async function uploadBrandLogo(input: {
   const db = supabaseAdmin();
   const { data: existing } = await db.from('brands').select('logo_path').eq('key', key).maybeSingle();
 
-  const ext = file.type === 'image/svg+xml' ? 'svg' : file.type === 'image/png' ? 'png' : file.type === 'image/webp' ? 'webp' : 'jpg';
+  const ext = file.type === 'image/png' ? 'png' : file.type === 'image/webp' ? 'webp' : 'jpg';
   // Cache-busting filename: the public URL is long-lived, so a new upload needs
   // a new path or browsers/CDN will keep serving the old mark.
   const path = `${key}/logo-${Date.now()}.${ext}`;
