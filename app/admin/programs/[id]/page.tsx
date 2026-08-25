@@ -234,7 +234,7 @@ export default async function ProgramBuilderPage({ params }: { params: { id: str
                           <input type="hidden" name="roleLabel" value={role} />
                           <input type="hidden" name="certTypeId" value={t.id} />
                           {required ? (
-                            <button type="submit" className="tag" style={{ color: 'var(--accent)', borderColor: 'var(--accent)' }} title="Click to remove requirement">✓ required</button>
+                            <button type="submit" className="pill-status gold" title="Click to remove requirement">✓ required</button>
                           ) : (
                             <><input type="hidden" name="required" value="on" /><button type="submit" className="tag hover:border-ink" title="Click to require">—</button></>
                           )}
@@ -258,7 +258,7 @@ export default async function ProgramBuilderPage({ params }: { params: { id: str
             <input type="hidden" name="questionId" value={q.id} />
             <span className="text-ink">{q.label}</span>
             <span className="tag">{q.qtype}</span>
-            {q.required_effective && <span className="tag" style={{ color: 'var(--accent)', borderColor: 'var(--accent)' }}>required</span>}
+            {q.required_effective && <span className="pill-status gold">required</span>}
             <button type="submit" className="btn-ghost btn-sm text-neg ml-auto">Remove</button>
           </form>
         ))}
@@ -348,14 +348,14 @@ export default async function ProgramBuilderPage({ params }: { params: { id: str
           <p className="label text-[10px]">Sponsors</p>
           {sponsors.length === 0 && <p className="text-sm text-silver">No sponsors yet.</p>}
           {sponsors.map((s) => (
-            <form key={s.id} action={removeSponsorAction} className="flex items-center gap-3 border border-hairline p-2 text-sm">
+            <form key={s.id} action={removeSponsorAction} className="flex items-center gap-3 rounded-md border border-hairline p-2 text-sm">
               <input type="hidden" name="programId" value={program.id} />
               <input type="hidden" name="sponsorId" value={s.id} />
               {s.logo_url ? (
                 // eslint-disable-next-line @next/next/no-img-element
-                <img src={s.logo_url} alt="" className="h-7 w-14 border border-hairline object-contain" />
+                <img src={s.logo_url} alt="" className="h-7 w-14 rounded-sm border border-hairline object-contain" />
               ) : (
-                <span className="grid h-7 w-14 place-items-center border border-hairline font-mono text-[9px] text-silver">{s.name.slice(0, 2).toUpperCase()}</span>
+                <span className="grid h-7 w-14 place-items-center rounded-sm border border-hairline font-mono text-[9px] text-silver">{s.name.slice(0, 2).toUpperCase()}</span>
               )}
               <span className="text-ink">{s.name}</span>
               <button type="submit" className="label ml-auto text-[10px] hover:text-[#B4483C]">REMOVE</button>

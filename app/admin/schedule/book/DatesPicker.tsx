@@ -93,7 +93,7 @@ export function DatesPicker({
                         type="button"
                         disabled={isBase}
                         onClick={() => toggle(d)}
-                        className="mono h-9 w-full text-sm transition-colors"
+                        className="mono h-9 w-full rounded-sm text-sm transition-colors"
                         style={{
                           backgroundColor: isSel ? 'var(--accent)' : isBase ? 'rgba(30,30,30,0.08)' : 'transparent',
                           color: isSel ? '#fff' : isBase ? '#9ea1a1' : undefined,

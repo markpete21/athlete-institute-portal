@@ -66,8 +66,7 @@ function CopyButton({ value, what }: { value: string; what: string }) {
   return (
     <button
       type="button"
-      className="tag cursor-pointer hover:border-ink"
-      style={copied ? { color: '#3f7a5b', borderColor: '#3f7a5b' } : undefined}
+      className={copied ? 'pill-status pos cursor-pointer' : 'tag cursor-pointer hover:border-ink'}
       onClick={async () => {
         await navigator.clipboard.writeText(value);
         setCopied(true);

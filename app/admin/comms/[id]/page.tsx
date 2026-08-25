@@ -62,7 +62,7 @@ export default async function CampaignPage({ params }: { params: { id: string } 
         <section className="flex flex-col gap-4">
           <div className="grid grid-cols-3 gap-3 sm:grid-cols-6">
             {[['Sent', stats.sent], ['Delivered', stats.delivered], ['Opened', `${stats.opened} (${Math.round(stats.openRate * 100)}%)`], ['Clicked', `${stats.clicked} (${Math.round(stats.clickRate * 100)}%)`], ['Bounced', stats.bounced], ['Unsub', stats.unsubscribed]].map(([k, v]) => (
-              <div key={k as string} className="card p-3"><p className="label text-[10px]">{k}</p><p className="text-xl">{v}</p></div>
+              <div key={k as string} className="card kpi"><p className="kpi-k">{k}</p><p className="kpi-v">{v}</p></div>
             ))}
           </div>
           {clicks.length > 0 && <div className="card p-4"><p className="field-label">Link clicks</p>{clicks.map((l) => <div key={l.url} className="flex justify-between text-sm"><span className="truncate text-body">{l.url}</span><span>{l.clicks}</span></div>)}</div>}

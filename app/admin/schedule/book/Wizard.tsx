@@ -313,8 +313,8 @@ export function Wizard({
         {steps.map((s, i) => (
           <li
             key={s}
-            className="tag"
-            style={i + 1 === step ? { color: 'var(--accent)', borderColor: 'var(--accent)' } : i + 1 < step ? { color: 'var(--ink, #1e1e1e)' } : undefined}
+            className={i + 1 === step ? 'pill-status gold' : 'tag'}
+            style={i + 1 < step ? { color: 'var(--ink, #1e1e1e)' } : undefined}
           >
             {i + 1} · {s}
           </li>
@@ -515,8 +515,7 @@ export function Wizard({
                 <button
                   key={t}
                   type="button"
-                  className="tag"
-                  style={bookingType === t ? { color: 'var(--accent)', borderColor: 'var(--accent)' } : undefined}
+                  className={bookingType === t ? 'pill-status gold' : 'tag'}
                   onClick={() => setBookingType(t)}
                 >
                   {t}

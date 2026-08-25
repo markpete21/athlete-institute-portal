@@ -32,10 +32,10 @@ export default async function AcademyDetailPage({ params }: { params: { id: stri
 
       {/* Dashboard */}
       <section className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <div className="card p-3"><p className="label text-[10px]">Accepted</p><p className="text-2xl">{dash.acceptedCount}</p></div>
-        <div className="card p-3"><p className="label text-[10px]">In pipeline</p><p className="text-2xl">{Object.values(dash.pipelineByStatus).reduce((a, b) => a + b, 0)}</p></div>
-        <div className="card p-3"><p className="label text-[10px]">Scholarships</p><p className="text-2xl">{money(dash.scholarshipTotalCents)}</p></div>
-        <div className="card p-3"><p className="label text-[10px]">Plan by</p><p className="text-2xl">{academy.plan_complete_by ?? 'Feb 1'}</p></div>
+        <div className="card kpi"><p className="kpi-k">Accepted</p><p className="kpi-v">{dash.acceptedCount}</p></div>
+        <div className="card kpi"><p className="kpi-k">In pipeline</p><p className="kpi-v">{Object.values(dash.pipelineByStatus).reduce((a, b) => a + b, 0)}</p></div>
+        <div className="card kpi"><p className="kpi-k">Scholarships</p><p className="kpi-v">{money(dash.scholarshipTotalCents)}</p></div>
+        <div className="card kpi"><p className="kpi-k">Plan by</p><p className="kpi-v">{academy.plan_complete_by ?? 'Feb 1'}</p></div>
       </section>
 
       {/* Teams */}

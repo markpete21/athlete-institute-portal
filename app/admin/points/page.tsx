@@ -22,10 +22,10 @@ export default async function PointsAdminPage() {
       </header>
 
       <section className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <div className="card p-3"><p className="label text-[10px]">Liability</p><p className="text-xl">{money(report.liabilityCents)}</p></div>
-        <div className="card p-3"><p className="label text-[10px]">Earned all-time</p><p className="text-xl">{report.earnedTotal.toLocaleString()}</p></div>
-        <div className="card p-3"><p className="label text-[10px]">Redeemed</p><p className="text-xl">{report.redeemedTotal.toLocaleString()}</p></div>
-        <div className="card p-3"><p className="label text-[10px]">Referral conv.</p><p className="text-xl">{Math.round(report.referralConversion.rate * 100)}%</p></div>
+        <div className="card kpi"><p className="kpi-k">Liability</p><p className="kpi-v">{money(report.liabilityCents)}</p></div>
+        <div className="card kpi"><p className="kpi-k">Earned all-time</p><p className="kpi-v">{report.earnedTotal.toLocaleString()}</p></div>
+        <div className="card kpi"><p className="kpi-k">Redeemed</p><p className="kpi-v">{report.redeemedTotal.toLocaleString()}</p></div>
+        <div className="card kpi"><p className="kpi-k">Referral conv.</p><p className="kpi-v">{Math.round(report.referralConversion.rate * 100)}%</p></div>
       </section>
 
       <section className="flex flex-col gap-2">

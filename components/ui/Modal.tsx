@@ -2,7 +2,7 @@
 
 import { useEffect, type ReactNode } from 'react';
 
-/** Hard-cornered modal over a scrim; Escape + backdrop click close it. */
+/** Soft-rounded modal over a scrim; Escape + backdrop click close it. */
 export function Modal({
   open,
   onClose,
@@ -33,7 +33,7 @@ export function Modal({
       aria-label={title}
     >
       <div
-        className="w-full max-w-lg animate-fade-in border border-hairline bg-paper"
+        className="w-full max-w-lg animate-fade-in overflow-hidden rounded-lg border border-hairline bg-paper"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-baseline justify-between border-b border-hairline px-5 py-4">

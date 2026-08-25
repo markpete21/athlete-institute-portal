@@ -88,7 +88,7 @@ export default async function PlaySchedulePage() {
                 <div key={b.id} className="card flex flex-wrap items-center gap-x-4 gap-y-1 p-4 transition-colors hover:border-ink" style={{ borderLeft: '3px solid var(--accent)' }}>
                   <span className="mono w-40 shrink-0 whitespace-nowrap text-sm text-body">{fmtRange(b.starts_at, b.ends_at)}</span>
                   {markFor(b) && (
-                    <span className="flex h-8 w-8 shrink-0 items-center justify-center bg-ink p-1">
+                    <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-sm bg-ink p-1">
                       {/* eslint-disable-next-line @next/next/no-img-element */}
                       <img src={markFor(b)!} alt="" className="max-h-full max-w-full object-contain" />
                     </span>
@@ -118,7 +118,7 @@ export default async function PlaySchedulePage() {
               <div key={b.id} className="card group flex flex-wrap items-center gap-x-4 gap-y-1 p-4 transition-colors hover:border-ink">
                 <span className="mono w-40 shrink-0 whitespace-nowrap text-sm text-body">{fmtRange(b.starts_at, b.ends_at)}</span>
                 {markFor(b) && (
-                  <span className="flex h-8 w-8 shrink-0 items-center justify-center bg-ink p-1">
+                  <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-sm bg-ink p-1">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img src={markFor(b)!} alt="" className="max-h-full max-w-full object-contain" />
                   </span>

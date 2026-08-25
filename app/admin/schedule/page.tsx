@@ -184,11 +184,13 @@ export default async function SchedulePage({
           <DateJump date={date} baseQuery={qs({}).split('?')[1] ?? ''} />
           <Link href={qs({ date: addDaysISO(date, step) })} className="btn-ghost btn-sm">→</Link>
           <span className="w-2" />
-          {(['day', 'week', 'month'] as const).map((v) => (
-            <Link key={v} href={qs({ view: v })} className={v === view ? 'btn-gold btn-sm' : 'btn-ghost btn-sm'}>
-              {v}
-            </Link>
-          ))}
+          <span className="seg">
+            {(['day', 'week', 'month'] as const).map((v) => (
+              <Link key={v} href={qs({ view: v })} className={v === view ? 'on' : ''}>
+                {v}
+              </Link>
+            ))}
+          </span>
           <Link href="/conflicts" className="btn-ghost btn-sm">
             Conflicts{conflictedIds.size ? ` (${conflictPairs.length})` : ''}
           </Link>
@@ -330,7 +332,7 @@ export default async function SchedulePage({
             const day = (bookingsByDate(bookings).get(d) ?? []).sort((x, y) => x.starts_at.localeCompare(y.starts_at));
             const weekday = new Date(`${d}T12:00:00Z`).toLocaleDateString('en-CA', { weekday: 'short' });
             return (
-              <div key={d} className={`card flex flex-col ${d === date ? 'border-2' : ''}`} style={d === date ? { borderColor: 'var(--accent)' } : undefined}>
+              <div key={d} className={`card flex flex-col overflow-hidden ${d === date ? 'border-2' : ''}`} style={d === date ? { borderColor: 'var(--accent)' } : undefined}>
                 <Link
                   href={qs({ view: 'day', date: d })}
                   className="flex items-baseline justify-between border-b border-hairline px-3 py-2 hover:bg-paper-panel"
@@ -343,7 +345,7 @@ export default async function SchedulePage({
                     <Link
                       key={b.id}
                       href={`/schedule/booking/${b.id}`}
-                      className="flex flex-col gap-0.5 border border-hairline px-2 py-1.5 hover:bg-paper-panel"
+                      className="flex flex-col gap-0.5 rounded-sm border border-hairline px-2 py-1.5 hover:bg-paper-panel"
                       style={{ borderLeft: `3px solid ${conflictedIds.has(b.id) ? '#b4483c' : SOURCE_COLOR[b.source] ?? 'var(--accent)'}` }}
                       title={`${b.title} — click to edit`}
                     >

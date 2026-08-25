@@ -3,7 +3,7 @@ import { actionAction, recomputeAction, weightsAction } from './actions';
 
 export const dynamic = 'force-dynamic';
 
-const LEVEL_COLOR: Record<string, string> = { red: '#b4483c', amber: '#9E8959', green: '#3f7a5b' };
+const LEVEL_PILL: Record<string, string> = { red: 'pill-status neg', amber: 'pill-status gold', green: 'pill-status pos' };
 const WEIGHT_LABELS: Record<string, string> = {
   reenrollTiming: 'Re-enroll timing', lowFeedback: 'Low feedback', abandonedCart: 'Abandoned cart',
   paymentFriction: 'Payment friction', emailDisengaged: 'Email disengaged', siblingGap: 'Sibling gap', crossAppTrend: 'Cross-app trend',
@@ -32,7 +32,7 @@ export default async function RetentionPage() {
           <div key={f.flagId} className="card flex flex-col gap-2 p-4">
             <div className="flex items-center justify-between">
               <span className="font-bold text-ink">{f.memberName}</span>
-              <span className="tag" style={{ color: LEVEL_COLOR[f.level], borderColor: LEVEL_COLOR[f.level] }}>{f.level} · {f.score}</span>
+              <span className={LEVEL_PILL[f.level] ?? 'tag'}>{f.level} · {f.score}</span>
             </div>
             <ul className="flex flex-col gap-1 text-sm text-body">
               {f.reasons.map((r, i) => (

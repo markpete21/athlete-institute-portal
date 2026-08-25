@@ -8,12 +8,12 @@ export interface TabItem {
   content: ReactNode;
 }
 
-/** Underline tabs; the active tab's rule uses the brand accent. */
+/** Segmented pill tabs; the active segment fills Ink. */
 export function Tabs({ items, initialKey }: { items: TabItem[]; initialKey?: string }) {
   const [active, setActive] = useState(initialKey ?? items[0]?.key);
   return (
     <div className="flex flex-col gap-5">
-      <div className="flex gap-6 border-b border-hairline" role="tablist">
+      <div className="seg self-start" role="tablist">
         {items.map((t) => {
           const on = t.key === active;
           return (
@@ -22,11 +22,7 @@ export function Tabs({ items, initialKey }: { items: TabItem[]; initialKey?: str
               role="tab"
               aria-selected={on}
               onClick={() => setActive(t.key)}
-              className="-mb-px border-b-2 pb-3 font-mono text-[11px] font-medium uppercase tracking-[0.14em] transition-colors"
-              style={{
-                borderColor: on ? 'var(--accent)' : 'transparent',
-                color: on ? 'var(--accent)' : '#9ea1a1',
-              }}
+              className={on ? 'on' : undefined}
             >
               {t.label}
             </button>

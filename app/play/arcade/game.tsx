@@ -73,7 +73,9 @@ export default function SportGame({ contestId, gameKey }: { contestId: number; g
   const reset = () => { scoreRef.current = 0; posRef.current = 0; dir.current = 1; setScore(0); setLives(3); setState('playing'); };
 
   return (
-    <div className="card flex flex-col gap-4 p-5 text-center select-none" style={{ borderTop: `3px solid ${skin.bg}` }}>
+    <div className="card relative flex flex-col gap-4 overflow-hidden p-5 text-center select-none">
+      {/* per-sport colour stripe, clipped by the card's rounded corners */}
+      <div className="absolute inset-x-0 top-0 h-[3px]" style={{ background: skin.bg }} />
       <div className="flex items-center justify-between text-sm">
         <span className="mono">Score {score}</span>
         <span className="text-2xl">{skin.emoji}</span>

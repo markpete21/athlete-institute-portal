@@ -9,11 +9,11 @@ const TZ = 'America/Toronto';
 const fmtDue = (d: string) =>
   new Date(`${d}T12:00:00Z`).toLocaleDateString('en-CA', { timeZone: TZ, month: 'short', day: 'numeric', year: 'numeric' });
 
-const STATUS_COLOR: Record<string, string> = {
-  pending: '#9e8959',
-  paid: '#3f7a5b',
-  failed: '#b4483c',
-  waived: '#9ea1a1',
+const STATUS_PILL: Record<string, string> = {
+  pending: 'pill-status gold',
+  paid: 'pill-status pos',
+  failed: 'pill-status neg',
+  waived: 'tag',
 };
 
 /**
@@ -125,14 +125,7 @@ export default async function InvoicesPage({
                 </td>
                 <td className="mono text-right">{formatCAD(r.amount_cents)}</td>
                 <td>
-                  <span
-                    className="tag"
-                    style={
-                      r.overdue
-                        ? { color: '#b4483c', borderColor: '#b4483c' }
-                        : { color: STATUS_COLOR[r.status], borderColor: STATUS_COLOR[r.status] }
-                    }
-                  >
+                  <span className={r.overdue ? 'pill-status neg' : STATUS_PILL[r.status] ?? 'tag'}>
                     {r.overdue ? 'overdue' : r.status}
                   </span>
                 </td>
@@ -171,15 +164,15 @@ function Stat({
   label, value, sub, accent, danger,
 }: { label: string; value: string; sub: string; accent?: boolean; danger?: boolean }) {
   return (
-    <div className="card flex flex-col gap-0.5 p-4">
-      <span className="label text-[10px]">{label}</span>
+    <div className="card kpi">
+      <span className="kpi-k">{label}</span>
       <span
-        className="mono text-2xl font-bold"
+        className="kpi-v"
         style={danger ? { color: '#b4483c' } : accent ? { color: 'var(--accent)' } : undefined}
       >
         {value}
       </span>
-      <span className="text-[11px] text-silver">{sub}</span>
+      <span className="kpi-d">{sub}</span>
     </div>
   );
 }

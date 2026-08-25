@@ -27,7 +27,7 @@ export function StaffSelfViewBody({ staff, caps, programs, pay, unavailability, 
   return (
     <main className="mx-auto flex min-h-screen max-w-2xl flex-col gap-8 px-5 py-10">
       {preview && (
-        <p className="border border-hairline bg-paper-panel p-3 text-sm text-silver">
+        <p className="rounded-md border border-hairline bg-paper-panel p-3 text-sm text-silver">
           <span className="label mr-2 text-[10px]" style={{ color: 'var(--accent)' }}>Preview</span>
           This is {staff.first_name} {staff.last_name}&apos;s coach view, as they would see it signed in. Self-service actions are disabled.
         </p>
@@ -44,7 +44,7 @@ export function StaffSelfViewBody({ staff, caps, programs, pay, unavailability, 
         <section key={p.assignmentId} className="card flex flex-col gap-4 p-5">
           <div className="flex flex-wrap items-center gap-2">
             <h2 className="text-2xl">{p.programName}</h2>
-            {p.roleLabel && <span className="tag" style={{ color: 'var(--accent)', borderColor: 'var(--accent)' }}>{p.roleLabel}</span>}
+            {p.roleLabel && <span className="pill-status gold">{p.roleLabel}</span>}
           </div>
 
           {p.sessions.length > 0 && (
@@ -89,7 +89,7 @@ export function StaffSelfViewBody({ staff, caps, programs, pay, unavailability, 
             {pay.slice(0, 10).map((row, i) => (
               <p key={i} className="flex justify-between border-b border-hairline py-1 text-sm">
                 <span>{fmtDate(row.dueDate)} · {row.programName}</span>
-                <span className="mono">{formatCAD(row.amountCents)} {row.status === 'paid' ? <span style={{ color: '#3f7a5b' }}>✓</span> : ''}</span>
+                <span className="mono">{formatCAD(row.amountCents)} {row.status === 'paid' ? <span className="text-pos">✓</span> : ''}</span>
               </p>
             ))}
           </div>

@@ -222,7 +222,7 @@ export default async function StaffListPage({ searchParams }: { searchParams: { 
             <summary className="btn-ghost btn-sm inline-block cursor-pointer list-none [&::-webkit-details-marker]:hidden">
               Needs attention{attention.length > 0 && <span className="mono ml-1" style={{ color: attention.some((a) => a.severity === 'bad') ? '#b4483c' : '#a08030' }}>· {attention.length}</span>}
             </summary>
-            <div className="absolute right-0 z-10 mt-2 flex w-[min(30rem,90vw)] flex-col border border-hairline bg-paper shadow-lg">
+            <div className="absolute right-0 z-10 mt-2 flex w-[min(30rem,90vw)] flex-col overflow-hidden rounded-md border border-hairline bg-paper shadow-lg">
               {attention.length === 0 && <p className="p-4 text-sm text-silver">All clear — no cert issues, overdue pay, or submitted unavailability.</p>}
               {attention.map((a, i) => (
                 <Link key={i} href={`/staff/${a.staffId}`} className="flex gap-3 border-b border-hairline p-3 last:border-b-0 hover:bg-paper-panel">
@@ -241,7 +241,7 @@ export default async function StaffListPage({ searchParams }: { searchParams: { 
           <Link href="/staff/pay" className="btn-ghost btn-sm">Pay dashboard</Link>
           <details className="relative">
             <summary className="btn-gold btn-sm inline-block cursor-pointer list-none [&::-webkit-details-marker]:hidden">Add staff</summary>
-            <div className="absolute right-0 z-10 mt-2 w-[min(34rem,90vw)] border border-hairline bg-paper p-5 shadow-lg">
+            <div className="absolute right-0 z-10 mt-2 w-[min(34rem,90vw)] rounded-md border border-hairline bg-paper p-5 shadow-lg">
               <h2 className="text-xl">Add staff / coach</h2>
               <form action={createStaffAction} className="mt-3 grid gap-3 sm:grid-cols-2">
                 <div><label className="field-label" htmlFor="firstName">First</label><input id="firstName" name="firstName" required className="input text-sm" /></div>

@@ -42,7 +42,7 @@ export default function GalleryGrid({ galleryId, media }: { galleryId: number; m
       {media.length === 0 && <p className="text-body">No photos or video yet.</p>}
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
         {media.map((m) => (
-          <div key={m.id} className={`relative border ${selected.has(m.id) ? 'border-[var(--accent)]' : 'border-hairline'}`}>
+          <div key={m.id} className={`relative overflow-hidden rounded-md border ${selected.has(m.id) ? 'border-[var(--accent)]' : 'border-hairline'}`}>
             {m.kind === 'video' ? (
               <a href={m.streamUrl ?? '#'} target="_blank" rel="noreferrer" className="block">
                 {m.thumbUrl ? (
@@ -51,7 +51,7 @@ export default function GalleryGrid({ galleryId, media }: { galleryId: number; m
                 ) : (
                   <div className="flex aspect-square w-full items-center justify-center bg-[#111] text-3xl text-white">▶</div>
                 )}
-                <span className="absolute bottom-1 left-1 bg-black/70 px-1.5 py-0.5 text-[10px] text-white">▶ stream</span>
+                <span className="absolute bottom-1 left-1 rounded-full bg-black/70 px-1.5 py-0.5 text-[10px] text-white">▶ stream</span>
               </a>
             ) : (
               <button type="button" onClick={() => toggle(m.id)} className="block w-full">
@@ -59,7 +59,7 @@ export default function GalleryGrid({ galleryId, media }: { galleryId: number; m
                   // eslint-disable-next-line @next/next/no-img-element
                   <img src={m.thumbUrl} alt={m.caption ?? 'photo'} className="aspect-square w-full object-cover" />
                 )}
-                {selected.has(m.id) && <span className="absolute right-1 top-1 flex h-6 w-6 items-center justify-center bg-[var(--accent)] text-xs text-white">✓</span>}
+                {selected.has(m.id) && <span className="absolute right-1 top-1 flex h-6 w-6 items-center justify-center rounded-full bg-[var(--accent)] text-xs text-white">✓</span>}
               </button>
             )}
           </div>

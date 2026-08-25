@@ -181,9 +181,9 @@ export default async function AccountDetailPage({
             {d.timeline.length === 0 ? (
               <p className="text-sm text-silver">Nothing recorded yet.</p>
             ) : (
-              <div className="flex flex-col">
+              <div className="card flex flex-col px-4 py-1">
                 {d.timeline.map((t) => (
-                  <div key={t.id} className="flex flex-wrap items-baseline gap-x-3 gap-y-1 border-b border-hairline py-2">
+                  <div key={t.id} className="flex flex-wrap items-baseline gap-x-3 gap-y-1 border-b border-hairline py-2 last:border-b-0">
                     <span className="mono text-xs text-silver" style={{ minWidth: 150 }}>{when(t.at)}</span>
                     <span className="text-sm text-ink">{t.action}</span>
                     <span className="mono text-xs text-silver">{t.target}</span>

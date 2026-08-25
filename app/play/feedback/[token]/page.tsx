@@ -33,7 +33,7 @@ export default async function FeedbackPage({ params }: { params: { token: string
             <legend className="text-lg text-ink">Overall, how would you rate this program?</legend>
             <div className="flex justify-between gap-1 py-2">
               {[1, 2, 3, 4, 5].map((n) => (
-                <label key={n} className="flex grow cursor-pointer flex-col items-center gap-1 border border-hairline py-3 has-[:checked]:border-[var(--accent)] has-[:checked]:text-[var(--accent)]">
+                <label key={n} className="flex grow cursor-pointer flex-col items-center gap-1 rounded-md border border-hairline py-3 has-[:checked]:border-[var(--accent)] has-[:checked]:text-[var(--accent)]">
                   <input type="radio" name="rating" value={n} required className="sr-only" />
                   <span className="text-2xl">{'★'.repeat(1)}</span>
                   <span className="mono text-xs">{n}</span>

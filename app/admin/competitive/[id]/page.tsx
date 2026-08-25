@@ -83,7 +83,7 @@ export default async function DivisionAdminPage({ params }: { params: { id: stri
               const players = roster.filter((r) => r.teamId === t.id);
               if (!players.length) return null;
               return (
-                <div key={t.id ?? 'none'} className="border border-hairline p-3">
+                <div key={t.id ?? 'none'} className="rounded-md border border-hairline p-3">
                   <p className="label mb-2 text-[10px]">{t.name}</p>
                   <ul className="flex flex-col gap-1">
                     {players.map((r) => (

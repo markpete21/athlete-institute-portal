@@ -22,16 +22,20 @@ export function WeekGridShell({ children }: { children?: ReactNode }) {
             {d}
           </div>
         ))}
-        {HOURS.map((h) => (
-          <div key={h} className="contents">
-            <div className="border-b border-hairline px-2 py-3 text-right mono text-[11px] text-silver">
-              {h}:00
+        {HOURS.map((h, hi) => {
+          // Last row closes flush against the card's rounded bottom edge.
+          const rowLine = hi === HOURS.length - 1 ? '' : 'border-b ';
+          return (
+            <div key={h} className="contents">
+              <div className={`${rowLine}border-hairline px-2 py-3 text-right mono text-[11px] text-silver`}>
+                {h}:00
+              </div>
+              {DAYS.map((d) => (
+                <div key={d + h} className={`h-12 ${rowLine}border-l border-hairline`} />
+              ))}
             </div>
-            {DAYS.map((d) => (
-              <div key={d + h} className="h-12 border-b border-l border-hairline" />
-            ))}
-          </div>
-        ))}
+          );
+        })}
       </div>
       {children}
     </div>
@@ -41,11 +45,11 @@ export function WeekGridShell({ children }: { children?: ReactNode }) {
 /** Day column shell: a single vertical time axis for one facility/day. */
 export function DayColumnShell({ label, children }: { label: string; children?: ReactNode }) {
   return (
-    <div className="card">
+    <div className="card overflow-hidden">
       <div className="border-b border-hairline px-3 py-2 label text-[10px]">{label}</div>
       <div className="relative">
-        {HOURS.map((h) => (
-          <div key={h} className="flex h-12 items-start border-b border-hairline px-3">
+        {HOURS.map((h, hi) => (
+          <div key={h} className={`flex h-12 items-start ${hi === HOURS.length - 1 ? '' : 'border-b '}border-hairline px-3`}>
             <span className="mono text-[11px] text-silver">{h}:00</span>
           </div>
         ))}

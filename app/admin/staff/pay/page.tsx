@@ -53,8 +53,8 @@ export default async function PayDashboardPage({ searchParams }: { searchParams:
       </header>
 
       <section className="grid gap-4 sm:grid-cols-2">
-        <div className="card p-5"><p className="label text-[11px]">Outstanding</p><p className="text-3xl font-bold" style={{ color: '#b4483c' }}>{formatCAD(outstanding)}</p></div>
-        <div className="card p-5"><p className="label text-[11px]">Paid</p><p className="text-3xl font-bold" style={{ color: '#3f7a5b' }}>{formatCAD(paid)}</p></div>
+        <div className="card kpi"><p className="kpi-k">Outstanding</p><p className="kpi-v" style={{ color: '#b4483c' }}>{formatCAD(outstanding)}</p></div>
+        <div className="card kpi"><p className="kpi-k">Paid</p><p className="kpi-v" style={{ color: '#3f7a5b' }}>{formatCAD(paid)}</p></div>
       </section>
 
       {/* Bi-weekly pay period report */}
@@ -62,7 +62,7 @@ export default async function PayDashboardPage({ searchParams }: { searchParams:
         <div className="flex flex-wrap items-center gap-3">
           <h2 className="text-2xl">Pay period</h2>
           <span className="mono text-sm">{fmt(period.startISO)} – {fmt(period.endISO)}</span>
-          {offset === 0 && <span className="tag" style={{ color: 'var(--accent)', borderColor: 'var(--accent)' }}>current</span>}
+          {offset === 0 && <span className="pill-status gold">current</span>}
           <div className="ml-auto flex items-center gap-2">
             <Link href={`/staff/pay?period=${offset - 1}`} className="btn-ghost btn-sm">← Prev</Link>
             {offset !== 0 && <Link href="/staff/pay" className="btn-ghost btn-sm">Today</Link>}
@@ -84,7 +84,7 @@ export default async function PayDashboardPage({ searchParams }: { searchParams:
                     <td className="text-ink"><Link href={`/staff/${i.staffId}`} className="hover:underline">{i.staffName}</Link></td>
                     <td>{i.programName}</td>
                     <td className="mono">{formatCAD(i.amountCents)}</td>
-                    <td><span className="tag" style={i.status === 'paid' ? { color: '#3f7a5b', borderColor: '#3f7a5b' } : undefined}>{i.status}</span></td>
+                    <td><span className={i.status === 'paid' ? 'pill-status pos' : 'tag'}>{i.status}</span></td>
                     <td>{i.status === 'outstanding' && (
                       <form action={markPayPaidAction}><input type="hidden" name="payDateId" value={i.id} /><button type="submit" className="btn-ghost btn-sm">Mark paid</button></form>
                     )}</td>

@@ -56,7 +56,7 @@ export async function CoachSection({ divisionId }: { divisionId: number }) {
 
       <div className="flex flex-col gap-2">
         {rows.map((r) => (
-          <div key={r.teamId} className="flex flex-wrap items-center gap-2 border border-hairline p-2 text-sm">
+          <div key={r.teamId} className="flex flex-wrap items-center gap-2 rounded-md border border-hairline p-2 text-sm">
             <span className="w-24 text-ink">{r.teamName}</span>
             <form action={setTeamCoachAction} className="flex items-center gap-2">
               <input type="hidden" name="divisionId" value={divisionId} />
@@ -141,7 +141,7 @@ export async function DraftSection({ divisionId, teamCount }: { divisionId: numb
           </div>
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {proposal.teams.map((t) => (
-              <div key={t.name} className="border border-hairline p-3">
+              <div key={t.name} className="rounded-md border border-hairline p-3">
                 <p className="label mb-1 text-[10px]">{t.name}{t.avgSkill != null ? ` · avg ${t.avgSkill.toFixed(2)}` : ''}</p>
                 <ul className="flex flex-col gap-0.5">
                   {t.members.map((m) => (
@@ -211,7 +211,7 @@ export async function OfficialsSection({ divisionId }: { divisionId: number }) {
       {schedules.length > 0 && (
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {schedules.map((s) => (
-            <div key={s.official.id} className="border border-hairline p-3">
+            <div key={s.official.id} className="rounded-md border border-hairline p-3">
               <p className="label mb-1 text-[10px]">{s.official.firstName} {s.official.lastName} · {s.lines.length} games · ${(s.payCents / 100).toFixed(0)}</p>
               <ul className="flex flex-col gap-0.5">
                 {s.lines.slice(0, 4).map((l) => (

@@ -31,7 +31,7 @@ export default async function BrandsPage() {
               {/* live preview of the header tile */}
               <div className="flex flex-col items-center gap-2">
                 <div
-                  className="flex h-[66px] w-[66px] items-center justify-center border p-1.5"
+                  className="flex h-[66px] w-[66px] items-center justify-center overflow-hidden rounded-md border p-1.5"
                   style={{ background: '#171613', borderColor: b.accent }}
                 >
                   {b.logoUrl ? (

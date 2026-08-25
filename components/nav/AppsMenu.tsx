@@ -158,8 +158,9 @@ export default function AppsMenu({
         .am-trigger:hover { color: ${hover}; }
         .am-panel {
           position: absolute; right: 0; top: 44px; z-index: 60; width: 372px;
-          border: 1px solid rgba(30, 30, 30, 0.14); background: #e9e9e7;
-          padding: 12px; box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
+          border: 1px solid rgba(30, 30, 30, 0.1); background: #e9e9e7;
+          padding: 12px; border-radius: 14px;
+          box-shadow: 0 12px 34px rgba(0, 0, 0, 0.12), 0 2px 8px rgba(0, 0, 0, 0.05);
         }
         .am-label {
           margin: 0; padding: 0 4px 8px;
@@ -172,6 +173,7 @@ export default function AppsMenu({
         .am-tile {
           position: relative; display: flex; aspect-ratio: 16 / 10;
           overflow: hidden; border: 1px solid rgba(30, 30, 30, 0.14);
+          border-radius: 9px;
           transition: border-color 0.15s;
         }
         .am-tile:hover { border-color: #9e8959; }

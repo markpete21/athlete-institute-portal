@@ -80,14 +80,11 @@ export default async function BookingEditPage({ params }: { params: { id: string
         <div className="flex flex-wrap items-center gap-1.5">
           <span className="tag">{SOURCE_LABEL[booking.source] ?? booking.source}</span>
           <span className="tag">{booking.is_internal ? 'internal' : 'external'}</span>
-          <span
-            className="tag"
-            style={booking.status === 'tentative' ? { color: 'var(--accent)', borderColor: 'var(--accent)' } : undefined}
-          >
+          <span className={booking.status === 'tentative' ? 'pill-status gold' : 'tag'}>
             {booking.status === 'tentative' ? 'quote hold' : 'confirmed'}
           </span>
           {booking.series_id && <span className="tag">part of a series</span>}
-          {canceled && <span className="tag" style={{ color: '#b4483c', borderColor: '#b4483c' }}>cancelled</span>}
+          {canceled && <span className="pill-status neg">cancelled</span>}
         </div>
       </header>
 
@@ -239,7 +236,7 @@ export default async function BookingEditPage({ params }: { params: { id: string
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src={booking.logo_url} alt=""
-              className="h-20 w-20 border border-hairline object-contain p-1"
+              className="h-20 w-20 rounded-md border border-hairline object-contain p-1"
             />
             {!canceled && (
               <form action={removeBookingLogoAction}>

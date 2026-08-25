@@ -8,11 +8,11 @@ const fmt = (iso: string | null) =>
   iso ? new Date(`${iso}T12:00:00`).toLocaleDateString('en-CA', { month: 'short', day: 'numeric', year: 'numeric' }) : '—';
 
 const STATUS_STYLE: Record<string, string> = {
-  active: 'text-[#4F6B4A] border-[#4F6B4A]',
-  upcoming: 'text-[var(--accent)] border-[var(--accent)]',
-  ended: 'text-silver border-hairline',
-  archived: 'text-silver border-hairline opacity-70',
-  undated: 'text-silver border-hairline',
+  active: 'pill-status pos',
+  upcoming: 'pill-status gold',
+  ended: 'tag',
+  archived: 'tag opacity-70',
+  undated: 'tag',
 };
 
 /**
@@ -56,7 +56,7 @@ export default async function SeasonsPage() {
               <div><label className="field-label">Name</label><input name="name" defaultValue={s.name} className="input" /></div>
               <div><label className="field-label">Starts</label><input name="startsOn" type="date" defaultValue={s.startsOn ?? ''} className="input" /></div>
               <div><label className="field-label">Ends</label><input name="endsOn" type="date" defaultValue={s.endsOn ?? ''} className="input" /></div>
-              <span className={`tag border ${STATUS_STYLE[s.status]}`}>{s.status.toUpperCase()}</span>
+              <span className={STATUS_STYLE[s.status]}>{s.status.toUpperCase()}</span>
               <span className="label text-[10px]">{s.programCount} PROGRAM{s.programCount === 1 ? '' : 'S'} · {s.key}</span>
               <span className="label text-[10px]">{fmt(s.startsOn)} — {fmt(s.endsOn)}</span>
               <button type="submit" className="btn-ghost btn-sm ml-auto">Save</button>
