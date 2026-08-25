@@ -34,7 +34,10 @@ export const ECOSYSTEM_LINKS = {
  * localhost and unknown hosts (e.g. *.vercel.app previews) default to play.
  */
 export function resolvePortalApp(host: string | null | undefined): PortalApp {
-  const h = (host ?? '').toLowerCase().split(':')[0];
+  let h = (host ?? '').toLowerCase().split(':')[0];
+  // Staging domains mirror prod hosts behind a `staging.` prefix
+  // (staging.admin.athleteinstitute.ca etc., pinned to the staging branch).
+  if (h.startsWith('staging.')) h = h.slice('staging.'.length);
   if (h === 'admin.athleteinstitute.ca' || h === 'admin.localhost' || h.startsWith('admin.')) {
     return 'admin';
   }
