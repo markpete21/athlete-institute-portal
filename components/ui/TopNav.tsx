@@ -35,8 +35,8 @@ export function TopNav({
             <Link
               key={t.href}
               href={t.href}
-              className="shrink-0 font-mono text-[11px] font-medium uppercase tracking-[0.14em] transition-colors"
-              style={{ color: t.active ? 'var(--accent)' : '#9ea1a1' }}
+              className={`shrink-0 font-mono text-[11px] font-medium uppercase tracking-[0.14em] transition-colors ${t.active ? '' : 'text-silver'}`}
+              style={t.active ? { color: 'var(--accent)' } : undefined}
             >
               {t.label}
             </Link>

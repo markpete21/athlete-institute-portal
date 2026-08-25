@@ -167,7 +167,7 @@ export default async function RentalBuilderPage({ params }: { params: { id: stri
               <span className="mono text-sm text-body">{fmtBlock(line.starts_at, line.ends_at)}</span>
               <span className="tag">{line.rate_mode.replace('_', ' ')}</span>
               {line.booking_id && conflictedBookingIds.has(line.booking_id) && (
-                <Link href="/conflicts" className="tag" style={{ color: '#b4483c', borderColor: '#b4483c' }}>
+                <Link href="/conflicts" className="pill-status neg">
                   ⚠ conflict - resolve
                 </Link>
               )}
@@ -291,11 +291,11 @@ export default async function RentalBuilderPage({ params }: { params: { id: stri
           {attachedWaiverId && (
             <div className="text-sm">
               {waiverSig ? (
-                <span className="tag" style={{ color: '#3f7a5b', borderColor: '#3f7a5b' }}>
+                <span className="pill-status pos">
                   signed by {waiverSig.signer_name}
                 </span>
               ) : (
-                <span className="tag" style={{ color: '#b4483c', borderColor: '#b4483c' }}>
+                <span className="pill-status neg">
                   unsigned — blocks booking
                 </span>
               )}

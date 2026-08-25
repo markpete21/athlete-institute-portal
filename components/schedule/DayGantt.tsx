@@ -83,7 +83,7 @@ function HoverCard({ hover }: { hover: Hover }) {
   const left = Math.min(x, typeof window === 'undefined' ? x : window.innerWidth - 290);
   return (
     <div
-      className="pointer-events-none fixed z-50 w-72 border border-hairline bg-paper p-4 shadow-none"
+      className="pointer-events-none fixed z-50 w-72 rounded-md border border-hairline bg-paper p-4 shadow-none"
       style={{ left, top: y, borderTop: `3px solid ${SOURCE_COLOR[bar.source] ?? 'var(--accent)'}` }}
     >
       <p className="text-sm font-bold text-ink">{bar.title}</p>
@@ -92,7 +92,7 @@ function HoverCard({ hover }: { hover: Hover }) {
       <div className="mt-2 flex flex-wrap gap-1.5">
         <span className="tag">{SOURCE_LABEL[bar.source] ?? bar.source}</span>
         <span className="tag">{bar.isInternal ? 'internal' : 'external'}</span>
-        <span className="tag" style={bar.status === 'tentative' ? { color: 'var(--accent)', borderColor: 'var(--accent)' } : undefined}>
+        <span className={bar.status === 'tentative' ? 'pill-status gold' : 'tag'}>
           {bar.status === 'tentative' ? 'quote hold' : 'confirmed'}
         </span>
       </div>

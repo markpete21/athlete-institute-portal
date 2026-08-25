@@ -43,7 +43,7 @@ export function StaffGrid({ staff }: { staff: PublicStaff[] }) {
           <p className="text-sm font-bold text-ink">{s.name}</p>
           {s.role && <p className="label text-[10px]">{s.role}</p>}
           {open === s.id && s.bio && (
-            <div className="absolute top-full z-10 mt-2 w-56 border border-hairline bg-paper p-3 text-left text-xs text-body shadow-lg">
+            <div className="absolute top-full z-10 mt-2 w-56 rounded-md border border-hairline bg-paper p-3 text-left text-xs text-body shadow-lg">
               {s.bio}
             </div>
           )}

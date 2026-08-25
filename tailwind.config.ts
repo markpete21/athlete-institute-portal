@@ -44,6 +44,7 @@ const config: Config = {
         silver: '#9EA1A1',
         body: '#333333',
         hairline: 'rgba(30,30,30,0.14)',
+        'hairline-soft': 'rgba(30,30,30,0.08)',
         // Quiet signal colors (muted to respect the single-accent rule).
         pos: '#3F7A5B',
         neg: '#B4483C',
@@ -52,12 +53,15 @@ const config: Config = {
         sans: ['var(--font-display)', 'Inter', 'Helvetica Neue', 'Arial', 'sans-serif'],
         mono: ['var(--font-mono)', 'JetBrains Mono', 'ui-monospace', 'SF Mono', 'monospace'],
       },
+      // 2026-08 redesign: the hard-corner rule is retired — cards and controls
+      // carry soft radii. Mirrors the --r-* scale in globals.css.
       borderRadius: {
         none: '0',
-        DEFAULT: '0',
-        sm: '0',
-        md: '0',
-        lg: '0',
+        DEFAULT: '12px',
+        sm: '9px',
+        md: '12px',
+        lg: '16px',
+        xl: '24px',
         full: '9999px',
       },
       keyframes: {

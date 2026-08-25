@@ -45,7 +45,7 @@ export default async function WaiversPage() {
         <section key={r.programId} className="card pa-panel" style={{ marginBottom: 18 }}>
           <div className="pa-sec-head" style={{ marginBottom: 0 }}>
             <h2 className="pa-h2">{r.programName}</h2>
-            <span className="tag text-[10px]" style={r.satisfied ? undefined : { color: 'var(--accent)', borderColor: 'var(--accent)' }}>
+            <span className={`pill-status ${r.satisfied ? 'pos' : 'gold'}`}>
               {r.satisfied
                 ? `Signed ${r.signedAt ? new Date(r.signedAt).toLocaleDateString('en-CA', { month: 'short', day: 'numeric', year: 'numeric' }) : ''}`
                 : 'Needs signing'}
@@ -60,6 +60,7 @@ export default async function WaiversPage() {
                 style={{
                   whiteSpace: 'pre-wrap', fontSize: 12.5, lineHeight: 1.55, maxHeight: 300,
                   overflowY: 'auto', border: '1px solid var(--ps-hairline)', padding: '12px 14px',
+                  borderRadius: 'var(--r-md)',
                 }}
               >
                 {r.waiver.body}

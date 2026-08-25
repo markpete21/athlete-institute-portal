@@ -35,7 +35,7 @@ export default async function CalendarSyncPage() {
 
       <section className="card flex flex-col gap-3 p-6">
         <span className="field-label">Your private feed URL</span>
-        <code className="mono block break-all border border-hairline bg-paper-panel p-3 text-xs">{httpsUrl}</code>
+        <code className="mono block break-all rounded-md border border-hairline bg-paper-panel p-3 text-xs">{httpsUrl}</code>
         <p className="text-sm text-silver">
           Treat it like a password — anyone with the URL can read the schedule.
         </p>

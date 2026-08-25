@@ -51,36 +51,36 @@ export default async function PayPage({ searchParams }: { searchParams: { sessio
       </div>
 
       {justSettled > 0 && (
-        <section className="pa-attn" style={{ borderLeftColor: '#2e7d4f' }}>
+        <section className="pa-attn" style={{ borderLeftColor: '#3f7a5b' }}>
           <div className="pa-attn-item">
             <span className="pa-attn-txt"><b>Payment received — thank you.</b><span>{justSettled} installment{justSettled === 1 ? '' : 's'} settled. A receipt is on its way from Stripe.</span></span>
           </div>
         </section>
       )}
 
-      <div className="card pa-panel" style={{ marginBottom: 24, flexDirection: 'row', display: 'flex', gap: 34, flexWrap: 'wrap' }}>
-        <div>
-          <p className="label text-[10px]">Owing now</p>
-          <p className="pa-big">{formatCAD(view.owedCents)}</p>
+      <div className="flex flex-wrap gap-3" style={{ marginBottom: 24 }}>
+        <div className="card-ink kpi min-w-44 flex-1">
+          <span className="kpi-k">Owing now</span>
+          <span className="kpi-v">{formatCAD(view.owedCents)}</span>
         </div>
         {view.overdueCents > 0 && (
-          <div>
-            <p className="label text-[10px]" style={{ color: 'var(--accent)' }}>Overdue</p>
-            <p className="pa-big" style={{ color: 'var(--accent)' }}>{formatCAD(view.overdueCents)}</p>
+          <div className="card kpi min-w-44 flex-1">
+            <span className="kpi-k" style={{ color: 'var(--accent)' }}>Overdue</span>
+            <span className="kpi-v" style={{ color: 'var(--accent)' }}>{formatCAD(view.overdueCents)}</span>
           </div>
         )}
         {view.nextDue && (
-          <div>
-            <p className="label text-[10px]">Next payment</p>
-            <p className="pa-big">{formatCAD(view.nextDue.amountCents)}</p>
-            <p className="pa-note">due {dateLabel(view.nextDue.dueDate)}</p>
+          <div className="card kpi min-w-44 flex-1">
+            <span className="kpi-k">Next payment</span>
+            <span className="kpi-v">{formatCAD(view.nextDue.amountCents)}</span>
+            <span className="kpi-d">due {dateLabel(view.nextDue.dueDate)}</span>
           </div>
         )}
         {creditCents > 0 && (
-          <div>
-            <p className="label text-[10px]">Credit on account</p>
-            <p className="pa-big">{formatCAD(creditCents)}</p>
-            <p className="pa-note">applied automatically at your next registration</p>
+          <div className="card kpi min-w-44 flex-1">
+            <span className="kpi-k">Credit on account</span>
+            <span className="kpi-v">{formatCAD(creditCents)}</span>
+            <span className="kpi-d">applied automatically at your next registration</span>
           </div>
         )}
       </div>
@@ -95,33 +95,36 @@ export default async function PayPage({ searchParams }: { searchParams: { sessio
               {o.owedCents > 0 ? `${formatCAD(o.owedCents)} remaining` : 'Paid in full'} · {o.paidCount} of {o.totalCount} paid
             </span>
           </div>
-          <table className="data-table">
-            <thead>
-              <tr><th>Payment</th><th>Due</th><th>Amount</th><th>Status</th><th /></tr>
-            </thead>
-            <tbody>
-              {o.installments.map((i) => (
-                <tr key={i.id}>
-                  <td className="text-ink">{i.label}</td>
-                  <td className="mono">{dateLabel(i.dueDate)}</td>
-                  <td className="mono">{formatCAD(i.amountCents)}</td>
-                  <td>
-                    <span className="tag" style={i.overdue || i.status === 'failed' ? { color: 'var(--accent)', borderColor: 'var(--accent)' } : undefined}>
-                      {i.status === 'paid' ? 'Paid' : i.status === 'failed' ? 'Failed — retry' : i.overdue ? 'Overdue' : 'Scheduled'}
-                    </span>
-                  </td>
-                  <td className="text-right">
-                    {(i.status === 'pending' || i.status === 'failed') && (
-                      <form action={payInstallmentsAction}>
-                        <input type="hidden" name="installmentId" value={i.id} />
-                        <button type="submit" className={i.overdue || i.status === 'failed' ? 'btn-gold btn-sm' : 'btn-ghost btn-sm'}>Pay now</button>
-                      </form>
-                    )}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+          <div className="card overflow-hidden">
+            <table className="data-table">
+              <thead>
+                <tr><th>Payment</th><th>Due</th><th>Amount</th><th>Status</th><th /></tr>
+              </thead>
+              <tbody>
+                {o.installments.map((i) => (
+                  <tr key={i.id}>
+                    <td className="text-ink">{i.label}</td>
+                    <td className="mono">{dateLabel(i.dueDate)}</td>
+                    <td className="mono">{formatCAD(i.amountCents)}</td>
+                    <td>
+                      {i.status === 'paid' ? <span className="pill-status pos">Paid</span>
+                        : i.status === 'failed' ? <span className="pill-status neg">Failed — retry</span>
+                        : i.overdue ? <span className="pill-status gold">Overdue</span>
+                        : <span className="tag">Scheduled</span>}
+                    </td>
+                    <td className="text-right">
+                      {(i.status === 'pending' || i.status === 'failed') && (
+                        <form action={payInstallmentsAction}>
+                          <input type="hidden" name="installmentId" value={i.id} />
+                          <button type="submit" className={i.overdue || i.status === 'failed' ? 'btn-gold btn-sm' : 'btn-ghost btn-sm'}>Pay now</button>
+                        </form>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </section>
       ))}
 

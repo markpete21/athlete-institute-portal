@@ -38,9 +38,9 @@ export default async function ReportsPage({ searchParams }: { searchParams: { pe
     <main className="mx-auto flex max-w-4xl flex-col gap-10 px-6 py-10">
       <header className="flex items-end justify-between border-b border-hairline pb-4">
         <div><p className="label text-[11px]">Dashboard &amp; Reporting</p><h1 className="text-3xl">Reports<span style={{ color: 'var(--accent)' }}>.</span></h1></div>
-        <nav className="flex gap-1">
+        <nav className="seg">
           {PERIODS.map((p) => (
-            <Link key={p} href={`/reports?period=${p}`} className={`btn-ghost btn-sm ${p === period ? 'border-[var(--accent)] text-[var(--accent)]' : ''}`}>{p}</Link>
+            <Link key={p} href={`/reports?period=${p}`} className={p === period ? 'on' : ''}>{p}</Link>
           ))}
         </nav>
       </header>
@@ -63,7 +63,7 @@ export default async function ReportsPage({ searchParams }: { searchParams: { pe
             return (
               <div key={t.programId} className="mt-2">
                 <div className="flex justify-between text-sm"><span className="text-ink">{t.name}</span><span className="mono">{t.count}</span></div>
-                <div className="h-1.5 bg-[#eee]"><div className="h-full" style={{ width: `${(t.count / max) * 100}%`, background: 'var(--accent)' }} /></div>
+                <div className="h-1.5 overflow-hidden rounded-full bg-[#eee]"><div className="h-full rounded-full" style={{ width: `${(t.count / max) * 100}%`, background: 'var(--accent)' }} /></div>
               </div>
             );
           })}
@@ -75,7 +75,7 @@ export default async function ReportsPage({ searchParams }: { searchParams: { pe
             return (
               <div key={t.programId} className="mt-2">
                 <div className="flex justify-between text-sm"><span className="text-ink">{t.name}</span><span className="mono">{money(t.revenueCents)}</span></div>
-                <div className="h-1.5 bg-[#eee]"><div className="h-full" style={{ width: `${(t.revenueCents / max) * 100}%`, background: 'var(--accent)' }} /></div>
+                <div className="h-1.5 overflow-hidden rounded-full bg-[#eee]"><div className="h-full rounded-full" style={{ width: `${(t.revenueCents / max) * 100}%`, background: 'var(--accent)' }} /></div>
               </div>
             );
           })}
@@ -107,10 +107,10 @@ function FinancialSuite({ data }: { data: Awaited<ReturnType<typeof loadFinancia
     <section className="flex flex-col gap-4">
       <h2 className="text-xl">Financial suite <span className="tag ml-2">admin-only</span></h2>
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <div className="card p-3"><p className="label text-[10px]">Collected</p><p className="text-xl">{money(cvo.collectedCents)}</p></div>
-        <div className="card p-3"><p className="label text-[10px]">Outstanding</p><p className="text-xl">{money(cvo.outstandingCents)}</p></div>
-        <div className="card p-3"><p className="label text-[10px]">Plans behind</p><p className="text-xl">{health.behind + health.defaulted}</p></div>
-        <div className="card p-3"><p className="label text-[10px]">$ at risk</p><p className="text-xl">{money(health.atRiskCents)}</p></div>
+        <div className="card-ink kpi"><p className="kpi-k">Collected</p><p className="kpi-v">{money(cvo.collectedCents)}</p></div>
+        <div className="card kpi"><p className="kpi-k">Outstanding</p><p className="kpi-v">{money(cvo.outstandingCents)}</p></div>
+        <div className="card kpi"><p className="kpi-k">Plans behind</p><p className="kpi-v">{health.behind + health.defaulted}</p></div>
+        <div className="card kpi"><p className="kpi-k">$ at risk</p><p className="kpi-v">{money(health.atRiskCents)}</p></div>
       </div>
       <div className="grid gap-4 md:grid-cols-2">
         <div className="card p-4">

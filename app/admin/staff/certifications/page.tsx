@@ -59,8 +59,8 @@ export default async function CertificationsPage() {
                 <h2 className="text-xl">{t.name}</h2>
                 {!t.active && <span className="tag">inactive</span>}
                 <span className="ml-auto flex gap-2 text-sm">
-                  <span className="tag" style={{ color: '#3f7a5b', borderColor: '#3f7a5b' }}>{s.valid} valid</span>
-                  {s.expired > 0 && <span className="tag" style={{ color: '#b4483c', borderColor: '#b4483c' }}>{s.expired} expired</span>}
+                  <span className="pill-status pos">{s.valid} valid</span>
+                  {s.expired > 0 && <span className="pill-status neg">{s.expired} expired</span>}
                   <span className="tag">required by {s.requiredBy} role{s.requiredBy === 1 ? '' : 's'}</span>
                 </span>
               </div>

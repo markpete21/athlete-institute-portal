@@ -64,7 +64,7 @@ function BrandCard({ brand, isActive }: { brand: Brand; isActive: boolean }) {
 
       <div className="flex items-center gap-3">
         <span
-          className="inline-block h-8 w-8 border border-hairline"
+          className="inline-block h-8 w-8 rounded-sm border border-hairline"
           style={{ backgroundColor: 'var(--accent)' }}
           aria-hidden
         />

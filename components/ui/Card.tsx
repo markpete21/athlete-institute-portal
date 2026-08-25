@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 
-/** Flat panel divided by hairlines — no shadow, no radius (Vanguard). */
+/** Soft-rounded panel divided by hairlines — no shadow at rest (Vanguard). */
 export function Card({ children, className = '' }: { children: ReactNode; className?: string }) {
   return <div className={`card ${className}`}>{children}</div>;
 }

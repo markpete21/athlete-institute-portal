@@ -36,7 +36,7 @@ export default async function GeneralAdminPage({ params }: { params: { id: strin
             <span className="text-ink">{torontoLabel(s.starts_at)}</span>
             <span className="flex items-center gap-3 text-sm">
               <span>${(s.price_cents / 100).toFixed(2)}</span>
-              <span className="tag" style={s.full ? { color: 'var(--accent)', borderColor: 'var(--accent)' } : undefined}>
+              <span className={s.full ? 'pill-status gold' : 'tag'}>
                 {s.postponed ? 'TBD' : s.capacity == null ? `${s.taken} in` : `${s.taken}/${s.capacity}`}
               </span>
             </span>

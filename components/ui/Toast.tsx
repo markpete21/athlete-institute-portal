@@ -31,11 +31,9 @@ export function ToastProvider({ children }: { children: ReactNode }) {
         {toasts.map((t) => (
           <div
             key={t.id}
-            className="animate-fade-in border border-hairline bg-paper px-4 py-3 text-sm text-ink"
-            style={{
-              borderLeftWidth: 3,
-              borderLeftColor: t.tone === 'pos' ? '#3F7A5B' : t.tone === 'neg' ? '#B4483C' : 'var(--accent)',
-            }}
+            className={`animate-fade-in rounded-md border border-l-[3px] border-hairline bg-paper px-4 py-3 text-sm text-ink ${
+              t.tone === 'pos' ? 'border-l-pos' : t.tone === 'neg' ? 'border-l-neg' : 'border-l-[var(--accent)]'
+            }`}
           >
             {t.message}
           </div>

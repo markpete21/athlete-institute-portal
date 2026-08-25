@@ -13,7 +13,7 @@ export default function CompeteNotFound() {
       <p className="cs-lede">
         This division isn&apos;t published — the season may have wrapped up, or the link is out of date.
       </p>
-      <p style={{ marginTop: 14 }}>
+      <p className="mt-3.5">
         <Link href="/" className="cs-cta-btn">All divisions →</Link>
       </p>
     </div>

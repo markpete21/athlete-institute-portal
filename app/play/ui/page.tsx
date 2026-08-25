@@ -165,7 +165,7 @@ function InteractiveDemo() {
           </>
         }
       >
-        <p className="text-body">This is a hard-cornered modal themed by the active brand accent.</p>
+        <p className="text-body">This is a soft-rounded modal themed by the active brand accent.</p>
       </Modal>
     </div>
   );

@@ -38,7 +38,7 @@ export default async function FeedbackAdminPage() {
                 <p className="text-xs text-silver">{(p.program_types as unknown as { name: string } | null)?.name}</p>
               </div>
               <div className="flex items-center gap-2">
-                <span className="tag" style={p.rating.average != null && p.rating.average <= 2.5 ? { color: '#b4483c', borderColor: '#b4483c' } : undefined}>
+                <span className={p.rating.average != null && p.rating.average <= 2.5 ? 'pill-status neg' : 'tag'}>
                   {p.rating.average != null ? `${p.rating.average} ★ · ${p.rating.responses}` : 'no ratings'}
                 </span>
                 <form action={togglePublicAction}><input type="hidden" name="programId" value={p.id} /><button className="btn-ghost btn-sm">{p.rating_public ? 'Public ✓' : 'Private'}</button></form>

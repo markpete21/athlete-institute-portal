@@ -63,7 +63,7 @@ export default async function DropInPickerPage({ params }: { params: { id: strin
                 </span>
                 <span className="flex items-center gap-2 text-sm">
                   <span>${(s.price_cents / 100).toFixed(2)}</span>
-                  {s.full && <span className="tag" style={{ color: 'var(--accent)', borderColor: 'var(--accent)' }}>{s.postponed ? 'TBD' : 'Full'}</span>}
+                  {s.full && <span className="pill-status gold">{s.postponed ? 'TBD' : 'Full'}</span>}
                   {!s.full && s.spots_left != null && s.spots_left <= 3 && <span className="tag">{s.spots_left} left</span>}
                 </span>
               </label>
