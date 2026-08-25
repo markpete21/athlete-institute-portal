@@ -211,6 +211,8 @@
   }
   .pill-status.pos { color: #3f7a5b; background: rgba(63, 122, 91, 0.1); }
   .pill-status.neg { color: #b4483c; background: rgba(180, 72, 60, 0.09); }
+  .pill-status.warn { color: #8a6d1f; background: rgba(160, 128, 48, 0.12); }
+  .pill-status.muted { @apply text-silver; background: rgba(158, 161, 161, 0.14); }
 
   /* Card heading row: title left, mono context label / link right. */
   .card-head { @apply flex items-baseline gap-2.5; }
