@@ -66,7 +66,10 @@ export function resolveHost(
   host: string | null | undefined,
   opts: { siteHosts?: SiteHostMap | null; forcedBrand?: string | null } = {},
 ): ResolvedHost {
-  const h = bareHost(host);
+  let h = bareHost(host);
+  // Staging domains mirror prod hosts behind a `staging.` prefix
+  // (staging.admin.athleteinstitute.ca etc., pinned to the staging branch).
+  if (h.startsWith('staging.')) h = h.slice('staging.'.length);
   if (h === 'admin.athleteinstitute.ca' || h === 'admin.localhost' || h.startsWith('admin.')) return { app: 'admin' };
   if (h === 'compete.athleteinstitute.ca' || h === 'compete.localhost' || h.startsWith('compete.')) return { app: 'compete' };
   if (h === 'play.athleteinstitute.ca' || h === 'play.localhost' || h.startsWith('play.')) return { app: 'play' };
