@@ -268,14 +268,16 @@ export async function advanceWaitlist(programId: number, actorClerkId: string): 
   if (next.family_id) {
     const email = (await hohContact(next.family_id))?.email;
     if (email) {
+      // Promotion is immediate (no claim window exists), so say exactly that.
       await notify({
         to: { email },
         channels: ['email'],
-        template: 'waitlist.opening',
+        template: 'generic',
         data: {
-          programName: program.name,
-          claimUrl: `${process.env.NEXT_PUBLIC_PLAY_URL ?? 'https://play.athleteinstitute.ca'}/account`,
-          expiresLabel: '48 hours',
+          heading: `You're in: a spot opened in ${program.name}`,
+          body: `A spot opened in ${program.name} and your waitlisted registration is now active. Any balance owing appears in your account — please settle it before the first session.`,
+          ctaLabel: 'View your account',
+          ctaUrl: `${process.env.NEXT_PUBLIC_PLAY_URL ?? 'https://play.athleteinstitute.ca'}/account`,
         },
       });
     }

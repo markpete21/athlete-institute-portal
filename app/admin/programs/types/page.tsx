@@ -1,4 +1,5 @@
 import { PROGRAM_CATEGORIES } from '@ai/foundation';
+import { PageHeader } from '@/components/ui';
 import { listProgramTypes } from '@/lib/programs/programs';
 import { saveTypeAction } from '../actions';
 
@@ -12,11 +13,7 @@ export default async function ProgramTypesPage() {
 
   return (
     <main className="mx-auto flex min-h-screen max-w-3xl flex-col gap-8 px-6 py-16">
-      <header className="flex flex-col gap-2 border-b border-hairline pb-6">
-        <p className="label text-[11px]">Admin · Programs</p>
-        <h1 className="text-5xl">Program types<span className="text-accent">.</span></h1>
-        <p className="text-body">Each type seeds a new program&apos;s category and proration method (both overridable per program).</p>
-      </header>
+      <PageHeader kicker="Admin · Programs" title="Program types" lede="Each type seeds a new program&apos;s category and proration method (both overridable per program)." />
 
       {types.map((t) => (
         <form key={t.id} action={saveTypeAction} className="card flex flex-wrap items-end gap-3 p-4">

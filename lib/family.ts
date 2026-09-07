@@ -59,8 +59,17 @@ export async function getOrCreateFamily(profile: Profile): Promise<Family> {
     if (error) throw new Error(`family create failed: ${error.message}`);
     familyId = fam.id as number;
 
-    const { error: e2 } = await db.from('profiles').update({ family_id: familyId }).eq('id', profile.id);
+    // Two first requests can race here (layout + page on a brand-new account).
+    // The link is conditional on the profile still having no family; the
+    // loser discards its empty household and joins the winner's.
+    const { data: linked, error: e2 } = await db.from('profiles').update({ family_id: familyId }).eq('id', profile.id).is('family_id', null).select('id');
     if (e2) throw new Error(`family link failed: ${e2.message}`);
+    if (!linked?.length) {
+      await db.from('families').delete().eq('id', familyId);
+      const { data: winner } = await db.from('profiles').select('family_id').eq('id', profile.id).maybeSingle();
+      if (!winner?.family_id) throw new Error('family link failed: no household after race');
+      return loadFamily(winner.family_id);
+    }
     const { error: e3 } = await db.from('family_members').insert({
       family_id: familyId,
       profile_id: profile.id,

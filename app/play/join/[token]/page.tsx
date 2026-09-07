@@ -3,6 +3,9 @@ import { notFound } from 'next/navigation';
 import { joinLinkOpen } from '@ai/foundation';
 import { supabaseAdmin } from '@ai/foundation/supabase';
 import { getPortalSession } from '@/lib/auth';
+import { getOrCreateFamily } from '@/lib/family';
+import { getOrCreateProfile } from '@/lib/profile';
+import { joinTeamAction } from './actions';
 
 export const dynamic = 'force-dynamic';
 
@@ -24,6 +27,7 @@ export default async function JoinTeamPage({ params }: { params: { token: string
   const { count } = await db.from('team_members').select('id', { count: 'exact', head: true }).eq('team_id', team.id);
   const status = joinLinkOpen({ expiresAtISO: team.join_expires_at, memberCount: count ?? 0, maxPlayers: div.max_players, nowISO: new Date().toISOString() });
   const session = await getPortalSession();
+  const family = session.userId && session.canTransact ? await getOrCreateFamily(await getOrCreateProfile()) : null;
 
   return (
     <main className="mx-auto flex min-h-screen max-w-xl flex-col justify-center gap-5 px-6">
@@ -39,11 +43,22 @@ export default async function JoinTeamPage({ params }: { params: { token: string
           <p className="text-body">You&apos;ve been invited to join <strong>{team.name}</strong>. <Link href="/sign-in" className="text-gold">Sign in</Link> to register a family member onto this team.</p>
         </div>
       ) : (
-        <div className="card flex flex-col gap-3 p-6">
+        <form action={joinTeamAction} className="card flex flex-col gap-3 p-6">
+          <input type="hidden" name="token" value={params.token} />
           <p className="text-body">Register a family member onto <strong>{team.name}</strong> ({count} joined so far).</p>
-          <Link href={`/account?join=${params.token}`} className="btn-gold self-start">Choose who to register</Link>
-          <p className="text-xs text-silver">The member-select + waiver + payment flow completes in your account (Module 4).</p>
-        </div>
+          {family && family.members.length > 0 ? (
+            <>
+              <label className="field-label" htmlFor="memberId">Who is joining?</label>
+              <select id="memberId" name="memberId" required className="input">
+                {family.members.map((m) => <option key={m.id} value={m.id}>{m.first_name} {m.last_name}</option>)}
+              </select>
+              <button type="submit" className="btn-gold self-start">Join {team.name}</button>
+              <p className="text-xs text-silver">Waivers and any balance owing appear in your account after joining.</p>
+            </>
+          ) : (
+            <p className="text-body">Add the player to your household first in <Link href="/account/members" className="text-gold">your account</Link>, then return to this link.</p>
+          )}
+        </form>
       )}
     </main>
   );

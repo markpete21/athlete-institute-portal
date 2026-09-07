@@ -52,6 +52,13 @@ export default clerkMiddleware(async (auth, req) => {
   requestHeaders.set('x-portal-app', app);
   requestHeaders.set('x-portal-path', pathname);
 
+  // The /api/dev/* verify harnesses are development tooling. Each route also
+  // gates on NODE_ENV, but one forgotten line must not ship a route that
+  // writes to the production database — block the whole prefix here.
+  if (pathname.startsWith('/api/dev') && process.env.NODE_ENV === 'production') {
+    return NextResponse.json({ error: 'Not found' }, { status: 404 });
+  }
+
   if (isExempt(pathname)) {
     const res = NextResponse.next({ request: { headers: requestHeaders } });
     // Account-claim flow: /sign-up?claim=<token> (from the import's claim

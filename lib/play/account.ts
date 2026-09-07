@@ -1,6 +1,6 @@
 import 'server-only';
 import { cache } from 'react';
-import { torontoToday, formatCAD } from '@ai/foundation';
+import { torontoToday, formatCAD, fmtDateOnly } from '@ai/foundation';
 import { supabaseAdmin } from '@ai/foundation/supabase';
 import { BUCKETS, getSignedUrl } from '@ai/foundation/storage';
 
@@ -124,19 +124,18 @@ async function accountViewUncached(familyId: number | null, days = 14): Promise<
     .select('id, first_name, last_name, member_role, dob, photo_url, photo_path, family_id, second_family_id')
     .or(`family_id.eq.${familyId},second_family_id.eq.${familyId}`)
     .order('id');
-  const members: Member[] = [];
-  for (const [i, m] of (memberRows ?? []).entries()) {
-    members.push({
-      id: m.id,
-      name: `${m.first_name} ${m.last_name}`.trim(),
-      firstName: m.first_name,
-      initials: `${m.first_name?.[0] ?? ''}`.toUpperCase() || '?',
-      colour: colourFor(i),
-      isAdult: m.member_role === 'hoh' || m.member_role === 'adult' || m.member_role === 'secondary',
-      photoUrl: await memberPhoto(m),
-      shared: m.second_family_id != null,
-    });
-  }
+  // Photos are signed URLs — mint them in parallel, not one round-trip per member.
+  const photoUrls = await Promise.all((memberRows ?? []).map((m) => memberPhoto(m)));
+  const members: Member[] = (memberRows ?? []).map((m, i) => ({
+    id: m.id,
+    name: `${m.first_name} ${m.last_name}`.trim(),
+    firstName: m.first_name,
+    initials: `${m.first_name?.[0] ?? ''}`.toUpperCase() || '?',
+    colour: colourFor(i),
+    isAdult: m.member_role === 'hoh' || m.member_role === 'adult' || m.member_role === 'secondary',
+    photoUrl: photoUrls[i],
+    shared: m.second_family_id != null,
+  }));
   const colourByMember = new Map(members.map((m) => [m.id, m.colour]));
 
   // --- registrations (drives both the roster list and the spine) ------------
@@ -166,7 +165,12 @@ async function accountViewUncached(familyId: number | null, days = 14): Promise<
   const memberByProgram = new Map<number, number | null>();
   for (const r of regRows ?? []) if (!memberByProgram.has(r.program_id)) memberByProgram.set(r.program_id, r.family_member_id);
   const brandByProgram = new Map<number, string | null>();
-  for (const r of regRows ?? []) brandByProgram.set(r.program_id, (r.programs as unknown as { brand_key: string | null } | null)?.brand_key ?? null);
+  const nameByProgram = new Map<number, string>();
+  for (const r of regRows ?? []) {
+    const p = r.programs as unknown as { name: string; brand_key: string | null } | null;
+    brandByProgram.set(r.program_id, p?.brand_key ?? null);
+    if (p?.name) nameByProgram.set(r.program_id, p.name);
+  }
 
   const sessions: SessionRow[] = [];
 
@@ -185,12 +189,11 @@ async function accountViewUncached(familyId: number | null, days = 14): Promise<
     for (const s of ps ?? []) {
       if (s.postponed) continue;
       const b = s.bookings as unknown as { title: string; facility_id: number } | null;
-      const { data: prog } = await db.from('programs').select('name').eq('id', s.program_id).maybeSingle();
       sessions.push({
         bookingId: s.booking_id ?? s.id,
         memberId: memberByProgram.get(s.program_id) ?? null,
         startsAt: s.starts_at, endsAt: s.ends_at,
-        title: prog?.name ?? b?.title ?? 'Session',
+        title: nameByProgram.get(s.program_id) ?? b?.title ?? 'Session',
         facility: b ? facName.get(b.facility_id) ?? null : null,
         brandKey: brandByProgram.get(s.program_id) ?? null,
         isGame: false,
@@ -267,7 +270,7 @@ async function accountViewUncached(familyId: number | null, days = 14): Promise<
   if (balance.nextDueCents > 0 && balance.nextDueDate) {
     attention.push({
       kind: 'payment', memberId: null,
-      title: `Payment due ${new Date(`${balance.nextDueDate}T12:00:00Z`).toLocaleDateString('en-CA', { month: 'short', day: 'numeric' })}`,
+      title: `Payment due ${fmtDateOnly(balance.nextDueDate, { year: false })}`,
       detail: `${formatCAD(balance.nextDueCents)} on your payment plan`,
       cta: 'Pay now', href: '/account/pay', urgent: true,
     });
@@ -285,10 +288,9 @@ async function accountViewUncached(familyId: number | null, days = 14): Promise<
   // Only registrations THIS household placed need its signature — a shared
   // child's programs paid by the other household are theirs to sign for.
   const { isProgramWaiverSatisfied } = await import('@/lib/waivers');
-  let waiversSigned = true;
-  for (const pid of [...new Set((regRows ?? []).filter((r) => r.family_id === familyId).map((r) => r.program_id))]) {
-    if (!(await isProgramWaiverSatisfied(pid, familyId))) { waiversSigned = false; break; }
-  }
+  const ownProgramIds = [...new Set((regRows ?? []).filter((r) => r.family_id === familyId).map((r) => r.program_id))];
+  const waiverStates = await Promise.all(ownProgramIds.map((pid) => isProgramWaiverSatisfied(pid, familyId)));
+  const waiversSigned = waiverStates.every(Boolean);
   if (!waiversSigned) {
     attention.push({
       kind: 'waiver', memberId: null, title: 'Waiver needs signing',

@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { PageHeader } from '@/components/ui';
 import { BRANDS } from '@ai/foundation';
 import { supabaseAdmin } from '@ai/foundation/supabase';
 import { listSeasons } from '@/lib/seasons/seasons';
@@ -23,11 +24,7 @@ export default async function CompetitivePage() {
 
   return (
     <main className="mx-auto flex min-h-screen max-w-4xl flex-col gap-8 px-6 py-16">
-      <header className="flex flex-col gap-2 border-b border-hairline pb-6">
-        <p className="label text-[11px]">Admin · Competitive Play</p>
-        <h1 className="text-5xl">Competition<span className="text-accent">.</span></h1>
-        <p className="text-body">Divisions, team builder, schedule builder, score entry, standings.</p>
-      </header>
+      <PageHeader kicker="Admin · Competitive Play" title="Competition" lede="Divisions, team builder, schedule builder, score entry, standings." />
 
       <section className="card flex flex-col gap-3 p-6">
         <h2 className="text-2xl">New division</h2>

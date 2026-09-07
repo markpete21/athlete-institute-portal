@@ -63,7 +63,7 @@ export async function registerTeam(input: {
 
   // Roster rows (team_members) - players uploaded, not individually registered.
   if (input.roster.length) {
-    const { error: rErr } = await db.from('team_members').insert(input.roster.map(() => ({ division_id: input.divisionId, team_id: team.id, locked: true })));
+    const { error: rErr } = await db.from('team_members').insert(input.roster.map((r) => ({ division_id: input.divisionId, team_id: team.id, locked: true, display_first: r.firstName.trim() || null, display_last: r.lastName.trim() || null, jersey_size: r.jerseySize ?? null, skill: r.skill ?? null })));
     if (rErr) throw new Error(`roster upload failed: ${rErr.message}`);
   }
 

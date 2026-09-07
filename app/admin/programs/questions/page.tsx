@@ -1,4 +1,5 @@
 import { listProgramTypes } from '@/lib/programs/programs';
+import { PageHeader } from '@/components/ui';
 import { getMarketingSourceOptions, listQuestions } from '@/lib/programs/questions';
 import { createQuestionAction, saveMarketingSourcesAction, updateQuestionAction } from './actions';
 
@@ -13,11 +14,7 @@ export default async function QuestionsPage() {
 
   return (
     <main className="mx-auto flex min-h-screen max-w-3xl flex-col gap-8 px-6 py-16">
-      <header className="flex flex-col gap-2 border-b border-hairline pb-6">
-        <p className="label text-[11px]">Admin · Programs</p>
-        <h1 className="text-5xl">Questions<span className="text-accent">.</span></h1>
-        <p className="text-body">A reusable library. Mark a question a per-type default and it auto-attaches to new programs of that type.</p>
-      </header>
+      <PageHeader kicker="Admin · Programs" title="Questions" lede="A reusable library. Mark a question a per-type default and it auto-attaches to new programs of that type." />
 
       <section className="card flex flex-col gap-3 p-6">
         <h2 className="text-2xl">“Where did you hear about us?”</h2>

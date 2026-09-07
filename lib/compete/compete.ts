@@ -281,7 +281,7 @@ async function divisionDetailUncached(divisionId: number): Promise<{
   const showFullNames = !!div.show_full_names;
   const { data: members } = await db
     .from('team_members')
-    .select('id, team_id, teams(name), registrations(family_members(first_name, last_name, hide_from_public_rosters))')
+    .select('id, team_id, display_first, display_last, teams(name), registrations(family_members(first_name, last_name, hide_from_public_rosters))')
     .eq('division_id', divisionId);
   const rosters: RosterEntry[] = (members ?? []).map((m) => {
     const team = m.teams as unknown as { name: string } | null;
@@ -290,7 +290,9 @@ async function divisionDetailUncached(divisionId: number): Promise<{
       memberId: m.id,
       teamId: m.team_id,
       teamName: team?.name ?? 'Unassigned',
-      displayName: displayName(fm?.first_name ?? null, fm?.last_name ?? null, {
+      // Registered athletes come through the family record; uploaded
+      // tournament rosters carry their own names. Same masking either way.
+      displayName: displayName(fm?.first_name ?? m.display_first ?? null, fm?.last_name ?? m.display_last ?? null, {
         showFullNames,
         hidden: !!fm?.hide_from_public_rosters,
       }),
@@ -341,7 +343,7 @@ async function memberNames(divisionId: number, showFullNames: boolean) {
   const db = supabaseAdmin();
   const { data: members } = await db
     .from('team_members')
-    .select('id, team_id, teams(name), registrations(family_members(first_name, last_name, hide_from_public_rosters))')
+    .select('id, team_id, display_first, display_last, teams(name), registrations(family_members(first_name, last_name, hide_from_public_rosters))')
     .eq('division_id', divisionId);
   const map = new Map<number, { name: string; teamId: number | null; teamName: string; hidden: boolean }>();
   for (const m of members ?? []) {
@@ -349,7 +351,7 @@ async function memberNames(divisionId: number, showFullNames: boolean) {
     const fm = (m.registrations as unknown as { family_members: { first_name: string; last_name: string; hide_from_public_rosters: boolean } | null } | null)?.family_members ?? null;
     const hidden = !!fm?.hide_from_public_rosters;
     map.set(m.id, {
-      name: displayName(fm?.first_name ?? null, fm?.last_name ?? null, { showFullNames, hidden }),
+      name: displayName(fm?.first_name ?? m.display_first ?? null, fm?.last_name ?? m.display_last ?? null, { showFullNames, hidden }),
       teamId: m.team_id,
       teamName: team?.name ?? 'Unassigned',
       hidden,
