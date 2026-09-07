@@ -15,7 +15,8 @@ const csp = [
   "worker-src 'self' blob:",
   "frame-ancestors 'none'",
   "base-uri 'self'",
-  "form-action 'self'",
+  // /account/pay answers a form POST with a redirect to Stripe Checkout.
+  "form-action 'self' https://checkout.stripe.com",
 ].join('; ');
 
 const securityHeaders = [

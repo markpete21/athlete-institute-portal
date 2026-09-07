@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { formatCAD } from '@ai/foundation';
-import { supabaseAdmin } from '@ai/foundation/supabase';
+import { searchTerm, supabaseAdmin } from '@ai/foundation/supabase';
 import { listOrganizations } from '@/lib/booking-config';
 import { getDefaultCreditCapCents } from '@/lib/credits';
 import { setDefaultCreditCapAction } from './[id]/actions';
@@ -34,7 +34,8 @@ export default async function AccountsPage({
     .order('last_name', { nullsFirst: false })
     .order('id')
     .range((page - 1) * PAGE_SIZE, page * PAGE_SIZE - 1);
-  if (q) query = query.or(`first_name.ilike.%${q}%,last_name.ilike.%${q}%,email.ilike.%${q}%`);
+  const term = searchTerm(q);
+  if (term) query = query.or(`first_name.ilike.%${term}%,last_name.ilike.%${term}%,email.ilike.%${term}%`);
   if (typeFilter) query = query.eq('user_type', typeFilter);
   if (statusFilter === 'unclaimed') query = query.not('claim_token', 'is', null).is('claimed_at', null);
   else if (statusFilter) query = query.eq('status', statusFilter);

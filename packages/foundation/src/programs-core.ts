@@ -53,6 +53,25 @@ export function deriveStanding(
   return history.some((h) => h.program_id === programId) ? 'returning_athlete' : 'returning_member';
 }
 
+/**
+ * A program row is one season's instance, so "returning athlete" has to be
+ * judged on the program's SERIES, not its id: the definition group when the
+ * program was defined once and instanced per location/season, otherwise the
+ * type + sport pair ("U13 basketball league" last fall is the same series
+ * this fall). Keys are opaque strings so callers never compare ids.
+ */
+export function programSeriesKey(p: { id: number; definition_id?: number | null; program_type_id?: number | null; sport_tag?: string | null }): string {
+  if (p.definition_id) return `def:${p.definition_id}`;
+  if (p.program_type_id && p.sport_tag) return `type:${p.program_type_id}:${p.sport_tag.trim().toLowerCase()}`;
+  return `program:${p.id}`;
+}
+
+/** Standing from series keys: same series before → returning athlete; anything before → returning member. */
+export function deriveStandingBySeries(historySeries: string[], targetSeries: string): ParticipantStanding {
+  if (historySeries.length === 0) return 'brand_new';
+  return historySeries.includes(targetSeries) ? 'returning_athlete' : 'returning_member';
+}
+
 /** Seed program types: key, label, default category + proration. Staff can add/edit. */
 export interface ProgramTypeSeed {
   key: string;

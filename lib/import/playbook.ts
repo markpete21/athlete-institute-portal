@@ -1,6 +1,6 @@
 import 'server-only';
 import { randomUUID } from 'node:crypto';
-import { audit, parseCsv } from '@ai/foundation';
+import { audit, parseCsv, isAdult, torontoToday } from '@ai/foundation';
 import { notify } from '@ai/foundation/notify';
 import { supabaseAdmin } from '@ai/foundation/supabase';
 
@@ -222,8 +222,11 @@ export async function commitImportJob(jobId: number, actorClerkId: string) {
   }
 
   for (const [, members] of households) {
-    // HoH = first adult-looking member (has email), else first member.
-    const hoh = members.find((m) => m.email) ?? members[0];
+    // HoH = an ADULT with an email, else any adult, else the first member.
+    // (A child with the family email must never become head of household.)
+    const today = torontoToday();
+    const adultRow = (m: typeof members[number]) => !m.dob || isAdult(m.dob, today);
+    const hoh = members.find((m) => m.email && adultRow(m)) ?? members.find(adultRow) ?? members[0];
     const famName = `${hoh.last_name ?? 'Imported'} Household`;
     const { data: fam, error: fErr } = await db
       .from('families').insert({ name: famName }).select('id').single();
@@ -267,7 +270,8 @@ export async function commitImportJob(jobId: number, actorClerkId: string) {
         last_name: m.last_name ?? '—',
         dob: m.dob,
         email: m.email,
-        member_role: isHoh ? 'hoh' : m.dob ? 'dependent' : 'adult',
+        // Role from age, not from whether a DOB happens to be on file.
+        member_role: isHoh ? 'hoh' : m.dob && !isAdult(m.dob, today) ? 'dependent' : 'adult',
       });
       if (mErr) throw new Error(`member create failed (row ${m.row_num}): ${mErr.message}`);
       membersMade++;

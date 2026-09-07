@@ -22,8 +22,18 @@ export async function qboStatus(): Promise<QboStatus> {
   return { connected: !!data?.access_token, realmId: data?.realm_id ?? null, lastSyncAt: data?.last_sync_at ?? null };
 }
 
-/** The Intuit consent URL to start OAuth (staff visits this). */
-export function qboAuthUrl(): string | null {
+/** Is the OAuth client configured at all (drives the Connect button)? */
+export function qboConfigured(): boolean {
+  return !!(process.env.QBO_CLIENT_ID && process.env.QBO_CLIENT_SECRET && process.env.QBO_REDIRECT_URI);
+}
+
+/**
+ * The Intuit consent URL to start OAuth. `state` is a per-attempt random
+ * value the /api/qbo/connect route also parks in an httpOnly cookie; the
+ * callback refuses a mismatch (CSRF). Staff never link to this directly —
+ * they hit /api/qbo/connect.
+ */
+export function qboAuthUrl(state: string): string | null {
   const clientId = process.env.QBO_CLIENT_ID;
   const redirect = process.env.QBO_REDIRECT_URI;
   if (!clientId || !redirect) return null;
@@ -32,7 +42,7 @@ export function qboAuthUrl(): string | null {
     response_type: 'code',
     scope: 'com.intuit.quickbooks.accounting',
     redirect_uri: redirect,
-    state: 'qbo-connect',
+    state,
   });
   return `https://appcenter.intuit.com/connect/oauth2?${params}`;
 }

@@ -2,7 +2,8 @@ import 'server-only';
 import { randomBytes } from 'node:crypto';
 import {
   audit,
-  deriveStanding,
+  deriveStandingBySeries,
+  programSeriesKey,
   type ParticipantStanding,
   type ProgramCategory,
   type ProrationMethod,
@@ -244,11 +245,26 @@ export async function generateSessions(input: {
  * so Stage 1 can prove it.
  */
 export async function deriveStandingFor(familyMemberId: number, programId: number): Promise<ParticipantStanding> {
-  const { data, error } = await supabaseAdmin()
-    .from('registrations')
-    .select('program_id')
-    .eq('family_member_id', familyMemberId)
-    .in('status', ['active', 'withdrawn']); // withdrawn still counts as history
+  const db = supabaseAdmin();
+  const [{ data, error }, { data: target, error: tErr }] = await Promise.all([
+    db.from('registrations')
+      .select('program_id, programs(id, definition_id, program_type_id, sport_tag)')
+      .eq('family_member_id', familyMemberId)
+      .neq('program_id', programId) // this program's own prior row is handled by the series key
+      .in('status', ['active', 'withdrawn']), // withdrawn still counts as history
+    db.from('programs').select('id, definition_id, program_type_id, sport_tag').eq('id', programId).maybeSingle(),
+  ]);
   if (error) throw new Error(error.message);
-  return deriveStanding((data ?? []) as Array<{ program_id: number }>, programId);
+  if (tErr) throw new Error(tErr.message);
+  type Series = { id: number; definition_id: number | null; program_type_id: number | null; sport_tag: string | null };
+  const history = (data ?? []).map((r) => {
+    const p = r.programs as unknown as Series | null;
+    return programSeriesKey(p ?? { id: r.program_id });
+  });
+  // A prior registration in THIS program (a re-registration) is the same series by definition.
+  const { count: sameProgram } = await db.from('registrations').select('id', { count: 'exact', head: true })
+    .eq('family_member_id', familyMemberId).eq('program_id', programId).in('status', ['active', 'withdrawn']);
+  const targetKey = programSeriesKey(target ?? { id: programId });
+  if ((sameProgram ?? 0) > 0) history.push(targetKey);
+  return deriveStandingBySeries(history, targetKey);
 }

@@ -97,7 +97,9 @@ export default clerkMiddleware(async (auth, req) => {
 export const config = {
   // Everything except Next internals and static files; always run for API.
   matcher: [
-    '/((?!_next|[^?]*\\.(?:html?|css|js(?!on)|jpe?g|webp|png|gif|svg|ttf|woff2?|ico|webmanifest)).*)',
+    // Anchored: only a path that ENDS in a static extension is exempt, so
+    // /admin/accounts/5.css or /play/p/abc.png cannot bypass auth + rewrite.
+    '/((?!_next|.*\\.(?:html?|css|js(?!on)|jpe?g|webp|png|gif|svg|ttf|woff2?|ico|webmanifest)$).*)',
     '/(api)(.*)',
   ],
 };

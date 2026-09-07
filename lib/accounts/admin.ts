@@ -1,6 +1,6 @@
 import 'server-only';
 import { torontoToday } from '@ai/foundation';
-import { supabaseAdmin } from '@ai/foundation/supabase';
+import { searchTerm, supabaseAdmin } from '@ai/foundation/supabase';
 import { ensureSeasonCredit, getDefaultCreditCapCents, type StaffCreditState } from '@/lib/credits';
 import { loadFamily, type Family } from '@/lib/family';
 import type { Profile } from '@/lib/profile';
@@ -144,7 +144,7 @@ export async function searchAccounts(q: string, excludeProfileId?: number, limit
   let query = db
     .from('profiles')
     .select('id, first_name, last_name, email, user_type, status')
-    .or(`first_name.ilike.%${q}%,last_name.ilike.%${q}%,email.ilike.%${q}%`)
+    .or(`first_name.ilike.%${searchTerm(q)}%,last_name.ilike.%${searchTerm(q)}%,email.ilike.%${searchTerm(q)}%`)
     .neq('status', 'archived')
     .limit(limit);
   if (excludeProfileId) query = query.neq('id', excludeProfileId);

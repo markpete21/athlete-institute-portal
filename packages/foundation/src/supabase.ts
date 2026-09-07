@@ -88,3 +88,17 @@ export function rows<T>(result: PostgrestLike<T[] | null>, ctx: string): T[] {
   if (result.error) throw new DbError(ctx, result.error);
   return result.data ?? [];
 }
+
+/**
+ * Sanitise a free-text search term for use inside a PostgREST `.or()` filter
+ * string (`first_name.ilike.%TERM%,…`). Commas, parentheses and dots are
+ * filter grammar there, so they (and `like` wildcards) are stripped rather
+ * than escaped. Returns '' when nothing searchable remains.
+ */
+export function searchTerm(raw: string | null | undefined, max = 60): string {
+  return (raw ?? '')
+    .replace(/[,()%_*\\."']/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .slice(0, max);
+}

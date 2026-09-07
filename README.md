@@ -620,6 +620,14 @@ One Vercel project serves both subdomains (middleware routes by host).
    `https://play.athleteinstitute.ca/api/webhooks/stripe` (events:
    payment_intent.*, invoice.*, setup_intent.*); paste the signing secret as
    `STRIPE_WEBHOOK_SECRET` and redeploy.
+6b. **Clerk webhook** — Clerk dashboard → Webhooks → endpoint
+   `https://play.athleteinstitute.ca/api/webhooks/clerk` (events:
+   `user.updated`, `user.deleted`); paste the signing secret as
+   `CLERK_WEBHOOK_SECRET`. Deleted Clerk users are archived and lose roles;
+   email/name changes sync without waiting for a sign-in.
+6c. **QuickBooks** (optional) — Intuit app redirect URI
+   `https://admin.athleteinstitute.ca/api/qbo/callback`; staff connect from
+   Admin → Reports ("Connect QBO").
 7. **Post-deploy checks** — `/api/dev/*` verify routes 404 in production (by
    design); confirm sign-in on admin., the public catalog on play., and one
    cron run in the Vercel cron logs the next morning.

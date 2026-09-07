@@ -163,14 +163,17 @@ export async function drainCampaign(campaignId: number, actorClerkId: string, bu
 
   while (Date.now() - startedAt < budgetMs) {
     const batch = rows(
-      await db.from('comms_recipients').select('id, email, variant, profiles(first_name)').eq('campaign_id', campaignId).eq('status', 'queued').order('id').limit(DRAIN_BATCH),
+      await db.from('comms_recipients').select('id, email, variant, profiles(first_name, phone)').eq('campaign_id', campaignId).eq('status', 'queued').order('id').limit(DRAIN_BATCH),
       'campaign.batch',
     );
     if (batch.length === 0) break;
     for (const r of batch) {
-      const firstName = (r.profiles as unknown as { first_name: string | null } | null)?.first_name ?? null;
-      const { subject, body, bodyIsHtml } = ctx.render(r.variant as 'A' | 'B' | null, firstName);
-      const res = await notify({ to: { email: r.email }, channels: ctx.channels, template: 'generic', data: { heading: subject, body, bodyIsHtml } });
+      const prof = r.profiles as unknown as { first_name: string | null; phone: string | null } | null;
+      const { subject, body, bodyIsHtml } = ctx.render(r.variant as 'A' | 'B' | null, prof?.first_name ?? null);
+      // Marketing campaigns are email; announcements may also go by SMS, which
+      // needs the recipient's phone (push subscriptions are per device and are
+      // not resolved here).
+      const res = await notify({ to: { email: r.email, phone: prof?.phone ?? null }, channels: ctx.channels, template: 'generic', data: { heading: subject, body, bodyIsHtml } });
       const email = res.results.find((x) => x.channel === 'email');
       const sent = res.results.some((x) => x.status === 'sent');
       const allSkipped = res.results.every((x) => x.status === 'skipped');

@@ -90,6 +90,19 @@ export const getOrCreateProfile = cache(async (): Promise<Profile> => {
     }
   }
 
+  // Read path stays a read when nothing drifted: the upsert (a write on every
+  // request, and one that overwrote staff name corrections) only runs when
+  // the row is new or Clerk's identity fields differ from the mirror.
+  const drifted = !known
+    || (known.email ?? null) !== (email ?? null)
+    || (known.first_name ?? null) !== (user.firstName ?? null)
+    || (known.last_name ?? null) !== (user.lastName ?? null);
+  if (known && !drifted) {
+    const { claim_token: _claim, ...profile } = known as Profile & { claim_token?: string | null };
+    void _claim;
+    return profile as Profile;
+  }
+
   const { data, error } = await db
     .from('profiles')
     .upsert(

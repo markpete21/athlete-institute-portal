@@ -7,7 +7,7 @@ import {
   outstandingBalances, paymentPlanHealth, revenueSummary, topProgramsByRegistration,
   topProgramsByRevenue,
 } from '@/lib/reports/reports';
-import { qboAuthUrl, qboStatus } from '@/lib/quickbooks/qbo';
+import { qboConfigured, qboStatus } from '@/lib/quickbooks/qbo';
 import type { Period } from '@ai/foundation';
 
 export const dynamic = 'force-dynamic';
@@ -136,7 +136,7 @@ function FinancialSuite({ data }: { data: Awaited<ReturnType<typeof loadFinancia
       </div>
       <div className="card flex items-center justify-between p-4">
         <div><p className="field-label">QuickBooks</p><p className="text-sm text-body">{qbo.connected ? `Connected (realm ${qbo.realmId}) · last sync ${qbo.lastSyncAt ?? 'never'}` : 'Not connected — expense pull + margin use the cached table until OAuth is set up.'}</p></div>
-        {!qbo.connected && qboAuthUrlSafe() && <a href={qboAuthUrlSafe()!} className="btn-gold btn-sm">Connect QBO</a>}
+        {!qbo.connected && qboConfigured() && <a href="/api/qbo/connect" className="btn-gold btn-sm">Connect QBO</a>}
       </div>
     </section>
   );
@@ -146,4 +146,3 @@ function FinancialSuite({ data }: { data: Awaited<ReturnType<typeof loadFinancia
 async function loadFinancials() {
   return Promise.all([outstandingBalances(), collectedVsOutstanding(), paymentPlanHealth(), discountsBreakdown(), collectionsForecast(), revenueSummary('location'), qboStatus()]);
 }
-function qboAuthUrlSafe(): string | null { try { return qboAuthUrl(); } catch { return null; } }

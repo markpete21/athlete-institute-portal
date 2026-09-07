@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { biWeeklyPeriod, formatCAD, shiftPeriod, torontoDate, torontoToday, type PayPeriod, fmtDateOnly } from '@ai/foundation';
-import { supabaseAdmin } from '@ai/foundation/supabase';
+import { searchTerm, supabaseAdmin } from '@ai/foundation/supabase';
 import { StaffListTable, type StaffListRow, type StaffPeriodSummary } from '@/components/admin/StaffListTable';
 import { staffCertStatuses, staffRatings, staffStats, upcomingUnavailability } from '@/lib/staff/staff';
 import { createStaffAction } from './actions';
@@ -43,7 +43,8 @@ export default async function StaffListPage({ searchParams }: { searchParams: { 
   }
 
   let query = db.from('staff').select('id, first_name, last_name, email, phone, status, profile_id, photo_url, employment').order('last_name');
-  if (q) query = query.or(`first_name.ilike.%${q}%,last_name.ilike.%${q}%,email.ilike.%${q}%`);
+  const term = searchTerm(q);
+  if (term) query = query.or(`first_name.ilike.%${term}%,last_name.ilike.%${term}%,email.ilike.%${term}%`);
   if (statusFilter) query = query.eq('status', statusFilter);
   if (idFilter !== null) query = query.in('id', idFilter.length ? idFilter : [-1]);
   const soon = new Date(Date.now() + 30 * 86400_000).toISOString().slice(0, 10);

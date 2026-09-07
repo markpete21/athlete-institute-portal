@@ -126,6 +126,16 @@ export async function runAssist(
     return { reply: `Assist is very busy right now - try again in a little while, or reach us directly: text/call ${cfg.phone} or email ${cfg.email}.`, toolCalls: 0, handedOff: true };
   }
 
+  // Reserve the rate-limit slot NOW (the counts above read assist_logs): a
+  // burst of parallel requests each saw the same count and all passed when the
+  // row was only written after the model answered.
+  const lastUser = messages.filter((m) => m.role === 'user').at(-1)?.content ?? '';
+  const { data: logRow } = await db
+    .from('assist_logs')
+    .insert({ surface, rate_key: rateKey, question: lastUser.slice(0, 500), answered: false, handed_off: false, tool_calls: 0 })
+    .select('id')
+    .maybeSingle();
+
   const tools = TOOLS_BY_SURFACE[surface];
   const toolDefs = tools.map((t) => ({ name: t.name, description: t.description, input_schema: t.input_schema }));
   const call = opts.callModel ?? callAnthropic;
@@ -167,7 +177,6 @@ export async function runAssist(
   }
 
   const handedOff = reply.includes(cfg.phone) || reply.includes(cfg.email);
-  const lastUser = messages.filter((m) => m.role === 'user').at(-1)?.content ?? '';
-  await db.from('assist_logs').insert({ surface, rate_key: rateKey, question: lastUser.slice(0, 500), answered: !!reply, handed_off: handedOff, tool_calls: toolCalls });
+  if (logRow?.id) await db.from('assist_logs').update({ answered: !!reply, handed_off: handedOff, tool_calls: toolCalls }).eq('id', logRow.id);
   return { reply, toolCalls, handedOff, navigate: navigateRoute };
 }
