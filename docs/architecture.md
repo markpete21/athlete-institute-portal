@@ -138,6 +138,14 @@ first paid installment (or at placement for a fully-covered order).
 - Brand accent is `text-accent` / `border-accent` (Tailwind → `var(--accent)`),
   not an inline style. Icons are a typed union (`IconName`).
 
+## Tests
+
+Pure logic lives in `@ai/foundation` and is covered by `test:*` suites (`npm
+test` runs them all; CI runs lint, typecheck, tests and the production build).
+New pure modules get a sibling `*.test.mjs` and a `test:<name>` script; e.g.
+`rentals-wizard.ts` (the booking wizard's preview arithmetic) is unit-tested so
+the client preview and server billing cannot drift.
+
 ## Migrations
 
 `supabase/migrations/NNNN_*.sql`, applied with

@@ -1,7 +1,23 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import { formatCAD } from '@ai/foundation';
+import {
+  NO_REPEAT,
+  blockValid,
+  defaultBalanceDue,
+  defaultDepositDue,
+  formatCAD,
+  lineAddonTotalCents,
+  lineOccurrences,
+  lineRateCents,
+  lineTotalCents,
+  lineValid,
+  quoteTotals,
+  type BlockDraft,
+  type LineDraft,
+  type WizardAddon,
+  type WizardFacility,
+} from '@ai/foundation';
 import Link from 'next/link';
 import { Modal } from '@/components/ui/Modal';
 import { DatesPicker } from './DatesPicker';
@@ -21,69 +37,12 @@ const invalid = (bad: boolean): React.CSSProperties | undefined =>
  *   5 Review       - summary, then submit
  */
 
-export interface WizardFacility {
-  id: number;
-  name: string;
-  depth: number;
-  hourlyCents: number | null;
-  fullDayCents: number | null;
-}
-
-interface LineDraft {
-  facilityId: number;
-  date: string;
-  start: string;
-  end: string;
-  rateMode: 'hourly' | 'full_day';
-  rateOverride: string; // dollars, '' = use card rate
-  repeatMode: 'none' | 'weekly' | 'dates';
-  repeatUntil: string;      // weekly: last date (inclusive)
-  repeatDates: string[];    // dates: extra specific dates
-  /** Add-ons for THIS block: addonId -> qty (applied to every occurrence). */
-  addons: Record<number, number>;
-}
-
-const NO_REPEAT = { repeatMode: 'none' as const, repeatUntil: '', repeatDates: [] as string[], addons: {} as Record<number, number> };
-
-/** How many bookings a line will create (weekly = same weekday, inclusive). */
-function lineOccurrences(l: LineDraft): number {
-  if (l.repeatMode === 'weekly' && /^\d{4}-\d{2}-\d{2}$/.test(l.repeatUntil) && l.repeatUntil > l.date) {
-    const days = (Date.parse(`${l.repeatUntil}T12:00:00Z`) - Date.parse(`${l.date}T12:00:00Z`)) / 86400_000;
-    return Math.floor(days / 7) + 1;
-  }
-  if (l.repeatMode === 'dates') return 1 + l.repeatDates.length;
-  return 1;
-}
-
-interface BlockDraft {
-  facilityId: number;
-  date: string;
-  start: string;
-  end: string;
-}
+// WizardFacility / LineDraft / BlockDraft and the preview arithmetic live in
+// @ai/foundation/rentals-wizard (pure, unit-tested) so the client preview and
+// the server's billing can never drift.
+export type { WizardFacility } from '@ai/foundation';
 
 const cad = (cents: number) => formatCAD(cents);
-
-// Business-day walking (weekends skipped) for the payment-schedule defaults.
-const shiftBusinessDays = (iso: string, n: number): string => {
-  const d = new Date(`${iso}T12:00:00Z`);
-  const step = n < 0 ? -1 : 1;
-  let left = Math.abs(n);
-  while (left > 0) {
-    d.setUTCDate(d.getUTCDate() + step);
-    const wd = d.getUTCDay();
-    if (wd !== 0 && wd !== 6) left -= 1;
-  }
-  return d.toISOString().slice(0, 10);
-};
-const todayISO = () => new Date().toISOString().slice(0, 10);
-const HST = 0.13;
-
-function hoursBetween(start: string, end: string): number {
-  const [sh, sm] = start.split(':').map(Number);
-  const [eh, em] = end.split(':').map(Number);
-  return Math.max(0, (eh * 60 + em - sh * 60 - sm) / 60);
-}
 
 export function Wizard({
   facilities,
@@ -100,7 +59,7 @@ export function Wizard({
   facilities: WizardFacility[];
   businessUnits: Array<{ id: number; name: string }>;
   organizations: Array<{ id: number; name: string }>;
-  addons: Array<{ id: number; name: string; pricingMode: 'flat' | 'per_unit' | 'per_hour'; priceCents: number }>;
+  addons: WizardAddon[];
   /** Admin-managed type chips (Rentals > Settings). */
   bookingTypes: Array<{ name: string; appliesTo: 'internal' | 'rental' | 'both' }>;
   /** book = concrete/confirmed; quote = tentative hold (rental only). */
@@ -148,7 +107,7 @@ export function Wizard({
   const [depositPct, setDepositPct] = useState('25');
   // Payment schedule defaults: deposit 5 business days out; balance 10
   // business days before the earliest booked date (never in the past).
-  const [depositDue, setDepositDue] = useState(() => shiftBusinessDays(todayISO(), 5));
+  const [depositDue, setDepositDue] = useState(() => defaultDepositDue());
   const [balanceDue, setBalanceDue] = useState('');
   const [balanceTouched, setBalanceTouched] = useState(false);
   const [sendInvoice, setSendInvoice] = useState(true);
@@ -163,63 +122,21 @@ export function Wizard({
   const [error, setError] = useState<string | null>(null);
 
   const zeroLinesOk = intent === 'quote' && kind === 'rental';
-  const linesValid = (lines.length > 0 || zeroLinesOk) && lines.every(
-    (l) =>
-      l.facilityId && l.date && /^\d{2}:\d{2}$/.test(l.start) && /^\d{2}:\d{2}$/.test(l.end) && l.end > l.start
-      && (l.repeatMode !== 'weekly' || (/^\d{4}-\d{2}-\d{2}$/.test(l.repeatUntil) && l.repeatUntil > l.date))
-      && (l.repeatMode !== 'dates' || l.repeatDates.length > 0),
-  );
-  const blocksValid = blocks.every(
-    (b) => b.facilityId && b.date && /^\d{2}:\d{2}$/.test(b.start) && /^\d{2}:\d{2}$/.test(b.end) && b.end > b.start,
-  );
+  const linesValid = (lines.length > 0 || zeroLinesOk) && lines.every(lineValid);
+  const blocksValid = blocks.every(blockValid);
   const whoValid = title.trim().length > 0 && bookingType.length > 0
     && (kind === 'internal' ? businessUnitId !== '' : true);
 
-  const lineRate = (l: LineDraft): number | null => {
-    if (l.rateOverride !== '') {
-      const v = Math.round(Number(l.rateOverride) * 100);
-      return Number.isFinite(v) ? v : null;
-    }
-    const f = facById.get(l.facilityId);
-    return l.rateMode === 'hourly' ? f?.hourlyCents ?? null : f?.fullDayCents ?? null;
-  };
-  const lineTotal = (l: LineDraft): number | null => {
-    const rate = lineRate(l);
-    if (rate == null) return null;
-    return l.rateMode === 'hourly' ? Math.round(rate * hoursBetween(l.start, l.end)) : rate;
-  };
-  // Mirror of the server's addonTotalCents: per_hour prices off the block's
-  // hours (qty ignored), per_unit multiplies, flat is flat.
-  const lineAddonTotal = (l: LineDraft): number =>
-    addons.reduce((sum, a) => {
-      const qty = l.addons[a.id] ?? 0;
-      if (qty <= 0) return sum;
-      if (a.pricingMode === 'flat') return sum + a.priceCents;
-      if (a.pricingMode === 'per_unit') return sum + a.priceCents * qty;
-      return sum + Math.round(a.priceCents * hoursBetween(l.start, l.end));
-    }, 0);
-  const feesTotal = kind === 'rental'
-    ? lines.reduce((sum, l) => sum + ((lineTotal(l) ?? 0) + lineAddonTotal(l)) * lineOccurrences(l), 0)
-      // Mirrors addonTotalCents on the server: a flat add-on is charged once.
-      + addons.reduce((sum, a) => {
-        const qty = addonQty[a.id] ?? 0;
-        if (qty <= 0) return sum;
-        return sum + (a.pricingMode === 'flat' ? a.priceCents : a.priceCents * qty);
-      }, 0)
-    : 0;
-  const missingRates = kind === 'rental' && lines.some((l) => lineRate(l) == null);
+  // Thin closures over the shared, unit-tested arithmetic.
+  const lineRate = (l: LineDraft): number | null => lineRateCents(l, facById.get(l.facilityId));
+  const lineTotal = (l: LineDraft): number | null => lineTotalCents(l, facById.get(l.facilityId));
+  const lineAddonTotal = (l: LineDraft): number => lineAddonTotalCents(l, addons);
+  const totals = quoteTotals({ kind, lines, facilities: facById, addons, addonQty, depositPct: Number(depositPct) });
+  const { feesCents: feesTotal, totalWithTaxCents: totalWithTax, depositCents, missingRates } = totals;
 
   const earliestDate = lines.map((l) => l.date).filter(Boolean).sort()[0] ?? null;
-  // Balance default: 10 business days before the first booking (never past);
-  // with no facility attached yet, 20 business days out as a placeholder.
-  const balanceDefault = (() => {
-    if (!earliestDate) return shiftBusinessDays(todayISO(), 20);
-    const d = shiftBusinessDays(earliestDate, -10);
-    return d < todayISO() ? todayISO() : d;
-  })();
+  const balanceDefault = defaultBalanceDue(earliestDate);
   const effBalanceDue = balanceTouched && balanceDue ? balanceDue : balanceDefault;
-  const totalWithTax = Math.round(feesTotal * (1 + HST));
-  const depositCents = Math.round((totalWithTax * (Number(depositPct) || 25)) / 100);
 
   const steps = kind === 'internal'
     ? ['When & where', 'Who & What', 'Extras', 'Review']

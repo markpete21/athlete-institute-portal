@@ -11,6 +11,7 @@
     "start": "next start",
     "lint": "next lint",
     "typecheck": "tsc --noEmit",
+    "test": "node scripts/run-tests.mjs",
     "test:pricing": "tsc packages/foundation/src/pricing.ts --module esnext --target es2022 --moduleResolution bundler --outDir packages/foundation/src/__compiled__ && node packages/foundation/src/pricing.test.mjs",
     "test:availability": "tsc packages/foundation/src/availability.ts --module esnext --target es2022 --moduleResolution bundler --outDir packages/foundation/src/__compiled__ && node scripts/fix-compiled-imports.mjs && node packages/foundation/src/availability.test.mjs",
     "test:recurrence": "tsc packages/foundation/src/recurrence.ts --module esnext --target es2022 --moduleResolution bundler --outDir packages/foundation/src/__compiled__ && node scripts/fix-compiled-imports.mjs && node packages/foundation/src/recurrence.test.mjs",
@@ -22,7 +23,8 @@
     "test:academy": "tsc packages/foundation/src/academy-core.ts packages/foundation/src/money.ts --module esnext --target es2022 --moduleResolution bundler --outDir packages/foundation/src/__compiled__ && node scripts/fix-compiled-imports.mjs && node packages/foundation/src/academy-core.test.mjs",
     "test:comms": "tsc packages/foundation/src/comms-core.ts --module esnext --target es2022 --moduleResolution bundler --outDir packages/foundation/src/__compiled__ && node scripts/fix-compiled-imports.mjs && node packages/foundation/src/comms-core.test.mjs",
     "test:reports": "tsc packages/foundation/src/reports-core.ts packages/foundation/src/money.ts --module esnext --target es2022 --moduleResolution bundler --outDir packages/foundation/src/__compiled__ && node scripts/fix-compiled-imports.mjs && node packages/foundation/src/reports-core.test.mjs",
-    "test:retention": "tsc packages/foundation/src/retention-core.ts --module esnext --target es2022 --moduleResolution bundler --outDir packages/foundation/src/__compiled__ && node scripts/fix-compiled-imports.mjs && node packages/foundation/src/retention-core.test.mjs"
+    "test:retention": "tsc packages/foundation/src/retention-core.ts --module esnext --target es2022 --moduleResolution bundler --outDir packages/foundation/src/__compiled__ && node scripts/fix-compiled-imports.mjs && node packages/foundation/src/retention-core.test.mjs",
+    "test:wizard": "tsc packages/foundation/src/rentals-wizard.ts --module esnext --target es2022 --moduleResolution bundler --outDir packages/foundation/src/__compiled__ && node scripts/fix-compiled-imports.mjs && node packages/foundation/src/rentals-wizard.test.mjs"
   },
   "dependencies": {
     "@ai/foundation": "file:packages/foundation",

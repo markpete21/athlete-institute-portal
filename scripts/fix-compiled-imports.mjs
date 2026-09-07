@@ -6,6 +6,8 @@ import { readdir, readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 
 const dir = 'packages/foundation/src/__compiled__';
+// Mark the compiled harness output as ESM so Node loads it without reparsing.
+await writeFile(path.join(dir, 'package.json'), '{"type":"module"}\n');
 for (const f of await readdir(dir)) {
   if (!f.endsWith('.js')) continue;
   const p = path.join(dir, f);

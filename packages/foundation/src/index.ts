@@ -25,6 +25,7 @@ export * from './availability';
 export * from './bookings-core';
 export * from './recurrence';
 export * from './rentals-core';
+export * from './rentals-wizard';
 export * from './programs-core';
 export * from './programs-refunds';
 export * from './gear';
