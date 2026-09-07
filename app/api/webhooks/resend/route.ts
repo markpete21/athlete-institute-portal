@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { Webhook } from 'svix';
+import { claimWebhookEvent, settleWebhookEvent } from '@/lib/api/webhooks';
 import { ingestResendEvent, type ResendEventType } from '@/lib/comms/stats';
 
 export const dynamic = 'force-dynamic';
@@ -41,14 +42,30 @@ export async function POST(req: NextRequest) {
   const known: ResendEventType[] = ['email.delivered', 'email.bounced', 'email.opened', 'email.clicked', 'email.complained', 'email.unsubscribed'];
   if (!type || !known.includes(type)) return NextResponse.json({ ok: true, ignored: type ?? 'unknown' });
 
+  // Svix redelivers on timeout; the message id is the idempotency key.
+  const claim = await claimWebhookEvent('resend', headers['svix-id'] || `${type}:${data.email_id}:${Date.now()}`, type);
+  if (!claim.fresh) return NextResponse.json({ ok: true, duplicate: true });
+
   const to = Array.isArray(data.to) ? (data.to[0] as string) : (data.to as string | undefined);
   const click = data.click as { link?: string } | undefined;
-  const matched = await ingestResendEvent({
-    type,
-    messageId: (data.email_id as string) ?? null,
-    email: to ?? null,
-    url: click?.link ?? null,
-  });
+  // Resend classifies bounces; only a permanent one is a reason to suppress
+  // the address for good. Transient (mailbox full, greylisting) stays live.
+  const bounce = data.bounce as { type?: string } | undefined;
+  const transientBounce = type === 'email.bounced' && /transient|soft/i.test(bounce?.type ?? '');
+  let matched = false;
+  try {
+    matched = await ingestResendEvent({
+      type,
+      messageId: (data.email_id as string) ?? null,
+      email: to ?? null,
+      url: click?.link ?? null,
+      transient: transientBounce,
+    });
+    await settleWebhookEvent(claim.id, []);
+  } catch (err) {
+    await settleWebhookEvent(claim.id, [err instanceof Error ? err.message : String(err)]);
+    return NextResponse.json({ error: 'ingest failed' }, { status: 500 });
+  }
 
   return NextResponse.json({ ok: true, matched });
 }

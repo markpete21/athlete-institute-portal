@@ -5,6 +5,7 @@ import { sendExecReport } from '@/lib/reports/exec';
 import { pullExpenses } from '@/lib/quickbooks/qbo';
 
 export const dynamic = 'force-dynamic';
+export const maxDuration = 300;
 
 /**
  * Reporting cron (Module 14): nightly QBO expense sync; Monday = week-in-review;

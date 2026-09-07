@@ -1,9 +1,10 @@
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@ai/foundation/supabase';
 import { cronRoute } from '@/lib/api/handlers';
-import { openCase, processDunning } from '@/lib/dunning/dunning';
+import { openCase, processDunning, retryInstallmentCharge } from '@/lib/dunning/dunning';
 
 export const dynamic = 'force-dynamic';
+export const maxDuration = 300;
 
 /**
  * Dunning cron (Module 18A), daily: open cases for any newly-failed program
@@ -15,6 +16,6 @@ export const GET = cronRoute(async () => {
   let opened = 0;
   for (const f of failed ?? []) if (await openCase(f.id)) opened += 1;
 
-  const result = await processDunning();
+  const result = await processDunning({ retryCharge: retryInstallmentCharge });
   return NextResponse.json({ ok: true, opened, ...result });
 });

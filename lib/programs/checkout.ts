@@ -382,6 +382,10 @@ export async function markProgramInstallmentPaid(installmentId: number, actorCle
   if (!flipped.length) return;
   await audit({ actorId: actorClerkId, action: 'program_installment.paid', target: `program_installment:${installmentId}` });
   await recalculateOwed(inst.order_id);
+  // A payment at any point closes the dunning case (Module 18) — otherwise the
+  // escalation ladder keeps emailing a family that has already paid.
+  const { markRecovered } = await import('@/lib/dunning/dunning');
+  await markRecovered(installmentId).catch((err) => console.error('[dunning] markRecovered failed:', err));
 }
 
 /** Record an installment failed (webhook) — dunning (M18) sweeps these up. */

@@ -56,7 +56,7 @@ export type ResendEventType = 'email.delivered' | 'email.bounced' | 'email.opene
  * campaign+email), advance its status, record link clicks, and auto-suppress
  * hard bounces / unsubscribes / complaints.
  */
-export async function ingestResendEvent(evt: { type: ResendEventType; messageId?: string | null; email?: string | null; campaignId?: number | null; url?: string | null }): Promise<boolean> {
+export async function ingestResendEvent(evt: { type: ResendEventType; messageId?: string | null; email?: string | null; campaignId?: number | null; url?: string | null; transient?: boolean }): Promise<boolean> {
   const db = supabaseAdmin();
   let recQuery = db.from('comms_recipients').select('id, campaign_id, email, opened_at, clicked_at');
   if (evt.messageId) recQuery = recQuery.eq('message_id', evt.messageId);
@@ -74,10 +74,11 @@ export async function ingestResendEvent(evt: { type: ResendEventType; messageId?
       patch.status = 'clicked'; if (!rec.clicked_at) patch.clicked_at = now; if (!rec.opened_at) patch.opened_at = now;
       if (evt.url) await db.from('comms_link_clicks').insert({ campaign_id: rec.campaign_id, recipient_id: rec.id, url: evt.url });
       break;
-    case 'email.bounced': patch.status = 'bounced'; await suppress(rec.email, 'hard_bounce'); break;
+    case 'email.bounced': patch.status = 'bounced'; if (!evt.transient) await suppress(rec.email, 'hard_bounce'); break;
     case 'email.complained': patch.status = 'unsubscribed'; await suppress(rec.email, 'complaint'); break;
     case 'email.unsubscribed': patch.status = 'unsubscribed'; await suppress(rec.email, 'unsubscribe'); break;
   }
-  await db.from('comms_recipients').update(patch).eq('id', rec.id);
+  const { error: uErr } = await db.from('comms_recipients').update(patch).eq('id', rec.id);
+  if (uErr) throw new Error(`recipient update failed: ${uErr.message}`);
   return true;
 }

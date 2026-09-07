@@ -1,6 +1,7 @@
 import 'server-only';
-import { DEFAULT_WEIGHTS, assessRisk, audit, seasonForDate, type RetentionSignals, type RiskAssessment, type RuleWeights } from '@ai/foundation';
+import { DEFAULT_WEIGHTS, assessRisk, audit, seasonForDate, torontoToday, type RetentionSignals, type RiskAssessment, type RuleWeights } from '@ai/foundation';
 import { supabaseAdmin } from '@ai/foundation/supabase';
+import { claimScheduledSend } from '@/lib/api/webhooks';
 import { fireTrigger } from '@/lib/comms/notifications';
 
 /**
@@ -196,6 +197,8 @@ export async function takeAction(flagId: number, kind: 'offer' | 'call' | 'disco
 export async function sendWeeklyDigest(staffEmail = process.env.OPERATIONS_EMAIL ?? null): Promise<{ sent: boolean; count: number }> {
   const { count } = await supabaseAdmin().from('retention_flags').select('id', { count: 'exact', head: true }).in('level', ['red', 'amber']);
   if (!staffEmail) return { sent: false, count: count ?? 0 };
+  // Once per day-of-send — a cron retry on the same Monday must not re-send.
+  if (!(await claimScheduledSend('retention.digest', torontoToday()))) return { sent: false, count: count ?? 0 };
   await fireTrigger('retention.weekly_digest', { email: staffEmail }, {
     count: count ?? 0,
     dashboard_url: `${process.env.NEXT_PUBLIC_ADMIN_URL ?? 'https://admin.athleteinstitute.ca'}/retention`,

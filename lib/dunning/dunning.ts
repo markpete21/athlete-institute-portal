@@ -66,6 +66,41 @@ export async function markRecovered(installmentId: number): Promise<void> {
   await audit({ actorId: 'system:dunning', action: 'dunning.recovered', target: `installment:${installmentId}` });
 }
 
+/**
+ * Step 1 of the ladder: re-run the charge on the Stripe rails with the same
+ * customer and method the failed attempt used (PAD mandate or vaulted card).
+ * True only when Stripe settles synchronously (cards); PAD returns
+ * `processing` and the webhook finishes the job later — that counts as a
+ * retry in flight, not a recovery, so the ladder pauses at `retried`.
+ */
+export async function retryInstallmentCharge(installmentId: number): Promise<boolean> {
+  const db = supabaseAdmin();
+  const { data: inst } = await db.from('program_installments').select('id, amount_cents, status, stripe_payment_intent, order_id').eq('id', installmentId).maybeSingle();
+  if (!inst || inst.status !== 'failed' || !inst.stripe_payment_intent) return false;
+  try {
+    const { charge, getStripe } = await import('@ai/foundation/stripe');
+    const prior = await getStripe().paymentIntents.retrieve(inst.stripe_payment_intent, { expand: ['payment_method'] });
+    const customer = typeof prior.customer === 'string' ? prior.customer : prior.customer?.id;
+    const pm = typeof prior.payment_method === 'string' ? null : prior.payment_method;
+    const methodType = pm?.type === 'acss_debit' ? 'acss_debit' : pm?.type === 'card' ? 'card' : null;
+    if (!customer || !methodType) return false;
+    const pi = await charge({
+      customerId: customer,
+      amountCents: inst.amount_cents,
+      methodType,
+      paymentMethodId: pm?.id,
+      description: 'Program payment retry',
+      metadata: { program_installment_ids: String(inst.id), retry_of: inst.stripe_payment_intent },
+    });
+    await db.from('program_installments').update({ stripe_payment_intent: pi.id, status: 'pending', failure_reason: null }).eq('id', inst.id);
+    await audit({ actorId: 'system:dunning', action: 'dunning.retried', target: `installment:${inst.id}`, meta: { pi: pi.id, status: pi.status } });
+    return pi.status === 'succeeded';
+  } catch (err) {
+    await audit({ actorId: 'system:dunning', action: 'dunning.retry-failed', target: `installment:${inst.id}`, meta: { error: err instanceof Error ? err.message : String(err) } });
+    return false;
+  }
+}
+
 async function familyContact(familyId: number | null): Promise<{ email: string | null; phone: string | null; name: string }> {
   if (!familyId) return { email: null, phone: null, name: 'Unknown family' };
   const db = supabaseAdmin();

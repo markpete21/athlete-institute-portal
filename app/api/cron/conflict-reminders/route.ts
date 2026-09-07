@@ -3,6 +3,7 @@ import { cronRoute } from '@/lib/api/handlers';
 import { processConflictReminders } from '@/lib/conflicts';
 
 export const dynamic = 'force-dynamic';
+export const maxDuration = 300;
 
 /**
  * Cron: sends due keep-both double-booking reminders (Module 2 Stage 3).

@@ -4,6 +4,7 @@ import { cronRoute } from '@/lib/api/handlers';
 import { recomputeAll, sendWeeklyDigest } from '@/lib/retention/retention';
 
 export const dynamic = 'force-dynamic';
+export const maxDuration = 300;
 
 /** Retention cron (Module 16): recompute flags daily; Monday = weekly digest. */
 export const GET = cronRoute(async () => {

@@ -16,6 +16,18 @@
 
 import { resolveBrand, type Brand } from './brands';
 
+/** Plain-text fallback for an HTML body (SMS/push/text part): strip tags, keep line breaks. */
+export function htmlToText(html: string): string {
+  return html
+    .replace(/<\s*(br|\/p|\/div|\/h[1-6]|\/li|\/tr)[^>]*>/gi, '\n')
+    .replace(/<[^>]+>/g, '')
+    .replace(/&nbsp;/g, ' ')
+    .replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&#39;/g, "'")
+    .replace(/[ \t]+\n/g, '\n')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
+}
+
 export function escapeHtml(s: string): string {
   return s
     .replace(/&/g, '&amp;')
@@ -54,7 +66,14 @@ export function renderEmailShell(
 
 /** Typed data per template key — later modules add entries here. */
 export interface NotifyTemplates {
-  generic: { heading: string; body: string; ctaLabel?: string; ctaUrl?: string };
+  generic: {
+    heading: string;
+    body: string;
+    ctaLabel?: string;
+    ctaUrl?: string;
+    /** `body` is already-rendered HTML (campaign builder, exec report) — embed it unescaped. */
+    bodyIsHtml?: boolean;
+  };
   'payment.reminder': { amountLabel: string; dueLabel: string; payUrl: string };
   'waitlist.opening': { programName: string; claimUrl: string; expiresLabel: string };
   'session.rescheduled': { programName: string; oldLabel: string; newLabel: string | null; detailsUrl: string };
@@ -80,10 +99,10 @@ const TEMPLATES: { [K in TemplateKey]: TemplateDef<K> } = {
   generic: {
     subject: (d) => d.heading,
     pushTitle: (d) => d.heading,
-    text: (d) => `${d.heading}\n\n${d.body}${d.ctaUrl ? `\n\n${d.ctaUrl}` : ''}`,
+    text: (d) => `${d.heading}\n\n${d.bodyIsHtml ? htmlToText(d.body) : d.body}${d.ctaUrl ? `\n\n${d.ctaUrl}` : ''}`,
     emailBody: (d) => ({
       heading: d.heading,
-      bodyHtml: escapeHtml(d.body).replace(/\n/g, '<br>'),
+      bodyHtml: d.bodyIsHtml ? d.body : escapeHtml(d.body).replace(/\n/g, '<br>'),
       ctaLabel: d.ctaLabel,
       ctaUrl: d.ctaUrl,
     }),

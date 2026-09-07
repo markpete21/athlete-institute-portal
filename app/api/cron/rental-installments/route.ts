@@ -3,6 +3,7 @@ import { cronRoute } from '@/lib/api/handlers';
 import { processDueInstallments } from '@/lib/rentals/payments';
 
 export const dynamic = 'force-dynamic';
+export const maxDuration = 300;
 
 /**
  * Cron: process due rental installments (PAD auto-charge or invoice+reminder)

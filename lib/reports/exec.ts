@@ -2,6 +2,7 @@ import 'server-only';
 import { formatCAD, monthInReviewWindow, weekInReviewWindow } from '@ai/foundation';
 import { notify } from '@ai/foundation/notify';
 import { supabaseAdmin } from '@ai/foundation/supabase';
+import { claimScheduledSend } from '@/lib/api/webhooks';
 import { capacityAlerts, outstandingBalances, topProgramsByRegistration, topProgramsByRevenue } from '@/lib/reports/reports';
 
 /**
@@ -74,13 +75,18 @@ export function renderExecHtml(d: ExecReportData): string {
 }
 
 /** Email the exec report to every configured recipient for this cadence. */
-export async function sendExecReport(kind: 'week' | 'month', asOfISO = new Date().toISOString()): Promise<{ recipients: number }> {
+export async function sendExecReport(kind: 'week' | 'month', asOfISO = new Date().toISOString()): Promise<{ recipients: number; skipped?: 'already-sent' }> {
   const db = supabaseAdmin();
+  // Once per window: a cron retry or a manual re-hit on the same Monday / 1st
+  // must not re-email every executive.
+  const window = kind === 'week' ? weekInReviewWindow(asOfISO) : monthInReviewWindow(asOfISO);
+  if (!(await claimScheduledSend(`exec.${kind}`, window.startISO))) return { recipients: 0, skipped: 'already-sent' };
+
   const data = await buildExecReport(kind, asOfISO);
   const html = renderExecHtml(data);
   const { data: recips } = await db.from('exec_recipients').select('email').eq(kind === 'week' ? 'weekly' : 'monthly', true);
   for (const r of recips ?? []) {
-    await notify({ to: { email: r.email }, channels: ['email'], template: 'generic', data: { heading: `${data.title} — ${data.windowLabel}`, body: html } });
+    await notify({ to: { email: r.email }, channels: ['email'], template: 'generic', data: { heading: `${data.title} — ${data.windowLabel}`, body: html, bodyIsHtml: true } });
   }
   return { recipients: (recips ?? []).length };
 }

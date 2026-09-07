@@ -64,16 +64,23 @@ export function onBillingEvent(
   return () => set.delete(handler);
 }
 
-/** Run every subscriber for the event; a throwing handler doesn't block others. */
-export async function dispatchBillingEvent(event: BillingEvent): Promise<void> {
+/**
+ * Run every subscriber for the event; a throwing handler doesn't block the
+ * others. Returns the failures so the webhook route can answer non-2xx and
+ * let the provider redeliver (handlers are idempotent on state preconditions).
+ */
+export async function dispatchBillingEvent(event: BillingEvent): Promise<{ handlers: number; failures: string[] }> {
   const handlers = registry();
   const subs = [...(handlers.get(event.type) ?? []), ...(handlers.get('*') ?? [])];
   const results = await Promise.allSettled(subs.map((h) => h(event)));
+  const failures: string[] = [];
   for (const r of results) {
     if (r.status === 'rejected') {
       console.error(`[billing-events] handler failed for ${event.type}:`, r.reason);
+      failures.push(r.reason instanceof Error ? r.reason.message : String(r.reason));
     }
   }
+  return { handlers: subs.length, failures };
 }
 
 const customerIdOf = (c: string | Stripe.Customer | Stripe.DeletedCustomer | null): string | null =>

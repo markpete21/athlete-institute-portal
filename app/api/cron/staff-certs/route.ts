@@ -3,6 +3,7 @@ import { cronRoute } from '@/lib/api/handlers';
 import { processCertExpiries } from '@/lib/staff/staff';
 
 export const dynamic = 'force-dynamic';
+export const maxDuration = 300;
 
 /**
  * Cron: warn on staff certifications expiring within 30 days (warn-only, never

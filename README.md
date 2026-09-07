@@ -266,9 +266,9 @@ unsubscribe/sender-ID, ALL-CAPS/punctuation/trigger-word subjects); marketing
 emails need unsubscribe + physical-address footer. ⚠️ **Before go-live:** verify
 Resend sending **domains** (SPF + DKIM + DMARC), use a dedicated bulk
 **subdomain** (`mail.`/`news.`) isolated from transactional mail, **warm up the
-domain gradually** (do NOT cold-blast the ~7,000 Playbook imports), add full
-**svix signature verification** to the Resend webhook, and one verified `info@`
-from-address per brand. Verify: `/api/dev/comms-verify` (11/11). Build green.
+domain gradually** (do NOT cold-blast the ~7,000 Playbook imports), and one verified `info@` from-address per brand. (The Resend
+webhook already verifies Svix signatures and dedupes on the Svix message id;
+campaign sends are queued and drained by the hourly `/api/cron/comms`.) Verify: `/api/dev/comms-verify` (11/11). Build green.
 
 ## Module 14 — Dashboard & Reporting ✅ (analytics capstone)
 
