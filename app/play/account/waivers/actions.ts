@@ -1,7 +1,7 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
-import { getPortalSession } from '@/lib/auth';
+import { requireFamily } from '@/lib/auth';
 import { getWaiver, signWaiver } from '@/lib/waivers';
 import { supabaseAdmin } from '@ai/foundation/supabase';
 
@@ -11,8 +11,7 @@ import { supabaseAdmin } from '@ai/foundation/supabase';
  * satisfies the gate — enforced here, explained on the page for everyone else.
  */
 export async function signProgramWaiverAction(formData: FormData): Promise<void> {
-  const session = await getPortalSession();
-  if (!session.userId || !session.profileId || !session.familyId) throw new Error('Sign in first.');
+  const session = await requireFamily();
 
   const programId = Number(formData.get('programId'));
   const waiverId = Number(formData.get('waiverId'));

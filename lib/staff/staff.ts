@@ -7,10 +7,8 @@ import {
   generatePaySchedule,
   originalOwedAfterReplacement,
   recomputeWithAbsences,
-  resolveCapabilities,
   torontoDate,
   torontoToday,
-  type CapabilityGrant,
   type PayFrequency,
   type PayMode,
   type ResolvedCapability,
@@ -162,28 +160,10 @@ export async function refreshStaffStatus(staffId: number): Promise<Staff['status
 }
 
 // --- Capability matrix ------------------------------------------------------
-
-export async function setCapability(roleId: number, capability: string, canView: boolean, canEdit: boolean, actorClerkId: string): Promise<void> {
-  const { error } = await supabaseAdmin().from('role_capabilities').upsert({ role_id: roleId, capability, can_view: canView, can_edit: canEdit }, { onConflict: 'role_id,capability' });
-  if (error) throw new Error(error.message);
-  await audit({ actorId: actorClerkId, action: 'capability.set', target: `role:${roleId}`, meta: { capability, canView, canEdit } });
-}
-
-/** Resolve a profile's effective capabilities across all their roles. */
-export async function capabilitiesForProfile(profileId: number): Promise<Record<string, ResolvedCapability>> {
-  const db = supabaseAdmin();
-  const { data: roleRows } = await db.from('role_assignments').select('role_id').eq('profile_id', profileId);
-  const roleIds = (roleRows ?? []).map((r) => r.role_id);
-  if (!roleIds.length) return {};
-  const { data: caps } = await db.from('role_capabilities').select('role_id, capability, can_view, can_edit').in('role_id', roleIds);
-  const byRole = new Map<number, CapabilityGrant[]>();
-  for (const c of caps ?? []) byRole.set(c.role_id, [...(byRole.get(c.role_id) ?? []), { capability: c.capability, can_view: c.can_view, can_edit: c.can_edit }]);
-  return resolveCapabilities([...byRole.values()]);
-}
-
-export async function profileCan(profileId: number, capability: string, mode: 'view' | 'edit' = 'view'): Promise<boolean> {
-  return can(await capabilitiesForProfile(profileId), capability, mode);
-}
+// Lives in lib/access/capabilities (it is the permission system, not a staff
+// concern); re-exported here so existing imports keep working.
+import { capabilitiesForProfile } from '@/lib/access/capabilities';
+export { capabilitiesForProfile, profileCan, setCapability } from '@/lib/access/capabilities';
 
 // --- Assignment + pay -------------------------------------------------------
 

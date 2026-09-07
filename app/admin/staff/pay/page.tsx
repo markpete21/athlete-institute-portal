@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { biWeeklyPeriod, formatCAD, shiftPeriod, torontoToday } from '@ai/foundation';
+import { hasStaffCapability } from '@/lib/auth';
 import { payRows } from '@/lib/staff/staff';
 import { markPayPaidAction } from '../actions';
 
@@ -13,6 +14,18 @@ const fmt = (d: string) => new Date(`${d}T12:00:00Z`).toLocaleDateString('en-CA'
  * outstanding, QuickBooks CSV export. Tracking only - never moves money.
  */
 export default async function PayDashboardPage({ searchParams }: { searchParams: { period?: string } }) {
+  // Every staff rate in one place — the Module 5 pay capability gates the page
+  // exactly like the CSV export and the mark-paid action.
+  if (!(await hasStaffCapability('pay', 'view'))) {
+    return (
+      <main className="mx-auto flex min-h-screen max-w-4xl flex-col gap-4 px-6 py-12">
+        <p className="label text-[11px]">Admin · Staff</p>
+        <h1 className="text-5xl">Pay<span style={{ color: 'var(--accent)' }}>.</span></h1>
+        <p className="text-body">You lack the pay capability. Ask an administrator to grant it on your role under Staff → Permissions.</p>
+      </main>
+    );
+  }
+  const canEdit = await hasStaffCapability('pay', 'edit');
   const today = torontoToday();
   const basePeriod = biWeeklyPeriod(today);
   const offset = Number(searchParams.period) || 0;
@@ -85,7 +98,7 @@ export default async function PayDashboardPage({ searchParams }: { searchParams:
                     <td>{i.programName}</td>
                     <td className="mono">{formatCAD(i.amountCents)}</td>
                     <td><span className={i.status === 'paid' ? 'pill-status pos' : 'tag'}>{i.status}</span></td>
-                    <td>{i.status === 'outstanding' && (
+                    <td>{canEdit && i.status === 'outstanding' && (
                       <form action={markPayPaidAction}><input type="hidden" name="payDateId" value={i.id} /><button type="submit" className="btn-ghost btn-sm">Mark paid</button></form>
                     )}</td>
                   </tr>

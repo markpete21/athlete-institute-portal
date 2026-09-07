@@ -1,7 +1,7 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
-import { getPortalSession } from '@/lib/auth';
+import { requireSignedIn } from '@/lib/auth';
 import { removeUnavailability, staffForProfile, submitUnavailability } from '@/lib/staff/staff';
 
 /**
@@ -10,8 +10,7 @@ import { removeUnavailability, staffForProfile, submitUnavailability } from '@/l
  * record (a coach with no admin role can still submit their own dates).
  */
 async function requireOwnStaffRecord() {
-  const session = await getPortalSession();
-  if (!session.profileId) throw new Error('Sign in first.');
+  const session = await requireSignedIn();
   const staff = await staffForProfile(session.profileId);
   if (!staff) throw new Error('No staff record is linked to this account.');
   return staff;

@@ -2,7 +2,7 @@
 
 import { headers } from 'next/headers';
 import { redirect } from 'next/navigation';
-import { getPortalSession } from '@/lib/auth';
+import { requireFamily } from '@/lib/auth';
 import { startInstallmentCheckout } from '@/lib/programs/pay';
 
 /** The play host's origin, rebuilt from the request (dev-safe). */
@@ -19,8 +19,7 @@ function requestOrigin(): string {
  * blocks new registrations, not settling a balance.
  */
 export async function payInstallmentsAction(formData: FormData): Promise<void> {
-  const session = await getPortalSession();
-  if (!session.userId || !session.familyId) throw new Error('Sign in first.');
+  const session = await requireFamily();
 
   const ids = formData.getAll('installmentId').map((v) => Number(v)).filter(Boolean);
 

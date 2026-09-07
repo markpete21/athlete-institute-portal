@@ -4,7 +4,7 @@ import { revalidatePath } from 'next/cache';
 import { audit, canManageFamily } from '@ai/foundation';
 import { BUCKETS, deleteFile, uploadFile } from '@ai/foundation/storage';
 import { supabaseAdmin } from '@ai/foundation/supabase';
-import { getPortalSession } from '@/lib/auth';
+import { requireCustomer } from '@/lib/auth';
 import {
   addFamilyMember,
   getOrCreateFamily,
@@ -16,17 +16,27 @@ import {
 } from '@/lib/family';
 import { getOrCreateProfile } from '@/lib/profile';
 
-/** HoH-only guard shared by the mutations below. */
+/** HoH-only guard shared by the mutations below (tenants / suspended accounts are refused by requireCustomer). */
 async function requireHoh() {
-  const session = await getPortalSession();
-  if (!session.userId) throw new Error('Sign in first.');
-  const profile = await getOrCreateProfile();
-  const family = await getOrCreateFamily(profile);
-  const me = memberRowFor(family, profile.id);
+  const session = await requireCustomer();
+  const family = await getOrCreateFamily(await getOrCreateProfile());
+  const me = memberRowFor(family, session.profileId);
   if (!me || !canManageFamily(me.member_role)) {
     throw new Error('Only the Head of Household can manage family members.');
   }
   return { session, family };
+}
+
+/**
+ * A member the caller may EDIT (identity, DOB, photo): they must be in the
+ * caller's PRIMARY household. A child shared in from another household is
+ * visible here but managed by that household — the UI already says so.
+ */
+function ownMemberOrThrow(family: Awaited<ReturnType<typeof getOrCreateFamily>>, memberId: number) {
+  const member = family.members.find((m) => m.id === memberId);
+  if (!member) throw new Error('That member is not in your household.');
+  if (member.family_id !== family.id) throw new Error("Details are managed by the member's primary household.");
+  return member;
 }
 
 export async function addMemberAction(formData: FormData): Promise<void> {
@@ -51,7 +61,7 @@ export async function addMemberAction(formData: FormData): Promise<void> {
     dob,
     email,
     memberRole,
-    actorClerkId: session.userId!,
+    actorClerkId: session.userId,
   });
   revalidatePath('/account');
 }
@@ -64,16 +74,14 @@ export async function removeMemberAction(formData: FormData): Promise<void> {
   }
   // Dual-household aware: removing a shared child from the second household
   // unlinks; from the primary while shared, the other household keeps them.
-  await removeFamilyMember(memberId, session.userId!, family.id);
+  await removeFamilyMember(memberId, session.userId, family.id);
   revalidatePath('/account');
 }
 
 export async function updateMemberAction(formData: FormData): Promise<void> {
   const { session, family } = await requireHoh();
   const memberId = Number(formData.get('memberId'));
-  if (!family.members.some((m) => m.id === memberId)) {
-    throw new Error('That member is not in your household.');
-  }
+  ownMemberOrThrow(family, memberId);
   const firstName = String(formData.get('firstName') ?? '').trim();
   const lastName = String(formData.get('lastName') ?? '').trim();
   if (!firstName || !lastName) throw new Error('First and last name are required.');
@@ -83,7 +91,7 @@ export async function updateMemberAction(formData: FormData): Promise<void> {
     lastName,
     dob: String(formData.get('dob') ?? '').trim() || null,
     email: String(formData.get('email') ?? '').trim() || null,
-    actorClerkId: session.userId!,
+    actorClerkId: session.userId,
   });
   revalidatePath('/account');
 }
@@ -95,8 +103,7 @@ const PHOTO_MAX_BYTES = 5 * 1024 * 1024;
 export async function uploadMemberPhotoAction(formData: FormData): Promise<void> {
   const { session, family } = await requireHoh();
   const memberId = Number(formData.get('memberId'));
-  const member = family.members.find((m) => m.id === memberId);
-  if (!member) throw new Error('That member is not in your household.');
+  const member = ownMemberOrThrow(family, memberId);
 
   const file = formData.get('photo');
   if (!(file instanceof File) || file.size === 0) throw new Error('Choose a photo first.');
@@ -119,7 +126,7 @@ export async function uploadMemberPhotoAction(formData: FormData): Promise<void>
     .eq('id', memberId);
   if (error) throw new Error(`photo save failed: ${error.message}`);
   await audit({
-    actorId: session.userId!,
+    actorId: session.userId,
     action: 'family_member.photo-updated',
     target: `family_member:${memberId}`,
     meta: { family_id: member.family_id },
@@ -130,8 +137,7 @@ export async function uploadMemberPhotoAction(formData: FormData): Promise<void>
 export async function removeMemberPhotoAction(formData: FormData): Promise<void> {
   const { session, family } = await requireHoh();
   const memberId = Number(formData.get('memberId'));
-  const member = family.members.find((m) => m.id === memberId);
-  if (!member) throw new Error('That member is not in your household.');
+  const member = ownMemberOrThrow(family, memberId);
   if (member.photo_path) {
     try { await deleteFile(BUCKETS.memberPhotos, [member.photo_path]); } catch { /* best-effort */ }
   }
@@ -141,7 +147,7 @@ export async function removeMemberPhotoAction(formData: FormData): Promise<void>
     .eq('id', memberId);
   if (error) throw new Error(`photo remove failed: ${error.message}`);
   await audit({
-    actorId: session.userId!,
+    actorId: session.userId,
     action: 'family_member.photo-removed',
     target: `family_member:${memberId}`,
     meta: { family_id: member.family_id },
@@ -158,7 +164,7 @@ export async function shareMemberAction(formData: FormData): Promise<void> {
   if (!family.members.some((m) => m.id === memberId)) {
     throw new Error('That member is not in your household.');
   }
-  await shareDependent({ memberId, actorFamilyId: family.id, targetEmail, actorClerkId: session.userId! });
+  await shareDependent({ memberId, actorFamilyId: family.id, targetEmail, actorClerkId: session.userId });
   revalidatePath('/account');
 }
 
@@ -168,6 +174,6 @@ export async function unshareMemberAction(formData: FormData): Promise<void> {
   if (!family.members.some((m) => m.id === memberId)) {
     throw new Error('That member is not in your household.');
   }
-  await unshareDependent(memberId, family.id, session.userId!);
+  await unshareDependent(memberId, family.id, session.userId);
   revalidatePath('/account');
 }

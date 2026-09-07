@@ -3,7 +3,7 @@
 import { revalidatePath } from 'next/cache';
 import { audit } from '@ai/foundation';
 import { supabaseAdmin } from '@ai/foundation/supabase';
-import { getPortalSession } from '@/lib/auth';
+import { requireSignedIn } from '@/lib/auth';
 import { updateTypeSettings } from '@/lib/type-settings';
 
 /**
@@ -12,8 +12,7 @@ import { updateTypeSettings } from '@/lib/type-settings';
  * explicit, defaults off) lives in the typed per-user-type settings.
  */
 export async function updateMySettingsAction(formData: FormData): Promise<void> {
-  const session = await getPortalSession();
-  if (!session.userId || !session.profileId) throw new Error('Sign in first.');
+  const session = await requireSignedIn();
 
   const phone = String(formData.get('phone') ?? '').trim() || null;
   if (phone && !/^[0-9+()\-.\s]{7,20}$/.test(phone)) {

@@ -1,4 +1,5 @@
 import 'server-only';
+import { cache } from 'react';
 import { currentUser } from '@clerk/nextjs/server';
 import { supabaseAdmin } from '@ai/foundation/supabase';
 
@@ -24,8 +25,12 @@ export interface Profile {
 
 const COLS = 'id, clerk_user_id, email, first_name, last_name, phone, user_type, status, settings, family_id';
 
-/** Mirror the signed-in Clerk user into profiles and return the row. */
-export async function getOrCreateProfile(): Promise<Profile> {
+/**
+ * Mirror the signed-in Clerk user into profiles and return the row. Memoised
+ * per request (React cache) — the session, the layout and a page's own call
+ * share one Clerk lookup and one upsert.
+ */
+export const getOrCreateProfile = cache(async (): Promise<Profile> => {
   const user = await currentUser();
   if (!user) throw new Error('getOrCreateProfile(): no signed-in user');
 
@@ -101,7 +106,7 @@ export async function getOrCreateProfile(): Promise<Profile> {
 
   if (error) throw new Error(`profiles upsert failed: ${error.message}`);
   return data as Profile;
-}
+});
 
 /** Fetch a profile by Clerk user id (null if the user has never signed in). */
 export async function getProfileByClerkId(clerkUserId: string): Promise<Profile | null> {

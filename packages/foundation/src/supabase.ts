@@ -32,3 +32,52 @@ export function supabaseAdmin(): SupabaseClient {
   });
   return _admin;
 }
+
+// --- result helpers ---------------------------------------------------------
+//
+// supabase-js never throws: every call resolves to `{ data, error }`. Code that
+// destructures only `data` silently proceeds after a failed write, which is how
+// half-applied money and state changes happen. These two helpers make the
+// failure mode explicit at the call site:
+//
+//   ok(await db.from('t').update(...).eq(...), 'thing.update')   // throws on error
+//   const row = must(await db.from('t').select().single(), 'thing.read') // + non-null
+//
+// `ctx` names the operation in the thrown message so logs read as prose.
+
+export interface PostgrestLike<T> {
+  data: T | null;
+  error: { message: string; code?: string } | null;
+}
+
+export class DbError extends Error {
+  constructor(readonly ctx: string, readonly cause_: { message: string; code?: string }) {
+    super(`${ctx}: ${cause_.message}`);
+    this.name = 'DbError';
+  }
+  get code(): string | undefined {
+    return this.cause_.code;
+  }
+}
+
+/** Throw if the result carries an error; return data (possibly null). */
+export function ok<T>(result: PostgrestLike<T>, ctx: string): T | null {
+  if (result.error) throw new DbError(ctx, result.error);
+  return result.data;
+}
+
+/** Throw if the result carries an error OR no data (a row was expected). */
+export function must<T>(result: PostgrestLike<T>, ctx: string): T {
+  if (result.error) throw new DbError(ctx, result.error);
+  if (result.data === null || result.data === undefined) throw new DbError(ctx, { message: 'not found', code: 'NOT_FOUND' });
+  return result.data;
+}
+
+/**
+ * Escape a user-supplied string for use inside a PostgREST `like`/`ilike`
+ * pattern so `%`, `_` and `\` match literally. Use with an exact-match
+ * intent: `.ilike('email', likeLiteral(email))` is a case-insensitive `=`.
+ */
+export function likeLiteral(value: string): string {
+  return value.replace(/[\\%_]/g, (ch) => `\\${ch}`);
+}

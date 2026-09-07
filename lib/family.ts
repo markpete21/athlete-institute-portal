@@ -6,7 +6,7 @@ import {
   type FamilyMemberRole,
 } from '@ai/foundation';
 import { notify } from '@ai/foundation/notify';
-import { supabaseAdmin } from '@ai/foundation/supabase';
+import { likeLiteral, supabaseAdmin } from '@ai/foundation/supabase';
 import type { Profile } from '@/lib/profile';
 
 /**
@@ -297,16 +297,20 @@ export async function shareDependent(input: {
   if (m.member_role !== 'dependent') throw new Error('Only dependents (under 18) can be in two households.');
   if (m.second_family_id) throw new Error('This member is already shared with a second household.');
 
+  // Exact (case-insensitive) match — the pattern is escaped so a typed `%`
+  // can never widen the lookup to someone else's account. One neutral message
+  // for every miss, so the form is not an account-enumeration oracle.
   const email = input.targetEmail.trim().toLowerCase();
-  const { data: target } = await db
+  const NOT_FOUND = 'We could not link that email. Make sure the other parent has signed in to the portal once and opened their account page.';
+  const { data: target, error: tErr } = await db
     .from('profiles')
     .select('id, family_id, email')
-    .ilike('email', email)
+    .ilike('email', likeLiteral(email))
+    .eq('status', 'active')
+    .limit(1)
     .maybeSingle();
-  if (!target?.family_id) {
-    throw new Error('No account with a household was found for that email. They need to sign in to the portal once first.');
-  }
-  if (target.family_id === m.family_id) throw new Error('That account is already in this household.');
+  if (tErr) throw new Error(`share lookup failed: ${tErr.message}`);
+  if (!target?.family_id || target.family_id === m.family_id) throw new Error(NOT_FOUND);
 
   const { error: e2 } = await db
     .from('family_members')

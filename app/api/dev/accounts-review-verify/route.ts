@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { torontoToday } from '@ai/foundation';
 import { supabaseAdmin } from '@ai/foundation/supabase';
 import { mergeAccounts } from '@/lib/accounts/merge';
+import type { StaffSession } from '@/lib/auth';
 import { loadFamily, removeFamilyMember, shareDependent, unshareDependent, updateFamilyMember } from '@/lib/family';
 import { adoptUnclaimedProfileByToken, stageRows } from '@/lib/import/playbook';
 import { accountView } from '@/lib/play/account';
@@ -139,17 +140,30 @@ export async function GET() {
     const famDst = await mkFamily('ArvDst', pDst.id, { play_points_balance: 100, credit_balance_cents: 500 });
     await db.from('family_members').insert({ family_id: famSrc, first_name: 'SrcKid', last_name: 'Arv', member_role: 'dependent', dob: '2016-05-05' });
     const { data: role } = await db.from('roles').select('id').limit(1).single();
-    await db.from('role_assignments').insert({ profile_id: pSrc.id, role_id: role!.id });
+    const { data: srcRole } = await db.from('role_assignments').insert({ profile_id: pSrc.id, role_id: role!.id }).select('id').single();
     const { error: ledgerErr } = await db.from('play_points_ledger')
       .insert({ family_id: famSrc, delta_points: 300, reason: 'arv:seed', created_by: 'system:verify' });
     if (ledgerErr) throw new Error(`ledger seed failed: ${ledgerErr.message}`);
 
-    const merged = await mergeAccounts(pSrc.id, pDst.id, 'system:verify');
+    // A synthetic root session: merges are staff operations and must never
+    // involve the caller's own account.
+    const pActor = await mkProfile({ user_type: 'staff' });
+    const actor: StaffSession = {
+      userId: 'system:verify', email: pActor.email, profileId: pActor.id, familyId: null, status: 'active',
+      userType: 'staff', roles: [], isStaff: true, canTransact: true, bootstrapAdmin: true,
+    };
+    let refusedRoleHolder = false;
+    try { await mergeAccounts(pSrc.id, pDst.id, actor); } catch { refusedRoleHolder = true; }
+    let refusedSelf = false;
+    try { await mergeAccounts(pSrc.id, pActor.id, actor); } catch { refusedSelf = true; }
+    record('merge: refuses a role-holding source and the caller\'s own account', refusedRoleHolder && refusedSelf, `${refusedRoleHolder}/${refusedSelf}`);
+    await db.from('role_assignments').delete().eq('id', srcRole!.id);
+
+    const merged = await mergeAccounts(pSrc.id, pDst.id, actor);
     const dstFam = await loadFamily(famDst);
     const { data: dstBal } = await db.from('families').select('play_points_balance, credit_balance_cents').eq('id', famDst).single();
     const { data: srcProf } = await db.from('profiles').select('status, settings, email, family_id').eq('id', pSrc.id).single();
     const { data: srcFamGone } = await db.from('families').select('id').eq('id', famSrc).maybeSingle();
-    const { data: movedRole } = await db.from('role_assignments').select('id').eq('profile_id', pDst.id);
     const { data: movedLedger } = await db.from('play_points_ledger').select('id').eq('family_id', famDst).eq('reason', 'arv:seed');
     // Note: the source HoH's member row is re-pointed to the TARGET profile
     // (duplicate accounts are the same person), so we assert the demoted
@@ -161,9 +175,8 @@ export async function GET() {
     record('merge: balances added + ledger moved',
       dstBal!.play_points_balance === 400 && dstBal!.credit_balance_cents === 2000 && (movedLedger ?? []).length === 1,
       JSON.stringify(dstBal));
-    record('merge: role moved, source archived with pointer, family deleted',
-      (movedRole ?? []).length === 1
-        && srcProf!.status === 'archived'
+    record('merge: source archived with pointer, family deleted',
+      srcProf!.status === 'archived'
         && (srcProf!.settings as { merged_into?: number }).merged_into === pDst.id
         && srcProf!.email === null && srcProf!.family_id === null && !srcFamGone,
       JSON.stringify({ merged, srcStatus: srcProf!.status }));

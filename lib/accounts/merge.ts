@@ -1,6 +1,8 @@
 import 'server-only';
 import { audit } from '@ai/foundation';
-import { supabaseAdmin } from '@ai/foundation/supabase';
+import { ok, supabaseAdmin } from '@ai/foundation/supabase';
+import { isPrivilegedProfile } from '@/lib/access/roles';
+import { AuthError, type StaffSession } from '@/lib/auth';
 
 /**
  * Staff account merge (Accounts review). Folds a duplicate profile — and its
@@ -93,18 +95,18 @@ async function mergeFamilies(sourceFamilyId: number, targetFamilyId: number, act
 
   // Dual-household links: a link into either of the merging families must not
   // end up pointing at the family the member already lives in.
-  await db.from('family_members').update({ second_family_id: null })
-    .eq('family_id', sourceFamilyId).eq('second_family_id', targetFamilyId);
-  await db.from('family_members').update({ second_family_id: null })
-    .eq('family_id', targetFamilyId).eq('second_family_id', sourceFamilyId);
-  await db.from('family_members').update({ second_family_id: targetFamilyId })
-    .eq('second_family_id', sourceFamilyId).neq('family_id', targetFamilyId);
-  await db.from('family_members').update({ second_family_id: null })
-    .eq('second_family_id', sourceFamilyId);
+  ok(await db.from('family_members').update({ second_family_id: null })
+    .eq('family_id', sourceFamilyId).eq('second_family_id', targetFamilyId), 'merge: unlink source→target');
+  ok(await db.from('family_members').update({ second_family_id: null })
+    .eq('family_id', targetFamilyId).eq('second_family_id', sourceFamilyId), 'merge: unlink target→source');
+  ok(await db.from('family_members').update({ second_family_id: targetFamilyId })
+    .eq('second_family_id', sourceFamilyId).neq('family_id', targetFamilyId), 'merge: re-point shared links');
+  ok(await db.from('family_members').update({ second_family_id: null })
+    .eq('second_family_id', sourceFamilyId), 'merge: clear residual links');
 
   // One HoH per family: the source household's head joins as a secondary parent.
-  await db.from('family_members').update({ member_role: 'secondary' })
-    .eq('family_id', sourceFamilyId).eq('member_role', 'hoh');
+  ok(await db.from('family_members').update({ member_role: 'secondary' })
+    .eq('family_id', sourceFamilyId).eq('member_role', 'hoh'), 'merge: demote source HoH');
   await moveRefs('family_members', 'family_id', sourceFamilyId, targetFamilyId);
 
   for (const { table, col } of FAMILY_REF_TABLES) {
@@ -125,7 +127,7 @@ async function mergeFamilies(sourceFamilyId: number, targetFamilyId: number, act
   }
 
   // Anyone signed in against the old household follows it.
-  await db.from('profiles').update({ family_id: targetFamilyId }).eq('family_id', sourceFamilyId);
+  ok(await db.from('profiles').update({ family_id: targetFamilyId }).eq('family_id', sourceFamilyId), 'merge: re-home profiles');
 
   const { error: delErr } = await db.from('families').delete().eq('id', sourceFamilyId);
   if (delErr) throw new Error(`merge: source family delete failed: ${delErr.message}`);
@@ -142,8 +144,18 @@ async function mergeFamilies(sourceFamilyId: number, targetFamilyId: number, act
  * Merge source profile (and its household) into target. Source survives as an
  * archived shell whose settings.merged_into points at the target.
  */
-export async function mergeAccounts(sourceProfileId: number, targetProfileId: number, actorClerkId: string): Promise<MergeResult> {
+export async function mergeAccounts(sourceProfileId: number, targetProfileId: number, actor: StaffSession): Promise<MergeResult> {
   if (sourceProfileId === targetProfileId) throw new Error('Pick two different accounts.');
+  // A merge hands the source's logins and history to the target. It must never
+  // be a privilege-transfer primitive: the caller cannot be on either side, and
+  // a staff / role-holding account is offboarded (archive, revoke) — not merged.
+  if (sourceProfileId === actor.profileId || targetProfileId === actor.profileId) {
+    throw new AuthError('You cannot merge your own account.');
+  }
+  if (await isPrivilegedProfile(sourceProfileId)) {
+    throw new AuthError('The duplicate holds staff access or roles. Revoke them (Roles & Access) before merging.');
+  }
+  const actorClerkId = actor.userId;
   const db = supabaseAdmin();
   const PROFILE_COLS = 'id, family_id, email, settings';
   const { data: source, error: sErr } = await db.from('profiles').select(PROFILE_COLS).eq('id', sourceProfileId).single();

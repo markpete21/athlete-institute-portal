@@ -5,7 +5,10 @@ import { revalidatePath } from 'next/cache';
 import { audit, type PayFrequency, type PayMode } from '@ai/foundation';
 import type { StaffEmployment } from '@/lib/staff/staff';
 import { supabaseAdmin } from '@ai/foundation/supabase';
-import { requireStaff } from '@/lib/auth';
+import { MANAGE_ROLES } from '@/lib/access/capabilities';
+import { addCapabilityKey, grantRole, revokeRoleAssignment, setRoleCapability } from '@/lib/access/roles';
+import { requireStaff, requireStaffCapability } from '@/lib/auth';
+import { bool, id, idOrNull, str, strOrThrow } from '@/lib/forms';
 import {
   addCertification,
   addStaffEmail,
@@ -95,20 +98,22 @@ export async function archiveStaffAction(formData: FormData): Promise<void> {
   revalidatePath(`/staff/${id}`);
 }
 
+// The matrix and role grants are security-root operations (manage_roles);
+// lib/access/roles enforces no-self-grant / last-root-holder / root-not-editable.
+const requireRoleAdmin = () => requireStaffCapability(MANAGE_ROLES, 'edit', 'Only an administrator with the manage-roles permission can change permissions.');
+
 export async function setCapabilityAction(formData: FormData): Promise<void> {
-  const session = await requireStaff();
-  await setCapability(Number(formData.get('roleId')), String(formData.get('capability')), formData.get('view') === 'on', formData.get('edit') === 'on', session.userId);
+  const session = await requireRoleAdmin();
+  await setRoleCapability(session, id(formData.get('roleId'), 'role'), strOrThrow(formData.get('capability'), 'Capability'), bool(formData.get('view')), bool(formData.get('edit')));
   revalidatePath('/staff/permissions');
 }
 
 /** Extensible matrix: a new capability key appears for every role once seeded on one. */
 export async function addCapabilityAction(formData: FormData): Promise<void> {
-  const session = await requireStaff();
-  const key = String(formData.get('key') ?? '').trim().toLowerCase().replace(/[^a-z0-9_]+/g, '_').replace(/^_+|_+$/g, '');
-  if (!key) throw new Error('Capability key required.');
-  const roleId = Number(formData.get('roleId'));
+  const session = await requireRoleAdmin();
+  const roleId = idOrNull(formData.get('roleId'));
   if (!roleId) throw new Error('Pick the first role to grant it on.');
-  await setCapability(roleId, key, true, false, session.userId);
+  await addCapabilityKey(session, str(formData.get('key')), roleId);
   revalidatePath('/staff/permissions');
 }
 
@@ -240,31 +245,26 @@ export async function removeAssignmentAction(formData: FormData): Promise<void> 
 }
 
 export async function markPayPaidAction(formData: FormData): Promise<void> {
-  const session = await requireStaff();
-  await markPayDatePaid(Number(formData.get('payDateId')), session.userId);
+  const session = await requireStaffCapability('pay', 'edit');
+  await markPayDatePaid(id(formData.get('payDateId'), 'pay date'), session.userId);
   revalidatePath('/staff/pay');
 }
 
 // --- Roles on the staff record (reuses Module 1 role_assignments) -------------
 
 export async function grantRoleAction(formData: FormData): Promise<void> {
-  const session = await requireStaff();
-  const staffId = Number(formData.get('staffId'));
-  const profileId = Number(formData.get('profileId'));
-  const roleId = Number(formData.get('roleId'));
+  const session = await requireRoleAdmin();
+  const staffId = id(formData.get('staffId'), 'staff');
+  const profileId = idOrNull(formData.get('profileId'));
+  const roleId = idOrNull(formData.get('roleId'));
   if (!profileId || !roleId) throw new Error('Role and linked account required.');
-  const { error } = await supabaseAdmin().from('role_assignments').insert({ profile_id: profileId, role_id: roleId, granted_by: session.userId });
-  if (error && !error.message.includes('duplicate')) throw new Error(error.message);
-  await audit({ actorId: session.userId, action: 'role.granted', target: `profile:${profileId}`, meta: { role_id: roleId, via: `staff:${staffId}` } });
+  await grantRole(session, profileId, roleId, `staff:${staffId}`);
   revalidatePath(`/staff/${staffId}`);
 }
 
 export async function revokeRoleAction(formData: FormData): Promise<void> {
-  const session = await requireStaff();
-  const staffId = Number(formData.get('staffId'));
-  const assignmentId = Number(formData.get('assignmentId'));
-  const { error } = await supabaseAdmin().from('role_assignments').delete().eq('id', assignmentId);
-  if (error) throw new Error(error.message);
-  await audit({ actorId: session.userId, action: 'role.revoked', target: `role_assignment:${assignmentId}`, meta: { via: `staff:${staffId}` } });
+  const session = await requireRoleAdmin();
+  const staffId = id(formData.get('staffId'), 'staff');
+  await revokeRoleAssignment(session, id(formData.get('assignmentId'), 'assignment'), `staff:${staffId}`);
   revalidatePath(`/staff/${staffId}`);
 }

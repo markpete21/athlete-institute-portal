@@ -3,7 +3,7 @@
 import { redirect } from 'next/navigation';
 import { audit } from '@ai/foundation';
 import { notify } from '@ai/foundation/notify';
-import { getPortalSession } from '@/lib/auth';
+import { requireCustomer } from '@/lib/auth';
 import { createRental } from '@/lib/rentals/quotes';
 
 /**
@@ -13,8 +13,7 @@ import { createRental } from '@/lib/rentals/quotes';
  * own the quote, and the deposit is required like any external rental.
  */
 export async function requestRentalAction(formData: FormData): Promise<void> {
-  const session = await getPortalSession();
-  if (!session.userId) throw new Error('Sign in to request a rental.');
+  const session = await requireCustomer();
 
   const orgName = String(formData.get('orgName') ?? '').trim();
   const desired = String(formData.get('desired') ?? '').trim();

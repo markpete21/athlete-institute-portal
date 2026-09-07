@@ -6,7 +6,10 @@ import { audit } from '@ai/foundation';
 import { notify } from '@ai/foundation/notify';
 import { supabaseAdmin } from '@ai/foundation/supabase';
 import { mergeAccounts } from '@/lib/accounts/merge';
+import { MANAGE_ROLES } from '@/lib/access/capabilities';
+import { isPrivilegedProfile } from '@/lib/access/roles';
 import { requireStaff, requireStaffCapability } from '@/lib/auth';
+import { id, idOrNull, oneOfOrThrow } from '@/lib/forms';
 import { applyPlayPoints, ensureSeasonCredit, setCreditCapOverride } from '@/lib/credits';
 import { shareDependent } from '@/lib/family';
 import { updateTypeSettings } from '@/lib/type-settings';
@@ -15,10 +18,15 @@ const back = (profileId: number) => revalidatePath(`/accounts/${profileId}`);
 
 /** Suspend / reactivate / archive an account. Suspended blocks NEW registrations, not paying. */
 export async function setAccountStatusAction(formData: FormData): Promise<void> {
-  const session = await requireStaff();
-  const profileId = Number(formData.get('profileId'));
-  const status = String(formData.get('status'));
-  if (!['active', 'suspended', 'archived'].includes(status)) throw new Error('Unknown status.');
+  const profileId = id(formData.get('profileId'), 'account');
+  const status = oneOfOrThrow(formData.get('status'), ['active', 'suspended', 'archived'] as const, 'status');
+  // Suspending/archiving a staff or role-holding account removes its admin
+  // access (lib/auth reads status), so for those targets this is a
+  // manage_roles operation; a plain member account needs only staff.
+  const session = (await isPrivilegedProfile(profileId))
+    ? await requireStaffCapability(MANAGE_ROLES, 'edit', 'Changing a staff account’s status needs the manage-roles permission.')
+    : await requireStaff();
+  if (profileId === session.profileId) throw new Error('You cannot change your own account status.');
   const { error } = await supabaseAdmin().from('profiles').update({ status }).eq('id', profileId);
   if (error) throw new Error(`status change failed: ${error.message}`);
   await audit({
@@ -155,10 +163,10 @@ export async function mergeIntoThisAction(formData: FormData): Promise<void> {
   // A merge re-points a whole household's PII + money history — gated by the
   // Module 5 sensitive-data capability (edit).
   const session = await requireStaffCapability('roster_sensitive', 'edit', 'You lack the sensitive-data capability required to merge accounts.');
-  const targetProfileId = Number(formData.get('profileId'));
-  const sourceProfileId = Number(formData.get('sourceProfileId'));
+  const targetProfileId = id(formData.get('profileId'), 'account');
+  const sourceProfileId = idOrNull(formData.get('sourceProfileId'));
   if (!sourceProfileId) throw new Error('Pick the duplicate account to merge in.');
-  await mergeAccounts(sourceProfileId, targetProfileId, session.userId);
+  await mergeAccounts(sourceProfileId, targetProfileId, session);
   back(targetProfileId);
   redirect(`/accounts/${targetProfileId}?merged=${sourceProfileId}`);
 }
