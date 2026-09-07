@@ -296,6 +296,81 @@ export async function cancelBookingsBySourceRef(sourceRef: string, actorClerkId:
   return live.length;
 }
 
+/** One slot of a planned batch; `key` is echoed back so callers can correlate results. */
+export interface PlannedSlot {
+  startsAt: string;
+  endsAt: string;
+  key?: string;
+}
+
+export type BulkBookingResult = Array<{ key?: string; booking: BookingRecord } & AvailabilityReport>;
+
+/**
+ * Create many bookings for ONE facility in a handful of round-trips: the
+ * facility tree, the live bookings in the batch's overall window and the
+ * closures are loaded ONCE; conflicts, hours and closure warnings are computed
+ * in memory per slot (against existing bookings — occurrences of the same
+ * series never overlap each other); the rows are inserted in one statement
+ * and audited as one batch. This is what recurring series and rental series
+ * build on — a 200-occurrence weekly rental costs ~5 queries instead of ~3,000.
+ */
+export async function createBookingsBulk(
+  base: Omit<CreateBookingInput, 'startsAt' | 'endsAt'>,
+  slots: PlannedSlot[],
+): Promise<BulkBookingResult> {
+  if (slots.length === 0) return [];
+  const tree = await facilityRows();
+  assertBookable(tree, base.facilityId);
+
+  const windowStart = slots.reduce((a, s) => (s.startsAt < a ? s.startsAt : a), slots[0].startsAt);
+  const windowEnd = slots.reduce((a, s) => (s.endsAt > a ? s.endsAt : a), slots[0].endsAt);
+  const [existing, closures] = await Promise.all([candidateBookings(windowStart, windowEnd), closureRows(windowStart, windowEnd)]);
+
+  const reports = slots.map((slot) => {
+    const probe = { facility_id: base.facilityId, starts_at: slot.startsAt, ends_at: slot.endsAt, setup_minutes: base.setupMinutes, cleanup_minutes: base.cleanupMinutes };
+    const conflicts = findConflicts(tree, existing, probe);
+    const hoursWarning = checkOperatingHours(tree, probe);
+    return {
+      available: conflicts.length === 0,
+      conflicts,
+      warnings: hoursWarning ? [hoursWarning] : [],
+      closures: checkClosures(tree, closures, probe),
+    };
+  });
+
+  const showPublic = base.showOnPublicSchedule ?? (base.source === 'program' || base.source === 'event');
+  const rows = slots.map((slot) => ({
+    facility_id: base.facilityId,
+    starts_at: slot.startsAt,
+    ends_at: slot.endsAt,
+    source: base.source,
+    status: base.status ?? 'confirmed',
+    is_internal: base.isInternal ?? base.source === 'internal',
+    title: base.title.trim(),
+    logo_url: base.logoUrl ?? null,
+    show_on_public_schedule: showPublic,
+    source_ref: base.sourceRef ?? null,
+    setup_minutes: base.setupMinutes ?? 0,
+    cleanup_minutes: base.cleanupMinutes ?? 0,
+    series_id: base.seriesId ?? null,
+    family_id: base.familyId ?? null,
+    created_by: base.actorClerkId,
+  }));
+  const { data, error } = await supabaseAdmin().from('bookings').insert(rows).select(COLS).order('id');
+  if (error) throw new Error(`bookings bulk create failed: ${error.message}`);
+  const created = (data ?? []) as BookingRecord[];
+  if (created.length !== slots.length) throw new Error(`bookings bulk create returned ${created.length} of ${slots.length} rows`);
+
+  // Rows come back by id; ids are assigned in insert order, so index i ↔ slot i.
+  await audit({
+    actorId: base.actorClerkId,
+    action: 'bookings.bulk-created',
+    target: base.seriesId ? `booking_series:${base.seriesId}` : `facility:${base.facilityId}`,
+    meta: { count: created.length, source: base.source, conflicted: reports.filter((r) => r.conflicts.length).length, sourceRef: base.sourceRef ?? null },
+  });
+  return created.map((booking, i) => ({ key: slots[i].key, booking, ...reports[i] }));
+}
+
 // ---------------------------------------------------------------------------
 // Recurring bookings (Stage 4) - the API Module 4's program builder calls.
 // ---------------------------------------------------------------------------
@@ -352,14 +427,11 @@ export async function createRecurringBookings(input: CreateSeriesInput): Promise
     .single();
   if (error) throw new Error(`series create failed: ${error.message}`);
 
-  const results: SeriesResult['occurrences'] = [];
-  for (const occ of occurrences) {
-    // Explicit field pass-through (no ...input spread): only the booking
-    // fields travel, never whatever else the caller's object carries.
-    const created = await createBooking({
+  // Explicit field pass-through (no ...input spread): only the booking
+  // fields travel, never whatever else the caller's object carries.
+  const created = await createBookingsBulk(
+    {
       facilityId: input.facilityId,
-      startsAt: occ.starts_at,
-      endsAt: occ.ends_at,
       source: input.source,
       title: input.title,
       status: input.status,
@@ -372,15 +444,16 @@ export async function createRecurringBookings(input: CreateSeriesInput): Promise
       seriesId: series.id,
       familyId: input.familyId,
       actorClerkId: input.actorClerkId,
-    });
-    results.push({
-      date: occ.date,
-      booking: created.booking,
-      conflicts: created.conflicts,
-      warnings: created.warnings,
-      closures: created.closures,
-    });
-  }
+    },
+    occurrences.map((occ) => ({ startsAt: occ.starts_at, endsAt: occ.ends_at, key: occ.date })),
+  );
+  const results: SeriesResult['occurrences'] = created.map((c) => ({
+    date: c.key!,
+    booking: c.booking,
+    conflicts: c.conflicts,
+    warnings: c.warnings,
+    closures: c.closures,
+  }));
 
   await audit({
     actorId: input.actorClerkId,

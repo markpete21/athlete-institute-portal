@@ -94,7 +94,11 @@ adding a program type, a booking source, a cron, a webhook, or an admin screen.
 
 - All bookings go through `lib/bookings.ts` (`createBooking`, `updateBooking`,
   `cancelBooking`, `createRecurringBookings`). `assertBookable` is the one
-  facility rule.
+  facility rule. Many slots at once go through `createBookingsBulk`: the tree,
+  the window's live bookings and the closures load once, conflicts are
+  computed in memory per slot, and the rows insert in one statement (a
+  200-occurrence series is ~5 queries). Recurring program sessions and rental
+  series are built on it; an external calendar importer should be too.
 - `bookings.source` and its presentation come from
   `@ai/foundation/bookings-core` (`BOOKING_SOURCES`, `BOOKING_SOURCE_META`).
   Owners tag rows with a typed `source_ref` (`formatSourceRef({ kind, id })`)

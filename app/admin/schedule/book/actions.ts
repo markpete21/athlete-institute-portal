@@ -132,6 +132,9 @@ export async function bookWizardAction(payload: WizardPayload): Promise<WizardRe
   // error would leave a partial rental behind.
   if (payload.depositDue && !DATE.test(payload.depositDue)) throw new Error('Invalid deposit due date.');
   if (payload.balanceDue && !DATE.test(payload.balanceDue)) throw new Error('Invalid balance due date.');
+  if (![payload.setupMinutes ?? 0, payload.cleanupMinutes ?? 0].every((n) => Number.isInteger(n) && n >= 0 && n <= 480)) {
+    throw new Error('Buffers must be whole minutes between 0 and 480.');
+  }
   {
     const tree = await listFacilities();
     const ids = new Set(tree.filter((f) => f.bookable).map((f) => f.id));
@@ -168,7 +171,10 @@ export async function bookWizardAction(payload: WizardPayload): Promise<WizardRe
 
   let conflictCount = 0;
   let warningCount = 0;
+  /** Single-date bookings: buffers + public flag are applied after creation. */
   const lineBookingIds: number[] = [];
+  /** Series bookings: created with buffers + public flag already set. */
+  const seriesBookingIds: number[] = [];
 
   let lineCount = 0;
   for (const l of payload.lines) {
@@ -191,14 +197,18 @@ export async function bookWizardAction(payload: WizardPayload): Promise<WizardRe
         until: l.repeat.until,
         rateCentsOverride: override,
         confirm: payload.intent === 'book',
+        // Buffers + public flag land on insert for the whole series, so the
+        // per-booking passes below skip these ids.
+        setupMinutes: payload.setupMinutes ?? 0,
+        cleanupMinutes: payload.cleanupMinutes ?? 0,
+        showOnPublicSchedule: payload.showPublic,
         actorClerkId: actor,
       });
       lineCount += res.lineCount;
       conflictCount += res.conflictedDates.length;
+      warningCount += res.warningCount;
       createdLineIds.push(...res.lineIds);
-      // Recurring occurrences are bookings too: without this they'd miss the
-      // public-schedule flag and the buffers applied below.
-      lineBookingIds.push(...res.bookingIds);
+      seriesBookingIds.push(...res.bookingIds);
     } else {
       const dates = [l.date, ...(l.repeat?.mode === 'dates' ? l.repeat.dates : [])];
       for (const d of dates) {
@@ -247,16 +257,13 @@ export async function bookWizardAction(payload: WizardPayload): Promise<WizardRe
     if (error) throw new Error(`public flag update failed: ${error.message}`);
   }
 
-  // Setup/cleanup buffers apply to every occurrence. Routed through
-  // updateBooking rather than a bulk UPDATE because widening the occupied
-  // window can create NEW conflicts, and those have to be counted and shown -
-  // a silent SQL write would hide them.
+  // Setup/cleanup buffers on the single-date bookings (series bookings were
+  // created with them). Routed through updateBooking rather than a bulk
+  // UPDATE because widening the occupied window can create NEW conflicts,
+  // and those have to be counted and shown - a silent SQL write would hide them.
   const setupMinutes = payload.setupMinutes ?? 0;
   const cleanupMinutes = payload.cleanupMinutes ?? 0;
   if ((setupMinutes > 0 || cleanupMinutes > 0) && lineBookingIds.length) {
-    if (![setupMinutes, cleanupMinutes].every((n) => Number.isInteger(n) && n >= 0 && n <= 480)) {
-      throw new Error('Buffers must be whole minutes between 0 and 480.');
-    }
     const { updateBooking } = await import('@/lib/bookings');
     for (const bookingId of lineBookingIds) {
       const res = await updateBooking(bookingId, { setupMinutes, cleanupMinutes }, actor);

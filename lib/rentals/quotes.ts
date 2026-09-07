@@ -3,7 +3,7 @@ import { randomBytes } from 'node:crypto';
 import { ancestorIds, applyPercent, audit, sumCents, withHst, type FacilityNode } from '@ai/foundation';
 import { notify } from '@ai/foundation/notify';
 import { supabaseAdmin } from '@ai/foundation/supabase';
-import { cancelBooking, createBooking, type AvailabilityReport } from '@/lib/bookings';
+import { cancelBooking, createBooking, createBookingsBulk, type AvailabilityReport } from '@/lib/bookings';
 import { listRates, resolveRate, type RateMode } from '@/lib/rentals/rates';
 
 /**
@@ -365,10 +365,16 @@ export async function addRecurringRentalLines(input: {
   rateCentsOverride?: number;
   /** Concrete booking: every occurrence lands CONFIRMED instead of held. */
   confirm?: boolean;
+  /** Setup/cleanup buffers land on insert (they widen the conflict window). */
+  setupMinutes?: number;
+  cleanupMinutes?: number;
+  showOnPublicSchedule?: boolean;
   actorClerkId: string;
 }): Promise<{
   lineCount: number;
   conflictedDates: string[];
+  /** Operating-hours + closure warnings across the series. */
+  warningCount: number;
   lineIds: number[];
   /** Booking ids behind the lines, for callers applying booking-level settings
       (public flag, buffers) to every occurrence. Empty on a quote hold that
@@ -387,7 +393,8 @@ export async function addRecurringRentalLines(input: {
   if (occurrences.length === 0) throw new Error('Pattern generates no dates.');
 
   const db = supabaseAdmin();
-  const { data: rental } = await db.from('rentals').select('title').eq('id', input.rentalId).single();
+  const { data: rental } = await db.from('rentals').select('title').eq('id', input.rentalId).maybeSingle();
+  if (!rental) throw new Error('Rental not found.');
   const { data: series, error } = await db
     .from('booking_series')
     .insert({
@@ -398,7 +405,7 @@ export async function addRecurringRentalLines(input: {
       until_date: input.until ?? null,
       occurrence_count: input.count ?? null,
       facility_id: input.facilityId,
-      title: rental!.title,
+      title: rental.title,
       source: 'rental',
       created_by: input.actorClerkId,
     })
@@ -406,26 +413,66 @@ export async function addRecurringRentalLines(input: {
     .single();
   if (error) throw new Error(`series create failed: ${error.message}`);
 
-  const conflictedDates: string[] = [];
-  const lineIds: number[] = [];
-  const bookingIds: number[] = [];
-  for (const occ of occurrences) {
-    const res = await addRentalLine({
-      rentalId: input.rentalId,
+  // Rate + facility resolved ONCE for the whole series.
+  const [{ data: rentalRow }, { data: facRows }, rates] = await Promise.all([
+    db.from('rentals').select('id, title, is_internal, family_id, status').eq('id', input.rentalId).single(),
+    db.from('facilities').select('id, parent_id, name, label, sort_order, bookable, deleted_at').is('deleted_at', null),
+    listRates(),
+  ]);
+  if (!rentalRow) throw new Error('Rental not found.');
+  if (rentalRow.status === 'cancelled') throw new Error('Rental is cancelled.');
+  const tree = (facRows ?? []) as FacilityNode[];
+  const facility = tree.find((f) => f.id === input.facilityId);
+  if (!facility) throw new Error('Facility not found.');
+  const chain = [input.facilityId, ...ancestorIds(tree, input.facilityId)];
+  const rate = rentalRow.is_internal ? 0 : input.rateCentsOverride ?? resolveRate(rates, chain, input.rateMode);
+  if (rate == null) throw new Error(`No ${input.rateMode} rate configured for "${facility.name}" (set one in Rental settings or override).`);
+
+  // Every occurrence's booking in one batch (tree/candidates/closures loaded once).
+  const created = await createBookingsBulk(
+    {
       facilityId: input.facilityId,
-      rateMode: input.rateMode,
-      startsAt: occ.starts_at,
-      endsAt: occ.ends_at,
-      rateCentsOverride: input.rateCentsOverride,
+      source: 'rental',
+      status: rentalRow.is_internal || input.confirm ? 'confirmed' : 'tentative',
+      title: rentalRow.title,
+      isInternal: rentalRow.is_internal,
+      familyId: rentalRow.family_id,
+      sourceRef: `rental:${input.rentalId}`,
       seriesId: series.id,
-      confirm: input.confirm,
+      setupMinutes: input.setupMinutes,
+      cleanupMinutes: input.cleanupMinutes,
+      showOnPublicSchedule: input.showOnPublicSchedule,
       actorClerkId: input.actorClerkId,
-    });
-    if (res.conflicts.length > 0) conflictedDates.push(occ.date);
-    lineIds.push(res.line.id);
-    if (res.line.booking_id) bookingIds.push(res.line.booking_id);
-  }
-  return { lineCount: occurrences.length, conflictedDates, lineIds, bookingIds };
+    },
+    occurrences.map((occ) => ({ startsAt: occ.starts_at, endsAt: occ.ends_at, key: occ.date })),
+  );
+
+  // Then every line in one insert.
+  const { data: lines, error: lErr } = await db
+    .from('rental_lines')
+    .insert(created.map((c, i) => ({
+      rental_id: input.rentalId,
+      facility_id: input.facilityId,
+      facility_name: facility.name,
+      rate_mode: input.rateMode,
+      unit_rate_cents: rentalRow.is_internal ? 0 : rate,
+      starts_at: c.booking.starts_at,
+      ends_at: c.booking.ends_at,
+      line_total_cents: rentalRow.is_internal ? 0 : lineTotalCents(input.rateMode, rate, c.booking.starts_at, c.booking.ends_at),
+      booking_id: c.booking.id,
+      series_id: series.id,
+      sort_order: i,
+    })))
+    .select('id, booking_id')
+    .order('id');
+  if (lErr) throw new Error(`line create failed: ${lErr.message}`);
+  await recomputeTotals(input.rentalId);
+
+  const conflictedDates = created.filter((c) => c.conflicts.length > 0).map((c) => c.key!);
+  const lineIds = (lines ?? []).map((l) => l.id as number);
+  const bookingIds = (lines ?? []).map((l) => l.booking_id as number | null).filter((b): b is number => b != null);
+  const warningCount = created.reduce((n, c) => n + c.warnings.length + c.closures.length, 0);
+  return { lineCount: occurrences.length, conflictedDates, lineIds, bookingIds, warningCount };
 }
 
 export async function removeRentalLine(lineId: number, actorClerkId: string): Promise<void> {
