@@ -1,6 +1,6 @@
 import 'server-only';
 import { audit, torontoToday } from '@ai/foundation';
-import { must, ok, supabaseAdmin } from '@ai/foundation/supabase';
+import { must, ok, rows, supabaseAdmin } from '@ai/foundation/supabase';
 
 /**
  * Receivables for program registrations that do NOT go through the cart
@@ -132,7 +132,7 @@ export async function waiveRemainingInstallments(registrationId: number, actorCl
     .in('status', ['active', 'waitlisted']);
   if ((others ?? 0) > 0) return { waived: 0, sharedOrder: true };
 
-  const waived = ok(
+  const waived = rows(
     await db
       .from('program_installments')
       .update({ status: 'waived' })
@@ -147,7 +147,7 @@ export async function waiveRemainingInstallments(registrationId: number, actorCl
     actorId: actorClerkId,
     action: 'program_installments.waived',
     target: `program_order:${reg.order_id}`,
-    meta: { registration_id: registrationId, waived: waived?.length ?? 0 },
+    meta: { registration_id: registrationId, waived: waived.length },
   });
-  return { waived: waived?.length ?? 0, sharedOrder: false };
+  return { waived: waived.length, sharedOrder: false };
 }

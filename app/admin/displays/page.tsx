@@ -99,6 +99,7 @@ export default async function DisplaysAdminPage() {
 function TemplateForm({ template }: { template?: Awaited<ReturnType<typeof listTemplates>>[number] }) {
   return (
     <form action={saveTemplateAction} className="card grid gap-3 p-5 sm:grid-cols-2">
+      {template && <input type="hidden" name="templateId" value={template.id} />}
       <div>
         <label className="field-label">Template name</label>
         <input name="name" defaultValue={template?.name ?? ''} placeholder={template ? undefined : 'New template…'} required className="input" />

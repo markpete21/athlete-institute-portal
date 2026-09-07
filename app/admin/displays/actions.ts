@@ -8,8 +8,10 @@ export async function saveTemplateAction(formData: FormData): Promise<void> {
   const session = await requireStaff();
   const name = String(formData.get('name') ?? '').trim();
   if (!name) throw new Error('Template name required.');
+  const idRaw = String(formData.get('templateId') ?? '');
   await upsertTemplate(
     {
+      id: idRaw ? Number(idRaw) : undefined,
       name,
       media_mode: String(formData.get('mediaMode') ?? 'image') as 'image' | 'video' | 'slideshow',
       media_urls: String(formData.get('mediaUrls') ?? '')

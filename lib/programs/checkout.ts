@@ -7,7 +7,7 @@ import {
   type PriceLineInput,
   type PriceResult,
 } from '@ai/foundation';
-import { must, ok, supabaseAdmin } from '@ai/foundation/supabase';
+import { must, ok, rows, supabaseAdmin } from '@ai/foundation/supabase';
 import { applyPlayPoints } from '@/lib/credits';
 
 /**
@@ -189,8 +189,8 @@ export interface OrderAddonInput {
 async function priceAddons(addons: OrderAddonInput[]): Promise<OrderAddonInput[]> {
   const variantIds = [...new Set(addons.map((a) => a.variantId).filter((v): v is number => v != null))];
   if (variantIds.length === 0) return addons;
-  const rows = ok(await supabaseAdmin().from('product_variants').select('id, price_cents').in('id', variantIds), 'variants.read') ?? [];
-  const priceById = new Map(rows.map((r) => [r.id as number, r.price_cents as number]));
+  const variants = rows(await supabaseAdmin().from('product_variants').select('id, price_cents').in('id', variantIds), 'variants.read');
+  const priceById = new Map(variants.map((r) => [r.id as number, r.price_cents as number]));
   return addons.map((a) => {
     if (a.variantId == null) return a;
     const catalogue = priceById.get(a.variantId);
@@ -353,7 +353,7 @@ export async function placeProgramOrder(input: PlaceOrderInput): Promise<{ order
 export async function recalculateOwed(orderId: number): Promise<{ owedCents: number; status: string }> {
   const db = supabaseAdmin();
   const order = must(await db.from('program_orders').select('status').eq('id', orderId).maybeSingle(), 'order.read');
-  const insts = ok(await db.from('program_installments').select('amount_cents, status, due_date').eq('order_id', orderId), 'installments.read') ?? [];
+  const insts = rows(await db.from('program_installments').select('amount_cents, status, due_date').eq('order_id', orderId), 'installments.read');
   const today = torontoToday();
   const owed = insts.filter((i) => i.status !== 'paid' && i.status !== 'waived').reduce((a, i) => a + i.amount_cents, 0);
   if (order.status === 'cancelled') return { owedCents: owed, status: 'cancelled' }; // a cancelled order stays cancelled
@@ -374,12 +374,12 @@ export async function markProgramInstallmentPaid(installmentId: number, actorCle
   if (!inst || inst.status === 'paid') return;
   // Precondition on the current status: a webhook and the success-URL return
   // racing each other settle exactly once.
-  const flipped = ok(
+  const flipped = rows(
     await db.from('program_installments').update({ status: 'paid', paid_at: new Date().toISOString(), failure_reason: null })
       .eq('id', installmentId).neq('status', 'paid').select('id'),
     'installment.paid',
   );
-  if (!flipped?.length) return;
+  if (!flipped.length) return;
   await audit({ actorId: actorClerkId, action: 'program_installment.paid', target: `program_installment:${installmentId}` });
   await recalculateOwed(inst.order_id);
 }

@@ -1,6 +1,6 @@
 import 'server-only';
 import { randomBytes } from 'node:crypto';
-import { audit, descendantIds, type FacilityNode } from '@ai/foundation';
+import { audit, descendantIds, torontoInstant, type FacilityNode } from '@ai/foundation';
 import { supabaseAdmin } from '@ai/foundation/supabase';
 import { listBookings, type BookingRecord } from '@/lib/bookings';
 import { torontoDateOf } from '@/lib/schedule-views';
@@ -43,22 +43,21 @@ export async function upsertTemplate(
   input: Partial<DisplayTemplate> & { name: string },
   actorClerkId: string,
 ): Promise<DisplayTemplate> {
-  const { data, error } = await supabaseAdmin()
-    .from('display_templates')
-    .upsert(
-      {
-        name: input.name.trim(),
-        media_mode: input.media_mode ?? 'image',
-        media_urls: input.media_urls ?? [],
-        show_today: input.show_today ?? true,
-        show_upcoming: input.show_upcoming ?? true,
-        slide_seconds: input.slide_seconds ?? 8,
-        created_by: actorClerkId,
-      },
-      { onConflict: 'name' },
-    )
-    .select(T_COLS)
-    .single();
+  const db = supabaseAdmin();
+  const fields = {
+    name: input.name.trim(),
+    media_mode: input.media_mode ?? 'image',
+    media_urls: input.media_urls ?? [],
+    show_today: input.show_today ?? true,
+    show_upcoming: input.show_upcoming ?? true,
+    slide_seconds: input.slide_seconds ?? 8,
+  };
+  // Editing an existing template (id known) is an UPDATE — renaming it must
+  // not fork a second template or re-stamp its owner. Only a new template is
+  // inserted, keyed on its (unique) name.
+  const { data, error } = input.id
+    ? await db.from('display_templates').update(fields).eq('id', input.id).select(T_COLS).single()
+    : await db.from('display_templates').upsert({ ...fields, created_by: actorClerkId }, { onConflict: 'name' }).select(T_COLS).single();
   if (error) throw new Error(`template save failed: ${error.message}`);
   await audit({ actorId: actorClerkId, action: 'display_template.saved', target: `display_template:${data.id}`, meta: { name: input.name } });
   return data as DisplayTemplate;
@@ -136,7 +135,7 @@ export async function getDisplayContent(token: string): Promise<DisplayContent |
   const today = torontoDateOf(new Date().toISOString());
   const in4Weeks = new Date(Date.now() + 28 * 86400_000).toISOString();
   const all = await listBookings({
-    from: `${today}T00:00:00-05:00`,
+    from: torontoInstant(today, '00:00'),
     to: in4Weeks,
     publicOnly: true, // only display-appropriate bookings, ever
   });

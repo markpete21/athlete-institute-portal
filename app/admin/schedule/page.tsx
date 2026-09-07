@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { buildTree, flattenTree, torontoInstant, type FacilityNode } from '@ai/foundation';
+import { addDaysISO, buildTree, flattenTree, torontoInstant, type FacilityNode } from '@ai/foundation';
 import { supabaseAdmin } from '@ai/foundation/supabase';
 import { getPortalSession } from '@/lib/auth';
 import { listBookings, type BookingRecord } from '@/lib/bookings';
@@ -39,10 +39,6 @@ interface SavedView {
   created_by: string;
 }
 
-const addDaysISO = (dateISO: string, n: number) => {
-  const [y, m, d] = dateISO.split('-').map(Number);
-  return new Date(Date.UTC(y, m - 1, d + n)).toISOString().slice(0, 10);
-};
 const fmtTime = (iso: string) =>
   new Date(iso).toLocaleTimeString('en-CA', { timeZone: 'America/Toronto', hour: 'numeric', minute: '2-digit' });
 
@@ -105,11 +101,15 @@ export default async function SchedulePage({
   const windowFrom = view === 'month' ? `${date.slice(0, 7)}-01` : view === 'week' ? addDaysISO(date, -3) : date;
   const windowTo = view === 'month' ? addDaysISO(`${date.slice(0, 7)}-01`, 32) : view === 'week' ? addDaysISO(date, 4) : addDaysISO(date, 1);
 
+  // Toronto-local day bounds (DST-correct) — the window is [from 00:00, to+1 00:00).
+  const fromInstant = torontoInstant(windowFrom, '00:00');
+  const toInstant = torontoInstant(addDaysISO(windowTo, 1), '00:00');
   const [rawBookings, conflictPairs] = await Promise.all([
-    listBookings({ from: `${windowFrom}T00:00:00-05:00`, to: `${windowTo}T23:59:59-04:00` }),
-    findConflictPairs(`${windowFrom}T00:00:00Z`, `${windowTo}T23:59:59Z`),
+    listBookings({ from: fromInstant, to: toInstant }),
+    findConflictPairs(fromInstant, toInstant),
   ]);
   const bookings = filterBookings(tree, rawBookings, filters);
+  const byDate = bookingsByDate(bookings);
   const conflictedIds = new Set(conflictPairs.flatMap((p) => [p.a.id, p.b.id]));
 
   // Gantt parents: the operational facilities (children of locations = depth 2)
@@ -329,7 +329,7 @@ export default async function SchedulePage({
       {view === 'week' && (
         <div className="grid gap-3 md:grid-cols-7">
           {Array.from({ length: 7 }, (_, i) => addDaysISO(addDaysISO(date, -3), i)).map((d) => {
-            const day = (bookingsByDate(bookings).get(d) ?? []).sort((x, y) => x.starts_at.localeCompare(y.starts_at));
+            const day = (byDate.get(d) ?? []).sort((x, y) => x.starts_at.localeCompare(y.starts_at));
             const weekday = new Date(`${d}T12:00:00Z`).toLocaleDateString('en-CA', { weekday: 'short' });
             return (
               <div key={d} className={`card flex flex-col overflow-hidden ${d === date ? 'border-2' : ''}`} style={d === date ? { borderColor: 'var(--accent)' } : undefined}>
@@ -369,7 +369,7 @@ export default async function SchedulePage({
       {view === 'month' && (
         <div className="grid grid-cols-7 gap-2">
           {Array.from({ length: 35 }, (_, i) => addDaysISO(`${date.slice(0, 7)}-01`, i - 3)).map((d) => {
-            const day = bookingsByDate(bookings).get(d) ?? [];
+            const day = byDate.get(d) ?? [];
             const inMonth = d.slice(0, 7) === date.slice(0, 7);
             const row = (b: BookingRecord) => (
               <Link

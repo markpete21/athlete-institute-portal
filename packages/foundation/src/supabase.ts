@@ -40,8 +40,9 @@ export function supabaseAdmin(): SupabaseClient {
 // half-applied money and state changes happen. These two helpers make the
 // failure mode explicit at the call site:
 //
-//   ok(await db.from('t').update(...).eq(...), 'thing.update')   // throws on error
-//   const row = must(await db.from('t').select().single(), 'thing.read') // + non-null
+//   ok(await db.from('t').update(...).eq(...), 'thing.update')       // throws on error
+//   const row = must(await db.from('t').select().maybeSingle(), 'x')  // + non-null
+//   const list = rows(await db.from('t').select('id'), 'thing.list')  // + [] default
 //
 // `ctx` names the operation in the thrown message so logs read as prose.
 
@@ -80,4 +81,10 @@ export function must<T>(result: PostgrestLike<T>, ctx: string): NonNullable<T> {
  */
 export function likeLiteral(value: string): string {
   return value.replace(/[\\%_]/g, (ch) => `\\${ch}`);
+}
+
+/** Throw if the result carries an error; return the rows (`[]` when PostgREST sent none). */
+export function rows<T>(result: PostgrestLike<T[] | null>, ctx: string): T[] {
+  if (result.error) throw new DbError(ctx, result.error);
+  return result.data ?? [];
 }

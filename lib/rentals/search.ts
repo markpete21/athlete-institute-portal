@@ -1,3 +1,4 @@
+import { addDaysISO, torontoInstant } from '@ai/foundation';
 import { supabaseAdmin } from '@ai/foundation/supabase';
 
 /**
@@ -61,6 +62,20 @@ function safeLike(raw: string): string {
   return raw.replace(/[(),*"\\]/g, ' ').trim();
 }
 
+/** The structured filters, applied identically to every pass of the search. */
+function applyRentalFilters<Q extends {
+  eq(col: string, v: unknown): Q; gte(col: string, v: unknown): Q; lt(col: string, v: unknown): Q;
+}>(q: Q, f: RentalSearchFilters): Q {
+  if (f.status) q = q.eq('status', f.status);
+  if (f.kind === 'internal') q = q.eq('is_internal', true);
+  if (f.kind === 'external') q = q.eq('is_internal', false);
+  if (f.bookingType) q = q.eq('booking_type', f.bookingType);
+  // Toronto-local day bounds, DST-correct: [from 00:00, to+1 00:00).
+  if (f.createdFrom && DATE.test(f.createdFrom)) q = q.gte('created_at', torontoInstant(f.createdFrom, '00:00'));
+  if (f.createdTo && DATE.test(f.createdTo)) q = q.lt('created_at', torontoInstant(addDaysISO(f.createdTo, 1), '00:00'));
+  return q;
+}
+
 export async function searchRentals(f: RentalSearchFilters): Promise<RentalSearchRow[]> {
   const db = supabaseAdmin();
   const limit = Math.min(f.limit ?? 100, 500);
@@ -73,12 +88,7 @@ export async function searchRentals(f: RentalSearchFilters): Promise<RentalSearc
     .order('id', { ascending: false })
     .limit(limit);
 
-  if (f.status) q = q.eq('status', f.status);
-  if (f.kind === 'internal') q = q.eq('is_internal', true);
-  if (f.kind === 'external') q = q.eq('is_internal', false);
-  if (f.bookingType) q = q.eq('booking_type', f.bookingType);
-  if (f.createdFrom && DATE.test(f.createdFrom)) q = q.gte('created_at', `${f.createdFrom}T00:00:00-05:00`);
-  if (f.createdTo && DATE.test(f.createdTo)) q = q.lte('created_at', `${f.createdTo}T23:59:59-04:00`);
+  q = applyRentalFilters(q, f);
 
   const text = safeLike(f.q ?? '');
   if (text) {
@@ -125,9 +135,9 @@ export async function searchRentals(f: RentalSearchFilters): Promise<RentalSearc
         .in('organization_id', [...matchIds])
         .order('id', { ascending: false })
         .limit(limit);
-      if (f.status) orgQuery = orgQuery.eq('status', f.status);
-      if (f.kind === 'internal') orgQuery = orgQuery.eq('is_internal', true);
-      if (f.kind === 'external') orgQuery = orgQuery.eq('is_internal', false);
+      // Same filters as the main pass — an org match must not escape the
+      // date/type/status the operator asked for.
+      orgQuery = applyRentalFilters(orgQuery, f);
       const { data: byOrg } = await orgQuery;
       const seen = new Set(rows.map((r) => r.id as number));
       for (const r of byOrg ?? []) {

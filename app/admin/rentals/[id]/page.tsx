@@ -38,7 +38,14 @@ export default async function RentalBuilderPage({ params }: { params: { id: stri
   const [{ data: facRows }, addons, conflictPairs, { data: installments }, waivers, waiverSig, { data: organizations }] = await Promise.all([
     supabaseAdmin().from('facilities').select('id, parent_id, name, label, sort_order, bookable, deleted_at').is('deleted_at', null),
     listAddons(),
-    findConflictPairs(new Date().toISOString(), new Date(Date.now() + 365 * 86400_000).toISOString()),
+    // Only this rental's own time window matters for its ⚠ pills — not a
+    // year of everyone's bookings.
+    rental.lines.length
+      ? findConflictPairs(
+          new Date(Math.min(...rental.lines.map((l) => Date.parse(l.starts_at))) - 6 * 3600_000).toISOString(),
+          new Date(Math.max(...rental.lines.map((l) => Date.parse(l.ends_at))) + 6 * 3600_000).toISOString(),
+        )
+      : Promise.resolve([]),
     supabaseAdmin().from('rental_installments').select('id, seq, label, amount_cents, due_date, is_deposit, status').eq('rental_id', rental.id).order('seq'),
     listWaivers(),
     (rental as { waiver_id?: number | null }).waiver_id

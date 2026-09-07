@@ -10,6 +10,7 @@ import {
   type Conflict,
   type FacilityClosure,
   type FacilityHours,
+  type FacilityNode,
   type HoursWarning,
 } from '@ai/foundation';
 import { supabaseAdmin } from '@ai/foundation/supabase';
@@ -150,13 +151,19 @@ export async function checkAvailability(slot: {
   };
 }
 
+/** The one rule for "can a booking point at this facility": it exists, is live, and is bookable. */
+export function assertBookable(tree: FacilityNode[], facilityId: number): FacilityNode {
+  const node = tree.find((f) => f.id === facilityId);
+  if (!node) throw new Error(`Facility ${facilityId} not found (or deleted).`);
+  if (!node.bookable) throw new Error(`"${node.name}" is not bookable.`);
+  return node;
+}
+
 export async function createBooking(
   input: CreateBookingInput,
 ): Promise<{ booking: BookingRecord } & AvailabilityReport> {
   const tree = await facilityRows();
-  const node = tree.find((f) => f.id === input.facilityId);
-  if (!node) throw new Error(`Facility ${input.facilityId} not found (or deleted).`);
-  if (!node.bookable) throw new Error(`"${node.name}" is not bookable.`);
+  assertBookable(tree, input.facilityId);
 
   const report = await checkAvailability({
     facilityId: input.facilityId,
@@ -215,8 +222,11 @@ export async function updateBooking(
   actorClerkId: string,
 ): Promise<{ booking: BookingRecord } & AvailabilityReport> {
   const db = supabaseAdmin();
-  const { data: cur, error: e0 } = await db.from('bookings').select(COLS).eq('id', id).single();
+  const { data: cur, error: e0 } = await db.from('bookings').select(COLS).eq('id', id).maybeSingle();
   if (e0) throw new Error(`booking read failed: ${e0.message}`);
+  if (!cur) throw new Error('Booking not found.');
+  // Moving a booking is held to the same facility rule as creating one.
+  if (patch.facilityId !== undefined && patch.facilityId !== cur.facility_id) assertBookable(await facilityRows(), patch.facilityId);
 
   const next = {
     facility_id: patch.facilityId ?? cur.facility_id,
@@ -260,6 +270,29 @@ export async function cancelBooking(id: number, actorClerkId: string, reason?: s
     .eq('id', id);
   if (error) throw new Error(`booking cancel failed: ${error.message}`);
   await audit({ actorId: actorClerkId, action: 'booking.canceled', target: `booking:${id}`, meta: { reason } });
+}
+
+/**
+ * Every live booking owned by a source (see `sourceRef` on CreateBookingInput:
+ * 'rental:12', 'rental-block:12', 'program:40', 'division:7', 'media-day:3').
+ * Owners use this to find their slots instead of walking their own tables.
+ */
+export async function listBookingsBySourceRef(sourceRef: string): Promise<BookingRecord[]> {
+  const { data, error } = await supabaseAdmin()
+    .from('bookings')
+    .select(COLS)
+    .eq('source_ref', sourceRef)
+    .is('canceled_at', null)
+    .order('starts_at');
+  if (error) throw new Error(`bookings by source failed: ${error.message}`);
+  return (data ?? []) as BookingRecord[];
+}
+
+/** Soft-cancel every live booking a source owns. Returns how many were released. */
+export async function cancelBookingsBySourceRef(sourceRef: string, actorClerkId: string, reason?: string): Promise<number> {
+  const live = await listBookingsBySourceRef(sourceRef);
+  for (const b of live) await cancelBooking(b.id, actorClerkId, reason);
+  return live.length;
 }
 
 // ---------------------------------------------------------------------------

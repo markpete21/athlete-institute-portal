@@ -1,5 +1,6 @@
 'use server';
 
+import { torontoInstant } from '@ai/foundation';
 import { redirect } from 'next/navigation';
 import { revalidatePath } from 'next/cache';
 import { requireStaff } from '@/lib/auth';
@@ -37,15 +38,16 @@ export async function addLineAction(formData: FormData): Promise<void> {
   const date = String(formData.get('date') ?? '');
   const start = String(formData.get('start') ?? '');
   const end = String(formData.get('end') ?? '');
-  if (!date || !start || !end) throw new Error('Date, start and end are required.');
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || !/^\d{2}:\d{2}$/.test(start) || !/^\d{2}:\d{2}$/.test(end)) throw new Error('Date, start and end are required.');
+  if (end <= start) throw new Error('End time must be after the start time.');
   const overrideRaw = String(formData.get('rateOverride') ?? '').trim();
 
   await addRentalLine({
     rentalId,
     facilityId: Number(formData.get('facilityId')),
     rateMode: String(formData.get('rateMode') ?? 'hourly') as 'hourly' | 'full_day' | 'flat',
-    startsAt: `${date}T${start}:00-04:00`,
-    endsAt: `${date}T${end}:00-04:00`,
+    startsAt: torontoInstant(date, start),
+    endsAt: torontoInstant(date, end),
     rateCentsOverride: overrideRaw ? Math.round(Number(overrideRaw) * 100) : undefined,
     actorClerkId: session.userId,
   });

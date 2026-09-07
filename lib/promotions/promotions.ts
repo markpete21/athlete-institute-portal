@@ -1,6 +1,6 @@
 import 'server-only';
 import { audit } from '@ai/foundation';
-import { ok, supabaseAdmin } from '@ai/foundation/supabase';
+import { ok, rows, supabaseAdmin } from '@ai/foundation/supabase';
 import { applyPlayPoints } from '@/lib/credits';
 import { fireTrigger } from '@/lib/comms/notifications';
 
@@ -96,11 +96,11 @@ export async function closeContest(contestId: number, actorClerkId: string): Pro
   // Claim the award atomically: whoever flips open/closed → awarded pays out.
   // A second click (or a parallel request) finds no row and stops here, so
   // winners can never be credited twice.
-  const claimed = ok(
+  const claimed = rows(
     await db.from('contests').update({ status: 'awarded' }).eq('id', contestId).neq('status', 'awarded').select('id'),
     'contest.award',
   );
-  if (!claimed?.length) throw new Error('Contest already awarded.');
+  if (!claimed.length) throw new Error('Contest already awarded.');
 
   const board = await scoreboard(contestId);
   const winners = board.slice(0, contest.reward_top_n).map((b) => b.familyId);
@@ -260,12 +260,12 @@ export async function recordChallengeAction(challengeId: number, familyId: numbe
   }
 
   // Flip awarded with a precondition so a concurrent duplicate cannot pay twice.
-  const claimed = ok(
+  const claimed = rows(
     await db.from('challenge_progress').update({ awarded: true, completed_at: new Date().toISOString() })
       .eq('challenge_id', challengeId).eq('family_id', familyId).eq('awarded', false).select('id'),
     'challenge.award',
   );
-  if (!claimed?.length) return { awarded: false, reason: 'already awarded' };
+  if (!claimed.length) return { awarded: false, reason: 'already awarded' };
   await applyPlayPoints(familyId, ch.points, `challenge: ${ch.name}`, 'system:promotions', `challenge:${challengeId}`);
   return { awarded: true };
 }

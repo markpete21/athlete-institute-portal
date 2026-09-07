@@ -13,8 +13,8 @@ import {
 } from '@ai/foundation';
 import { charge, createInvoice, padStatus } from '@ai/foundation/stripe';
 import { notify } from '@ai/foundation/notify';
-import { supabaseAdmin } from '@ai/foundation/supabase';
-import { cancelBooking } from '@/lib/bookings';
+import { must, ok, rows, supabaseAdmin } from '@ai/foundation/supabase';
+import { cancelBooking, cancelBookingsBySourceRef } from '@/lib/bookings';
 
 /**
  * Rental payments + status orchestration (Module 3 Stage 4). The scheduling
@@ -52,13 +52,21 @@ async function loadInstallments(rentalId: number): Promise<Installment[]> {
 /** Recompute + persist the rental status from its installments. */
 export async function refreshRentalStatus(rentalId: number): Promise<RentalStatus> {
   const db = supabaseAdmin();
-  const { data: rental } = await db.from('rentals').select('status').eq('id', rentalId).single();
-  const cancelled = rental!.status === 'cancelled';
+  const rental = must(await db.from('rentals').select('status').eq('id', rentalId).maybeSingle(), 'rental.read');
+  const current = rental.status as RentalStatus;
+  // A quote has no schedule yet — only markRentalBooked moves it forward.
+  if (current === 'quote') return current;
+  const cancelled = current === 'cancelled';
   const installments = await loadInstallments(rentalId);
   const next = deriveStatus(installments, torontoToday(), cancelled);
-  if (next !== rental!.status && (cancelled || canTransition(rental!.status as RentalStatus, next) || next === rental!.status)) {
-    await db.from('rentals').update({ status: next }).eq('id', rentalId);
+  if (next === current) return next;
+  if (!cancelled && !canTransition(current, next)) {
+    // Derived state disagrees with the machine — never write an illegal hop
+    // silently; leave it for a human and record why.
+    await audit({ actorId: 'system:rentals', action: 'rental.status-blocked', target: `rental:${rentalId}`, meta: { from: current, to: next } });
+    return current;
   }
+  ok(await db.from('rentals').update({ status: next }).eq('id', rentalId), 'rental.status');
   return next;
 }
 
@@ -134,28 +142,27 @@ export async function processInstallment(installmentId: number, actorClerkId: st
   if (error) throw new Error(error.message);
   if (inst.status !== 'pending') throw new Error(`Installment already ${inst.status}.`);
 
-  const { data: rental } = await db
-    .from('rentals')
-    .select('id, title, stripe_customer_id, pad_agreed, contact_email')
-    .eq('id', inst.rental_id)
-    .single();
+  const rental = must(
+    await db.from('rentals').select('id, title, stripe_customer_id, pad_agreed, contact_email').eq('id', inst.rental_id).maybeSingle(),
+    'rental.read',
+  );
 
-  const padReady = rental!.stripe_customer_id && rental!.pad_agreed
-    ? (await padStatus(rental!.stripe_customer_id)).ready
+  const padReady = rental.stripe_customer_id && rental.pad_agreed
+    ? (await padStatus(rental.stripe_customer_id)).ready
     : false;
 
   if (padReady) {
     try {
       const pi = await charge({
-        customerId: rental!.stripe_customer_id!,
+        customerId: rental.stripe_customer_id!,
         amountCents: inst.amount_cents,
         methodType: 'acss_debit',
-        description: `${rental!.title} - ${inst.label}`,
+        description: `${rental.title} - ${inst.label}`,
         metadata: { rental_id: String(inst.rental_id), installment_id: String(inst.id) },
       });
       // PAD settles asynchronously; 'processing' is normal. Final state is set
       // by the Stripe webhook (billing-events) -> markInstallmentPaid/Failed.
-      await db.from('rental_installments').update({ stripe_payment_intent: pi.id }).eq('id', inst.id);
+      ok(await db.from('rental_installments').update({ stripe_payment_intent: pi.id, processed_at: new Date().toISOString() }).eq('id', inst.id), 'installment.charged');
       await audit({ actorId: actorClerkId, action: 'rental.installment.auto-charged', target: `rental_installment:${inst.id}`, meta: { pi: pi.id, amount: inst.amount_cents } });
       return 'charged';
     } catch (err) {
@@ -166,23 +173,23 @@ export async function processInstallment(installmentId: number, actorClerkId: st
 
   // No PAD: invoice + staff follow-up reminder.
   let invoiceId: string | null = null;
-  if (rental!.stripe_customer_id) {
+  if (rental.stripe_customer_id) {
     const inv = await createInvoice({
-      customerId: rental!.stripe_customer_id,
-      items: [{ description: `${rental!.title} - ${inst.label}`, amountCents: inst.amount_cents }],
+      customerId: rental.stripe_customer_id,
+      items: [{ description: `${rental.title} - ${inst.label}`, amountCents: inst.amount_cents }],
       daysUntilDue: 5,
       metadata: { rental_id: String(inst.rental_id), installment_id: String(inst.id) },
     });
     invoiceId = inv.id ?? null;
   }
-  await db.from('rental_installments').update({ stripe_invoice_id: invoiceId }).eq('id', inst.id);
+  ok(await db.from('rental_installments').update({ stripe_invoice_id: invoiceId, processed_at: new Date().toISOString() }).eq('id', inst.id), 'installment.invoiced');
   await notify({
     to: { email: OPS_EMAIL },
     channels: ['email'],
     template: 'generic',
     data: {
       heading: 'Rental payment follow-up needed',
-      body: `${rental!.title}: "${inst.label}" ($${(inst.amount_cents / 100).toFixed(2)}) is due and the payer has no PAD auto-charge set up. An invoice was ${invoiceId ? 'sent' : 'NOT sent (no Stripe customer)'} - please chase payment.`,
+      body: `${rental.title}: "${inst.label}" ($${(inst.amount_cents / 100).toFixed(2)}) is due and the payer has no PAD auto-charge set up. An invoice was ${invoiceId ? 'sent' : 'NOT sent (no Stripe customer)'} - please chase payment.`,
       ctaLabel: 'Open rental',
       ctaUrl: `${process.env.NEXT_PUBLIC_ADMIN_URL ?? 'https://admin.athleteinstitute.ca'}/rentals/${inst.rental_id}`,
     },
@@ -193,15 +200,22 @@ export async function processInstallment(installmentId: number, actorClerkId: st
 
 export async function markInstallmentPaid(installmentId: number, actorClerkId: string): Promise<void> {
   const db = supabaseAdmin();
-  const { data: inst } = await db.from('rental_installments').select('rental_id, is_deposit').eq('id', installmentId).single();
-  await db.from('rental_installments').update({ status: 'paid', paid_at: new Date().toISOString(), failure_reason: null }).eq('id', installmentId);
+  const inst = must(await db.from('rental_installments').select('rental_id, is_deposit, status').eq('id', installmentId).maybeSingle(), 'installment.read');
+  // Idempotent: a webhook replay or a manual record-paid racing the webhook
+  // settles once. Only a pending/failed installment can become paid.
+  const flipped = rows(
+    await db.from('rental_installments').update({ status: 'paid', paid_at: new Date().toISOString(), failure_reason: null })
+      .eq('id', installmentId).in('status', ['pending', 'failed']).select('id'),
+    'installment.paid',
+  );
+  if (!flipped.length) return;
   await audit({ actorId: actorClerkId, action: 'rental.installment.paid', target: `rental_installment:${installmentId}` });
 
   // Deposit paid -> the quote's tentative holds become CONFIRMED bookings.
   // Single choke point: manual record-paid, PAD charges and invoice webhooks
   // all land here, so every payment path confirms the slots.
-  if (inst!.is_deposit) {
-    const { data: lines } = await db.from('rental_lines').select('booking_id').eq('rental_id', inst!.rental_id);
+  if (inst.is_deposit) {
+    const { data: lines } = await db.from('rental_lines').select('booking_id').eq('rental_id', inst.rental_id);
     const bookingIds = (lines ?? []).map((l) => l.booking_id).filter(Boolean) as number[];
     if (bookingIds.length) {
       const { error } = await db
@@ -211,17 +225,25 @@ export async function markInstallmentPaid(installmentId: number, actorClerkId: s
         .eq('status', 'tentative');
       if (error) throw new Error(`booking confirm failed: ${error.message}`);
     }
-    await audit({ actorId: actorClerkId, action: 'rental.confirmed-on-deposit', target: `rental:${inst!.rental_id}`, meta: { bookings: bookingIds.length } });
+    await audit({ actorId: actorClerkId, action: 'rental.confirmed-on-deposit', target: `rental:${inst.rental_id}`, meta: { bookings: bookingIds.length } });
   }
 
-  await refreshRentalStatus(inst!.rental_id);
+  await refreshRentalStatus(inst.rental_id);
 }
 
 export async function markInstallmentFailed(installmentId: number, reason: string, actorClerkId: string): Promise<void> {
   const db = supabaseAdmin();
-  const { data: inst } = await db.from('rental_installments').select('rental_id, label').eq('id', installmentId).single();
-  await db.from('rental_installments').update({ status: 'failed', failure_reason: reason }).eq('id', installmentId);
-  await db.from('rentals').update({ status: 'overdue' }).eq('id', inst!.rental_id);
+  const inst = must(await db.from('rental_installments').select('rental_id, label, status').eq('id', installmentId).maybeSingle(), 'installment.read');
+  // A late or replayed payment.failed must never fail-over a settled or
+  // waived installment, and the rental status is DERIVED (state machine), not
+  // written directly.
+  const flipped = rows(
+    await db.from('rental_installments').update({ status: 'failed', failure_reason: reason })
+      .eq('id', installmentId).eq('status', 'pending').select('id'),
+    'installment.failed',
+  );
+  if (!flipped.length) return;
+  await refreshRentalStatus(inst.rental_id);
   await audit({ actorId: actorClerkId, action: 'rental.installment.failed', target: `rental_installment:${installmentId}`, meta: { reason } });
   await notify({
     to: { email: OPS_EMAIL },
@@ -229,9 +251,9 @@ export async function markInstallmentFailed(installmentId: number, reason: strin
     template: 'generic',
     data: {
       heading: 'Rental payment failed - now overdue',
-      body: `A payment for rental #${inst!.rental_id} ("${inst!.label}") failed: ${reason}. The rental is marked overdue.`,
+      body: `A payment for rental #${inst.rental_id} ("${inst.label}") failed: ${reason}. The rental is marked overdue.`,
       ctaLabel: 'Open rental',
-      ctaUrl: `${process.env.NEXT_PUBLIC_ADMIN_URL ?? 'https://admin.athleteinstitute.ca'}/rentals/${inst!.rental_id}`,
+      ctaUrl: `${process.env.NEXT_PUBLIC_ADMIN_URL ?? 'https://admin.athleteinstitute.ca'}/rentals/${inst.rental_id}`,
     },
   });
 }
@@ -244,11 +266,14 @@ export async function recordManualPayment(installmentId: number, actorClerkId: s
 /** Cancel: release every slot booking; deposit is non-refundable (spec). */
 export async function cancelRental(rentalId: number, actorClerkId: string, reason?: string): Promise<void> {
   const db = supabaseAdmin();
-  const { data: lines } = await db.from('rental_lines').select('booking_id').eq('rental_id', rentalId);
-  for (const l of lines ?? []) {
+  const lines = rows(await db.from('rental_lines').select('booking_id').eq('rental_id', rentalId), 'rental_lines.read');
+  for (const l of lines) {
     if (l.booking_id) await cancelBooking(l.booking_id, actorClerkId, `rental cancelled: ${reason ?? ''}`);
   }
-  await db.from('rentals').update({ status: 'cancelled' }).eq('id', rentalId);
+  // The wizard's "block other facilities" rows are plain internal bookings
+  // tied to the rental by source_ref — release them too.
+  await cancelBookingsBySourceRef(`rental-block:${rentalId}`, actorClerkId, `rental cancelled: ${reason ?? ''}`);
+  ok(await db.from('rentals').update({ status: 'cancelled' }).eq('id', rentalId), 'rental.cancel');
   await audit({ actorId: actorClerkId, action: 'rental.cancelled', target: `rental:${rentalId}`, meta: { reason, deposit_non_refundable: true } });
 }
 
@@ -256,23 +281,27 @@ export async function cancelRental(rentalId: number, actorClerkId: string, reaso
 export async function processDueInstallments(actorClerkId = 'system:cron'): Promise<{ processed: number; overdue: number }> {
   const db = supabaseAdmin();
   const today = torontoToday();
-  const { data: due } = await db
-    .from('rental_installments')
-    .select('id, rental_id, stripe_invoice_id, stripe_payment_intent')
-    .eq('status', 'pending')
-    .lte('due_date', today);
+  const due = rows(
+    await db
+      .from('rental_installments')
+      .select('id, rental_id, stripe_invoice_id, stripe_payment_intent, processed_at')
+      .eq('status', 'pending')
+      .lte('due_date', today),
+    'installments.due',
+  );
 
   let processed = 0;
-  for (const inst of due ?? []) {
-    // Only kick off collection once (no invoice/PI yet); otherwise it's already
-    // out and awaiting payment - refreshRentalStatus flips it overdue below.
-    if (!inst.stripe_invoice_id && !inst.stripe_payment_intent) {
+  for (const inst of due) {
+    // Kick off collection ONCE per installment (processed_at is stamped on
+    // both the charge and the invoice path); afterwards it is out awaiting
+    // payment and refreshRentalStatus flips the rental overdue below.
+    if (!inst.processed_at && !inst.stripe_invoice_id && !inst.stripe_payment_intent) {
       await processInstallment(inst.id, actorClerkId);
       processed++;
     }
   }
   // Re-derive statuses (past-due pending -> overdue).
-  const rentalIds = [...new Set((due ?? []).map((d) => d.rental_id))];
+  const rentalIds = [...new Set(due.map((d) => d.rental_id))];
   let overdue = 0;
   for (const rid of rentalIds) {
     if ((await refreshRentalStatus(rid)) === 'overdue') overdue++;

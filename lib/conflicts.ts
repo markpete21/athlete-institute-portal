@@ -61,17 +61,23 @@ export async function findConflictPairs(
     return chains.get(id)!;
   };
 
+  // Sort-and-sweep: bookings arrive ordered by starts_at, so once B's earliest
+  // possible occupied start (its start minus the largest setup buffer seen)
+  // is past A's occupied end, no later B can overlap A either.
+  const maxSetupMs = Math.max(0, ...bookings.map((b) => b.setup_minutes ?? 0)) * 60_000;
   const pairs: ConflictPair[] = [];
   for (let i = 0; i < bookings.length; i++) {
+    const A = bookings[i];
+    const ia = occupiedInterval(A);
     for (let j = i + 1; j < bookings.length; j++) {
-      const A = bookings[i], B = bookings[j];
+      const B = bookings[j];
+      if (Date.parse(B.starts_at) - maxSetupMs >= ia.endMs) break;
       const sameNode = A.facility_id === B.facility_id;
       const treeLine =
         !sameNode &&
         (chainOf(A.facility_id).has(B.facility_id) || chainOf(B.facility_id).has(A.facility_id));
       if (!sameNode && !treeLine) continue;
 
-      const ia = occupiedInterval(A);
       const ib = occupiedInterval(B);
       if (!intervalsOverlap(ia.startMs, ia.endMs, ib.startMs, ib.endMs)) continue;
 

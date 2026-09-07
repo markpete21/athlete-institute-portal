@@ -2,8 +2,9 @@
 
 import { revalidatePath } from 'next/cache';
 import { torontoInstant } from '@ai/foundation';
-import { getPortalSession } from '@/lib/auth';
+import { requireStaff } from '@/lib/auth';
 import { createBooking } from '@/lib/bookings';
+import { listFacilities } from '@/lib/facilities';
 import { addRecurringRentalLines, addRentalAddon, addRentalLine, createRental } from '@/lib/rentals/quotes';
 
 /**
@@ -95,9 +96,8 @@ function assertSlot(s: { date: string; start: string; end: string }, label: stri
 }
 
 export async function bookWizardAction(payload: WizardPayload): Promise<WizardResult> {
-  const session = await getPortalSession();
-  if (!session.isStaff) throw new Error('Staff only.');
-  const actor = session.userId!;
+  const session = await requireStaff();
+  const actor = session.userId;
 
   const title = payload.title.trim();
   if (!title) throw new Error('Title is required.');
@@ -127,6 +127,17 @@ export async function bookWizardAction(payload: WizardPayload): Promise<WizardRe
   if (payload.intent === 'quote' && isInternal) {
     throw new Error('A quote is a priced hold for a customer — use a rental, or book internal directly.');
   }
+  // Everything that can be validated without touching the database is
+  // validated ABOVE this line: from here on each step writes, and a thrown
+  // error would leave a partial rental behind.
+  if (payload.depositDue && !DATE.test(payload.depositDue)) throw new Error('Invalid deposit due date.');
+  if (payload.balanceDue && !DATE.test(payload.balanceDue)) throw new Error('Invalid balance due date.');
+  {
+    const tree = await listFacilities();
+    const ids = new Set(tree.filter((f) => f.bookable).map((f) => f.id));
+    for (const [i, l] of payload.lines.entries()) if (!ids.has(l.facilityId)) throw new Error(`Line ${i + 1}: that facility is not bookable.`);
+    for (const [i, b] of payload.blocks.entries()) if (!ids.has(b.facilityId)) throw new Error(`Block ${i + 1}: that facility is not bookable.`);
+  }
   const rental = await createRental({
     title,
     isInternal,
@@ -144,8 +155,6 @@ export async function bookWizardAction(payload: WizardPayload): Promise<WizardRe
   // Persist the intended payment schedule on the rental (quotes carry it
   // until they're booked; book-intent uses it immediately below).
   if (!isInternal && (payload.depositDue || payload.balanceDue)) {
-    if (payload.depositDue && !DATE.test(payload.depositDue)) throw new Error('Invalid deposit due date.');
-    if (payload.balanceDue && !DATE.test(payload.balanceDue)) throw new Error('Invalid balance due date.');
     const { supabaseAdmin } = await import('@ai/foundation/supabase');
     const { error: dErr } = await supabaseAdmin()
       .from('rentals')
@@ -320,9 +329,8 @@ export async function quickAddOrgAction(input: {
   repEmail?: string;
   repPhone?: string;
 }): Promise<{ id: number; name: string }> {
-  const session = await getPortalSession();
-  if (!session.isStaff) throw new Error('Staff only.');
+  const session = await requireStaff();
   const { quickAddOrganization } = await import('@/lib/booking-config');
-  const org = await quickAddOrganization(input, session.userId!);
+  const org = await quickAddOrganization(input, session.userId);
   return { id: org.id, name: org.name };
 }

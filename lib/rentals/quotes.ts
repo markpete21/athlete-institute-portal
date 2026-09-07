@@ -388,7 +388,6 @@ export async function addRecurringRentalLines(input: {
 
   const db = supabaseAdmin();
   const { data: rental } = await db.from('rentals').select('title').eq('id', input.rentalId).single();
-  const { data: facility } = await db.from('facilities').select('name').eq('id', input.facilityId).single();
   const { data: series, error } = await db
     .from('booking_series')
     .insert({
@@ -426,7 +425,6 @@ export async function addRecurringRentalLines(input: {
     lineIds.push(res.line.id);
     if (res.line.booking_id) bookingIds.push(res.line.booking_id);
   }
-  void facility;
   return { lineCount: occurrences.length, conflictedDates, lineIds, bookingIds };
 }
 

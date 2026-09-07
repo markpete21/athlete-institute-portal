@@ -199,7 +199,12 @@ export function Wizard({
     }, 0);
   const feesTotal = kind === 'rental'
     ? lines.reduce((sum, l) => sum + ((lineTotal(l) ?? 0) + lineAddonTotal(l)) * lineOccurrences(l), 0)
-      + addons.reduce((sum, a) => sum + (addonQty[a.id] ?? 0) * a.priceCents, 0)
+      // Mirrors addonTotalCents on the server: a flat add-on is charged once.
+      + addons.reduce((sum, a) => {
+        const qty = addonQty[a.id] ?? 0;
+        if (qty <= 0) return sum;
+        return sum + (a.pricingMode === 'flat' ? a.priceCents : a.priceCents * qty);
+      }, 0)
     : 0;
   const missingRates = kind === 'rental' && lines.some((l) => lineRate(l) == null);
 
@@ -878,7 +883,7 @@ export function Wizard({
             <dt className="label text-[10px]">Kind</dt>
             <dd>{kind === 'internal'
               ? `Internal ($0) — ${businessUnits.find((u) => String(u.id) === businessUnitId)?.name ?? ''}`
-              : `Rental — ${organizations.find((o) => String(o.id) === organizationId)?.name ?? (contactName || 'no contact set')}`}
+              : `Rental — ${orgs.find((o) => String(o.id) === organizationId)?.name ?? (contactName || 'no contact set')}`}
             </dd>
             <dt className="label text-[10px]">Type</dt><dd>{bookingType}</dd>
             <dt className="label text-[10px]">Lines</dt>
