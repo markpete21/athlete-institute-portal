@@ -1,16 +1,5 @@
 import 'server-only';
-import {
-  audit,
-  buildDefaultSchedule,
-  buildPlanSchedule,
-  canTransition,
-  deriveStatus,
-  torontoToday,
-  type InstallmentState,
-  type PlanEntryInput,
-  type RentalStatus,
-  type ScheduleEntry,
-} from '@ai/foundation';
+import { audit, buildDefaultSchedule, buildPlanSchedule, canTransition, deriveStatus, torontoToday, type InstallmentState, type PlanEntryInput, type RentalStatus, type ScheduleEntry, formatCAD } from '@ai/foundation';
 import { charge, createInvoice, padStatus } from '@ai/foundation/stripe';
 import { notify } from '@ai/foundation/notify';
 import { must, ok, rows, supabaseAdmin } from '@ai/foundation/supabase';
@@ -189,7 +178,7 @@ export async function processInstallment(installmentId: number, actorClerkId: st
     template: 'generic',
     data: {
       heading: 'Rental payment follow-up needed',
-      body: `${rental.title}: "${inst.label}" ($${(inst.amount_cents / 100).toFixed(2)}) is due and the payer has no PAD auto-charge set up. An invoice was ${invoiceId ? 'sent' : 'NOT sent (no Stripe customer)'} - please chase payment.`,
+      body: `${rental.title}: "${inst.label}" (${formatCAD(inst.amount_cents)}) is due and the payer has no PAD auto-charge set up. An invoice was ${invoiceId ? 'sent' : 'NOT sent (no Stripe customer)'} - please chase payment.`,
       ctaLabel: 'Open rental',
       ctaUrl: `${process.env.NEXT_PUBLIC_ADMIN_URL ?? 'https://admin.athleteinstitute.ca'}/rentals/${inst.rental_id}`,
     },

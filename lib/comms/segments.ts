@@ -1,6 +1,7 @@
 import 'server-only';
 import { ageAt, combineAudience, engagementFilter, torontoToday } from '@ai/foundation';
 import { supabaseAdmin } from '@ai/foundation/supabase';
+import { hohContactsForFamilies } from '@/lib/family';
 
 /**
  * Recipient segmentation (Module 13 Stage 3). A saved list stores a DEFINITION,
@@ -63,6 +64,7 @@ async function recipientsForRule(rule: SegmentRule, filters?: SegmentFilters): P
   const programIds = await programIdsForRule(rule);
   const out = new Map<string, Recipient>();
   if (programIds.length === 0) return out;
+  const pending: Array<{ familyId: number; firstName: string | null }> = [];
 
   const { data: regs } = await db
     .from('registrations')
@@ -84,13 +86,15 @@ async function recipientsForRule(rule: SegmentRule, filters?: SegmentFilters): P
       if (filters.ageMax != null && age > filters.ageMax) continue;
     }
     if (!r.family_id) continue;
+    pending.push({ familyId: r.family_id, firstName: member?.first_name ?? null });
+  }
 
-    // Resolve the household contact email (HoH profile).
-    const { data: fam } = await db.from('families').select('hoh_profile_id').eq('id', r.family_id).maybeSingle();
-    if (!fam?.hoh_profile_id) continue;
-    const { data: prof } = await db.from('profiles').select('id, email').eq('id', fam.hoh_profile_id).maybeSingle();
-    if (!prof?.email) continue;
-    if (!out.has(prof.email)) out.set(prof.email, { email: prof.email, profileId: prof.id, firstName: member?.first_name ?? null, familyId: r.family_id });
+  // Resolve every household contact in ONE batched query (HoH profile).
+  const contacts = await hohContactsForFamilies(pending.map((p) => p.familyId));
+  for (const p of pending) {
+    const c = contacts.get(p.familyId);
+    if (!c?.email) continue;
+    if (!out.has(c.email)) out.set(c.email, { email: c.email, profileId: c.profileId, firstName: p.firstName, familyId: p.familyId });
   }
   return out;
 }

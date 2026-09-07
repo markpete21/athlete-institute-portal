@@ -72,17 +72,18 @@ export async function listPublicPrograms(filters: CatalogFilters = {}): Promise<
     rows = rows.filter((r) => programsInScope.has(r.id));
   }
 
-  // Spots left per program.
-  const out: CatalogItem[] = [];
-  for (const r of rows) {
-    const { count } = await db.from('registrations').select('id', { count: 'exact', head: true }).eq('program_id', r.id).eq('status', 'active');
-    out.push({
-      id: r.id, name: r.name, description: r.description, category: r.category, brand_key: r.brand_key, sport_tag: r.sport_tag,
-      type_name: r.type_name, base_price_cents: r.base_price_cents, min_age: r.min_age, max_age: r.max_age, status: r.status, share_token: r.share_token,
-      spots_left: spotsRemaining(r.capacity, count ?? 0, 0),
-    });
+  // Spots left per program — one query for every program on the page, counted
+  // in memory, instead of a count round-trip per card.
+  const activeByProgram = new Map<number, number>();
+  if (rows.length) {
+    const { data: active } = await db.from('registrations').select('program_id').in('program_id', rows.map((r) => r.id)).eq('status', 'active');
+    for (const a of active ?? []) activeByProgram.set(a.program_id, (activeByProgram.get(a.program_id) ?? 0) + 1);
   }
-  return out;
+  return rows.map((r) => ({
+    id: r.id, name: r.name, description: r.description, category: r.category, brand_key: r.brand_key, sport_tag: r.sport_tag,
+    type_name: r.type_name, base_price_cents: r.base_price_cents, min_age: r.min_age, max_age: r.max_age, status: r.status, share_token: r.share_token,
+    spots_left: spotsRemaining(r.capacity, activeByProgram.get(r.id) ?? 0, 0),
+  }));
 }
 
 export async function getProgramByToken(token: string): Promise<CatalogItem | null> {

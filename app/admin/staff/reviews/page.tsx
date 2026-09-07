@@ -1,10 +1,11 @@
 import Link from 'next/link';
+import { fmtDate } from '@ai/foundation';
 import { supabaseAdmin } from '@ai/foundation/supabase';
 import { staffReregistrationRates } from '@/lib/staff/staff';
 
 export const dynamic = 'force-dynamic';
 
-const fmt = (iso: string) => new Date(iso).toLocaleDateString('en-CA', { month: 'short', day: 'numeric', year: 'numeric' });
+const fmt = (iso: string) => fmtDate(iso);
 
 function Stars({ avg }: { avg: number }) {
   const filled = Math.round(avg);

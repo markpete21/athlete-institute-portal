@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { formatCAD } from '@ai/foundation';
 import { supabaseAdmin } from '@ai/foundation/supabase';
 import { listOfficials } from '@/lib/competitive/officials';
 import { toggleOfficialAction, upsertOfficialAction } from '../actions';
@@ -65,7 +66,7 @@ export default async function OfficialsPage() {
                   <td className="text-ink">{o.firstName} {o.lastName}</td>
                   <td className="mono">{o.availStart && o.availEnd ? `${o.availStart}-${o.availEnd}` : 'any time'}</td>
                   <td className="mono">{o.maxPerDay}/day</td>
-                  <td className="mono">${(o.payCents / 100).toFixed(2)}</td>
+                  <td className="mono">{formatCAD(o.payCents)}</td>
                   <td>{o.staffId ? <span className="tag">coach link</span> : <span className="text-silver">-</span>}</td>
                   <td className="text-silver">{o.email ?? o.phone ?? '-'}</td>
                   <td>

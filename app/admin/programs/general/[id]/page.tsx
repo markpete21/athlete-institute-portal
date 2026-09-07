@@ -1,5 +1,5 @@
 import { notFound } from 'next/navigation';
-import { torontoLabel } from '@ai/foundation';
+import { torontoLabel, formatCAD } from '@ai/foundation';
 import { supabaseAdmin } from '@ai/foundation/supabase';
 import { listSessions } from '@/lib/programs/dropin';
 import { listRescheduleableSessions } from '@/lib/programs/reschedule';
@@ -35,7 +35,7 @@ export default async function GeneralAdminPage({ params }: { params: { id: strin
           <div key={s.id} className="card flex items-center justify-between p-3">
             <span className="text-ink">{torontoLabel(s.starts_at)}</span>
             <span className="flex items-center gap-3 text-sm">
-              <span>${(s.price_cents / 100).toFixed(2)}</span>
+              <span>{formatCAD(s.price_cents)}</span>
               <span className={s.full ? 'pill-status gold' : 'tag'}>
                 {s.postponed ? 'TBD' : s.capacity == null ? `${s.taken} in` : `${s.taken}/${s.capacity}`}
               </span>

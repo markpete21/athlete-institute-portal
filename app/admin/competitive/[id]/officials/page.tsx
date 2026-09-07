@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { formatCAD } from '@ai/foundation';
 import { notFound } from 'next/navigation';
 import { supabaseAdmin } from '@ai/foundation/supabase';
 import { PrintButton } from '@/components/PrintButton';
@@ -46,7 +47,7 @@ export default async function OfficialSchedulesPage({ params }: { params: { id: 
           <section key={s.official.id} className="card p-4" style={{ breakInside: 'avoid' }}>
             <div className="flex items-baseline justify-between border-b border-hairline pb-2">
               <h2 className="text-xl">{s.official.firstName} {s.official.lastName}</h2>
-              <span className="mono text-sm text-silver">{s.lines.length} game{s.lines.length === 1 ? '' : 's'} · ${(s.payCents / 100).toFixed(2)}</span>
+              <span className="mono text-sm text-silver">{s.lines.length} game{s.lines.length === 1 ? '' : 's'} · {formatCAD(s.payCents)}</span>
             </div>
             <ul className="flex flex-col">
               {s.lines.map((l) => (

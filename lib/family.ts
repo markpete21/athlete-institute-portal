@@ -373,3 +373,53 @@ export function memberRowFor(family: Family, profileId: number | null): FamilyMe
   if (!profileId) return null;
   return family.members.find((m) => m.profile_id === profileId) ?? null;
 }
+
+// --- household contact resolution --------------------------------------------
+
+export interface HohContact {
+  familyId: number;
+  familyName: string;
+  profileId: number | null;
+  email: string | null;
+  phone: string | null;
+  firstName: string | null;
+}
+
+/**
+ * The ONE way to turn household ids into someone to contact: the Head of
+ * Household's profile (email / phone / first name), batched in a single join
+ * query. Every module that notifies families (points, gallery, dunning,
+ * feedback, retention, campaigns, waitlist) resolves through here instead of
+ * re-implementing the families → profiles hop per family.
+ */
+export async function hohContactsForFamilies(familyIds: number[]): Promise<Map<number, HohContact>> {
+  const ids = [...new Set(familyIds.filter((n) => Number.isInteger(n) && n > 0))];
+  const out = new Map<number, HohContact>();
+  if (ids.length === 0) return out;
+  const db = supabaseAdmin();
+  for (let i = 0; i < ids.length; i += 500) {
+    const { data, error } = await db
+      .from('families')
+      .select('id, name, hoh_profile_id, profiles!families_hoh_profile_id_fkey(id, email, phone, first_name)')
+      .in('id', ids.slice(i, i + 500));
+    if (error) throw new Error(`hoh contacts read failed: ${error.message}`);
+    for (const f of data ?? []) {
+      const prof = f.profiles as unknown as { id: number; email: string | null; phone: string | null; first_name: string | null } | null;
+      out.set(f.id, {
+        familyId: f.id,
+        familyName: f.name,
+        profileId: prof?.id ?? f.hoh_profile_id ?? null,
+        email: prof?.email ?? null,
+        phone: prof?.phone ?? null,
+        firstName: prof?.first_name ?? null,
+      });
+    }
+  }
+  return out;
+}
+
+/** One household's HoH contact, or null when the family has no head on file. */
+export async function hohContact(familyId: number | null | undefined): Promise<HohContact | null> {
+  if (!familyId) return null;
+  return (await hohContactsForFamilies([familyId])).get(familyId) ?? null;
+}

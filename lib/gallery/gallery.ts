@@ -2,6 +2,7 @@ import 'server-only';
 import { audit } from '@ai/foundation';
 import { BUCKETS, getSignedThumbUrl, getSignedUrl, uploadFile } from '@ai/foundation/storage';
 import { supabaseAdmin } from '@ai/foundation/supabase';
+import { hohContactsForFamilies } from '@/lib/family';
 import { fireTrigger } from '@/lib/comms/notifications';
 
 /**
@@ -74,13 +75,12 @@ export async function notifyNewMedia(galleryId: number): Promise<number> {
   if (!gallery) return 0;
   const { data: regs } = await db.from('registrations').select('family_id').eq('program_id', gallery.program_id).eq('status', 'active');
   const familyIds = [...new Set((regs ?? []).map((r) => r.family_id).filter((x): x is number => x != null))];
+  const contacts = await hohContactsForFamilies(familyIds);
   let notified = 0;
   for (const familyId of familyIds) {
-    const { data: fam } = await db.from('families').select('hoh_profile_id').eq('id', familyId).maybeSingle();
-    if (!fam?.hoh_profile_id) continue;
-    const { data: prof } = await db.from('profiles').select('email').eq('id', fam.hoh_profile_id).maybeSingle();
-    if (!prof?.email) continue;
-    await fireTrigger('gallery.new_media', { email: prof.email }, {
+    const email = contacts.get(familyId)?.email;
+    if (!email) continue;
+    await fireTrigger('gallery.new_media', { email }, {
       program_name: (gallery.programs as unknown as { name: string } | null)?.name ?? 'your program',
       gallery_url: `${process.env.NEXT_PUBLIC_PLAY_URL ?? 'https://play.athleteinstitute.ca'}/gallery`,
     });

@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { fmtDateTime } from '@ai/foundation';
 import { findConflictPairs } from '@/lib/conflicts';
 import { supabaseAdmin } from '@ai/foundation/supabase';
 import { torontoDateOf } from '@/lib/schedule-views';
@@ -18,9 +19,7 @@ const toSide = (bk: { id: number; title: string; starts_at: string; ends_at: str
 
 export const dynamic = 'force-dynamic';
 
-const TZ = 'America/Toronto';
-const fmt = (iso: string) =>
-  new Date(iso).toLocaleString('en-CA', { timeZone: TZ, month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
+const fmt = (iso: string) => fmtDateTime(iso);
 
 /**
  * Conflicts queue (Module 2 Stage 3): every unresolved collision, with the

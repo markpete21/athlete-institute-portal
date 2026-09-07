@@ -1,13 +1,11 @@
 import { getDisplayContent } from '@/lib/displays';
+import { fmtTime, fmtWeekday, fmtMonthDay } from '@ai/foundation';
 import { MediaPanel } from '@/components/display/MediaPanel';
 import { Clock } from '@/components/display/Clock';
 
 export const dynamic = 'force-dynamic';
 
-const fmtTime = (iso: string) =>
-  new Date(iso).toLocaleTimeString('en-CA', { timeZone: 'America/Toronto', hour: 'numeric', minute: '2-digit' });
-const fmtDate = (iso: string) =>
-  new Date(iso).toLocaleDateString('en-CA', { timeZone: 'America/Toronto', weekday: 'short', month: 'short', day: 'numeric' });
+const fmtDate = (iso: string) => `${fmtWeekday(iso)}, ${fmtMonthDay(iso)}`;
 
 type Phase = 'now' | 'next' | 'done';
 

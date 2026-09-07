@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { addDaysISO, buildTree, flattenTree, torontoInstant, type FacilityNode } from '@ai/foundation';
+import { addDaysISO, buildTree, flattenTree, torontoInstant, type FacilityNode, fmtTime } from '@ai/foundation';
 import { supabaseAdmin } from '@ai/foundation/supabase';
 import { getPortalSession } from '@/lib/auth';
 import { listBookings, type BookingRecord } from '@/lib/bookings';
@@ -38,9 +38,6 @@ interface SavedView {
   shared: boolean;
   created_by: string;
 }
-
-const fmtTime = (iso: string) =>
-  new Date(iso).toLocaleTimeString('en-CA', { timeZone: 'America/Toronto', hour: 'numeric', minute: '2-digit' });
 
 /**
  * The master schedule (Module 2 Stage 5): Day (default, parent/child Gantt),

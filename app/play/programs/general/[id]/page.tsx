@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { torontoLabel } from '@ai/foundation';
+import { torontoLabel, formatCAD } from '@ai/foundation';
 import { supabaseAdmin } from '@ai/foundation/supabase';
 import { getPortalSession } from '@/lib/auth';
 import { listSessions } from '@/lib/programs/dropin';
@@ -62,7 +62,7 @@ export default async function DropInPickerPage({ params }: { params: { id: strin
                   <span className="text-ink">{torontoLabel(s.starts_at)}</span>
                 </span>
                 <span className="flex items-center gap-2 text-sm">
-                  <span>${(s.price_cents / 100).toFixed(2)}</span>
+                  <span>{formatCAD(s.price_cents)}</span>
                   {s.full && <span className="pill-status gold">{s.postponed ? 'TBD' : 'Full'}</span>}
                   {!s.full && s.spots_left != null && s.spots_left <= 3 && <span className="tag">{s.spots_left} left</span>}
                 </span>

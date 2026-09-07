@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { formatCAD } from '@ai/foundation';
+import { formatCAD, TIMEZONE, fmtDateLong, fmtTime } from '@ai/foundation';
 import { supabaseAdmin } from '@ai/foundation/supabase';
 import { getRental } from '@/lib/rentals/quotes';
 import { PrintButton } from './PrintButton';
@@ -22,14 +22,8 @@ export const dynamic = 'force-dynamic';
 
 type DocType = 'quote' | 'agreement' | 'invoice';
 
-const TZ = 'America/Toronto';
-const fmtDate = (iso: string) =>
-  new Date(iso).toLocaleDateString('en-CA', { timeZone: TZ, year: 'numeric', month: 'long', day: 'numeric' });
-const fmtBlock = (startsAt: string, endsAt: string) => {
-  const d = new Date(startsAt).toLocaleDateString('en-CA', { timeZone: TZ, weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
-  const t = (iso: string) => new Date(iso).toLocaleTimeString('en-CA', { timeZone: TZ, hour: 'numeric', minute: '2-digit' });
-  return `${d}, ${t(startsAt)}-${t(endsAt)}`;
-};
+const fmtDate = (iso: string) => new Date(iso).toLocaleDateString('en-CA', { timeZone: TIMEZONE, year: 'numeric', month: 'long', day: 'numeric' });
+const fmtBlock = (startsAt: string, endsAt: string) => `${fmtDateLong(startsAt)}, ${fmtTime(startsAt)}-${fmtTime(endsAt)}`;
 
 const TITLES: Record<DocType, string> = {
   quote: 'Quote',

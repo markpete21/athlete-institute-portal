@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { buildTree, DEFAULT_TIEBREAKS, flattenTree, type FacilityNode, type Sport } from '@ai/foundation';
+import { buildTree, DEFAULT_TIEBREAKS, flattenTree, type FacilityNode, type Sport, fmtDateTime } from '@ai/foundation';
 import { supabaseAdmin } from '@ai/foundation/supabase';
 import RatingSelect from '@/components/admin/RatingSelect';
 import { divisionStandings, rosterWithRatings, TIEBREAK_OPTIONS } from '@/lib/competitive/competitive';
@@ -10,7 +10,7 @@ import { CoachSection, DraftSection, OfficialsSection } from './sections';
 export const dynamic = 'force-dynamic';
 
 const WD = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-const fmt = (iso: string | null) => iso ? new Date(iso).toLocaleString('en-CA', { timeZone: 'America/Toronto', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }) : 'TBD';
+const fmt = (iso: string | null) => (iso ? fmtDateTime(iso) : 'TBD');
 
 export default async function DivisionAdminPage({ params }: { params: { id: string } }) {
   const db = supabaseAdmin();

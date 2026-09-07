@@ -113,8 +113,7 @@ async function statFor(programId: number, days: number): Promise<ProgramStat | n
     return { regs: rows.length, revenue: rows.reduce((a, r) => a + (r.line_total_cents ?? 0), 0) };
   };
 
-  const cur = await count(startISO, nowISO);
-  const prev = await count(prevStartISO, startISO);
+  const [cur, prev] = await Promise.all([count(startISO, nowISO), count(prevStartISO, startISO)]);
   const delta = (c: number, p: number) => (p === 0 ? null : Math.round(((c - p) / p) * 100));
 
   return {
@@ -130,12 +129,8 @@ async function statFor(programId: number, days: number): Promise<ProgramStat | n
 
 /** Stats for the staff member's pinned programs (default window: last 7 days). */
 export async function pinnedProgramStats(programIds: number[], days = 7): Promise<ProgramStat[]> {
-  const out: ProgramStat[] = [];
-  for (const id of programIds.slice(0, MAX_PINNED_PROGRAMS)) {
-    const s = await statFor(id, days);
-    if (s) out.push(s);
-  }
-  return out;
+  const stats = await Promise.all(programIds.slice(0, MAX_PINNED_PROGRAMS).map((id) => statFor(id, days)));
+  return stats.filter((s): s is ProgramStat => s !== null);
 }
 
 /** Programs a staff member can pin (most recent first) for the picker. */

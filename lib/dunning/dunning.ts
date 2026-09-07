@@ -2,6 +2,7 @@ import 'server-only';
 import { audit, formatCAD } from '@ai/foundation';
 import { supabaseAdmin } from '@ai/foundation/supabase';
 import { fireTrigger } from '@/lib/comms/notifications';
+import { hohContact } from '@/lib/family';
 
 /**
  * Automated dunning (Module 18A) - the escalating recovery sequence for failed
@@ -102,12 +103,8 @@ export async function retryInstallmentCharge(installmentId: number): Promise<boo
 }
 
 async function familyContact(familyId: number | null): Promise<{ email: string | null; phone: string | null; name: string }> {
-  if (!familyId) return { email: null, phone: null, name: 'Unknown family' };
-  const db = supabaseAdmin();
-  const { data: fam } = await db.from('families').select('name, hoh_profile_id').eq('id', familyId).maybeSingle();
-  if (!fam?.hoh_profile_id) return { email: null, phone: null, name: fam?.name ?? 'Unknown family' };
-  const { data: prof } = await db.from('profiles').select('email, phone, first_name').eq('id', fam.hoh_profile_id).maybeSingle();
-  return { email: prof?.email ?? null, phone: prof?.phone ?? null, name: fam.name };
+  const c = await hohContact(familyId);
+  return { email: c?.email ?? null, phone: c?.phone ?? null, name: c?.familyName ?? 'Unknown family' };
 }
 
 export interface ProcessResult { retried: number; emailed: number; smsed: number; tasksCreated: number }

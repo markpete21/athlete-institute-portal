@@ -91,6 +91,63 @@ export function torontoLabel(iso: string, now: Date = new Date(iso)): string {
   }).format(now);
 }
 
+// --- Toronto display formatters ---------------------------------------------
+//
+// Every user-facing date/time in the portal is Toronto wall time regardless of
+// where the server runs. These are the only formatters pages should use; a
+// local `new Date(iso).toLocaleString(...)` without a timeZone drifts by a day
+// near midnight in production.
+
+const tf = (opts: Intl.DateTimeFormatOptions) => new Intl.DateTimeFormat('en-CA', { timeZone: TIMEZONE, ...opts });
+const F_TIME = tf({ hour: 'numeric', minute: '2-digit' });
+const F_WEEKDAY = tf({ weekday: 'short' });
+const F_MONTH_DAY = tf({ month: 'short', day: 'numeric' });
+const F_DATE = tf({ month: 'short', day: 'numeric', year: 'numeric' });
+const F_DATE_LONG = tf({ weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
+const F_DATE_TIME = tf({ weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
+
+/** A calendar date (YYYY-MM-DD) anchored at UTC noon so it can never shift a day when formatted. */
+export function dateOnlyToDate(dateISO: string): Date {
+  const [y, m, d] = dateISO.split('-').map(Number);
+  return new Date(Date.UTC(y, m - 1, d, 12));
+}
+
+/** "6:00 p.m." for an instant. */
+export function fmtTime(iso: string | Date): string {
+  return F_TIME.format(typeof iso === 'string' ? new Date(iso) : iso);
+}
+/** "Tue" for an instant. */
+export function fmtWeekday(iso: string | Date): string {
+  return F_WEEKDAY.format(typeof iso === 'string' ? new Date(iso) : iso);
+}
+/** "Jul 28" for an instant. */
+export function fmtMonthDay(iso: string | Date): string {
+  return F_MONTH_DAY.format(typeof iso === 'string' ? new Date(iso) : iso);
+}
+/** "Jul 28, 2026" for an instant. */
+export function fmtDate(iso: string | Date): string {
+  return F_DATE.format(typeof iso === 'string' ? new Date(iso) : iso);
+}
+/** "Tue, Jul 28, 2026" for an instant. */
+export function fmtDateLong(iso: string | Date): string {
+  return F_DATE_LONG.format(typeof iso === 'string' ? new Date(iso) : iso);
+}
+/** "Tue, Jul 28, 6:00 p.m." for an instant. */
+export function fmtDateTime(iso: string | Date): string {
+  return F_DATE_TIME.format(typeof iso === 'string' ? new Date(iso) : iso);
+}
+/** "Jul 28, 2026" for a calendar date string (YYYY-MM-DD) — no timezone shift possible. */
+export function fmtDateOnly(dateISO: string, opts: { year?: boolean; weekday?: boolean } = { year: true }): string {
+  return tf({ ...(opts.weekday ? { weekday: 'short' } : {}), month: 'short', day: 'numeric', ...(opts.year === false ? {} : { year: 'numeric' }) }).format(dateOnlyToDate(dateISO));
+}
+/** "Tue, Jul 28 · 6:00–7:30 p.m." (same day) or "Jul 28, 6:00 p.m. – Jul 29, 1:00 a.m." across days. */
+export function fmtRange(fromIso: string, toIso: string): string {
+  const from = new Date(fromIso);
+  const to = new Date(toIso);
+  if (torontoToday(from) === torontoToday(to)) return `${fmtWeekday(from)}, ${fmtMonthDay(from)} · ${fmtTime(from)}–${fmtTime(to)}`;
+  return `${fmtMonthDay(from)}, ${fmtTime(from)} – ${fmtMonthDay(to)}, ${fmtTime(to)}`;
+}
+
 // --- business-day math ------------------------------------------------------
 
 /** Parse an ISO date-only string to its UTC-noon Date (avoids DST edges). */

@@ -2,6 +2,7 @@ import 'server-only';
 import { randomBytes } from 'node:crypto';
 import { audit } from '@ai/foundation';
 import { supabaseAdmin } from '@ai/foundation/supabase';
+import { hohContact } from '@/lib/family';
 import { applyPlayPoints } from '@/lib/credits';
 import { fireTrigger } from '@/lib/comms/notifications';
 
@@ -126,12 +127,7 @@ export async function processDuePrompts(baseUrl = process.env.NEXT_PUBLIC_PLAY_U
 }
 
 async function householdEmail(familyId: number | null): Promise<string | null> {
-  if (!familyId) return null;
-  const db = supabaseAdmin();
-  const { data: fam } = await db.from('families').select('hoh_profile_id').eq('id', familyId).maybeSingle();
-  if (!fam?.hoh_profile_id) return null;
-  const { data: prof } = await db.from('profiles').select('email').eq('id', fam.hoh_profile_id).maybeSingle();
-  return prof?.email ?? null;
+  return (await hohContact(familyId))?.email ?? null;
 }
 
 // --- submission ------------------------------------------------------------------

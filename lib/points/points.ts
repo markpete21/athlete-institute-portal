@@ -4,6 +4,7 @@ import { POINTS_EXCLUDED_PROGRAM_TYPES, audit, currentSeason } from '@ai/foundat
 import { supabaseAdmin } from '@ai/foundation/supabase';
 import { applyPlayPoints } from '@/lib/credits';
 import { fireTrigger } from '@/lib/comms/notifications';
+import { hohContact } from '@/lib/family';
 
 /**
  * Play Points & Referrals (Module 19). The ledger, household tracking, and the
@@ -45,11 +46,11 @@ export async function updateEarnRule(ruleKey: string, patch: { enabled?: boolean
 }
 
 async function notifyEarned(familyId: number, points: number, message: string): Promise<void> {
-  const db = supabaseAdmin();
-  const { data: fam } = await db.from('families').select('hoh_profile_id, play_points_balance').eq('id', familyId).maybeSingle();
-  if (!fam?.hoh_profile_id) return;
-  const { data: prof } = await db.from('profiles').select('email').eq('id', fam.hoh_profile_id).maybeSingle();
-  if (prof?.email) await fireTrigger('points.earned', { email: prof.email }, { points, message, balance: fam.play_points_balance ?? 0 });
+  const [contact, { data: fam }] = await Promise.all([
+    hohContact(familyId),
+    supabaseAdmin().from('families').select('play_points_balance').eq('id', familyId).maybeSingle(),
+  ]);
+  if (contact?.email) await fireTrigger('points.earned', { email: contact.email }, { points, message, balance: fam?.play_points_balance ?? 0 });
 }
 
 /**

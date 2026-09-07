@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { fmtWeekday, fmtMonthDay, fmtTime as fmtTimeTz } from '@ai/foundation';
 import { notFound } from 'next/navigation';
 import type { Metadata } from 'next';
 import Bracket from '@/components/compete/Bracket';
@@ -9,13 +10,9 @@ import { divisionDetail, divisionStats, type CompeteGame } from '@/lib/compete/c
 
 export const dynamic = 'force-dynamic';
 
-const TZ = 'America/Toronto';
-const fmtWd = (iso: string | null) =>
-  iso ? new Date(iso).toLocaleDateString('en-CA', { timeZone: TZ, weekday: 'short' }).toUpperCase() : '';
-const fmtMd = (iso: string | null) =>
-  iso ? new Date(iso).toLocaleDateString('en-CA', { timeZone: TZ, month: 'short', day: 'numeric' }).toUpperCase() : 'TBD';
-const fmtTime = (iso: string | null) =>
-  iso ? new Date(iso).toLocaleTimeString('en-CA', { timeZone: TZ, hour: 'numeric', minute: '2-digit' }) : '';
+const fmtWd = (iso: string | null) => (iso ? fmtWeekday(iso).toUpperCase() : '');
+const fmtMd = (iso: string | null) => (iso ? fmtMonthDay(iso).toUpperCase() : 'TBD');
+const fmtTime = (iso: string | null) => (iso ? fmtTimeTz(iso) : '');
 
 const PLAY_URL = process.env.NEXT_PUBLIC_PLAY_URL ?? 'https://play.athleteinstitute.ca';
 const STREAM = process.env.STREAM_PLAYBACK_BASE ?? 'https://live.athleteinstitute.ca/watch';

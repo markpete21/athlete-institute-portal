@@ -3,6 +3,7 @@ import { DEFAULT_WEIGHTS, assessRisk, audit, seasonForDate, torontoToday, type R
 import { supabaseAdmin } from '@ai/foundation/supabase';
 import { claimScheduledSend } from '@/lib/api/webhooks';
 import { fireTrigger } from '@/lib/comms/notifications';
+import { hohContact } from '@/lib/family';
 
 /**
  * Predictive retention (Module 16). Aggregates signals the system ALREADY
@@ -78,15 +79,14 @@ export async function gatherSignals(familyMemberId: number, familyId: number | n
   // Email engagement trend from M13 recipient rows (via HoH email).
   let emailOpensRecent = 0, emailOpensPrior = 0;
   if (familyId) {
-    const { data: fam } = await db.from('families').select('hoh_profile_id').eq('id', familyId).maybeSingle();
-    if (fam?.hoh_profile_id) {
-      const { data: prof } = await db.from('profiles').select('email').eq('id', fam.hoh_profile_id).maybeSingle();
-      if (prof?.email) {
-        const { count: rec } = await db.from('comms_recipients').select('id', { count: 'exact', head: true }).eq('email', prof.email).gte('opened_at', d90);
-        const { count: pri } = await db.from('comms_recipients').select('id', { count: 'exact', head: true }).eq('email', prof.email).gte('opened_at', d180).lt('opened_at', d90);
-        emailOpensRecent = rec ?? 0;
-        emailOpensPrior = pri ?? 0;
-      }
+    const email = (await hohContact(familyId))?.email;
+    if (email) {
+      const [{ count: rec }, { count: pri }] = await Promise.all([
+        db.from('comms_recipients').select('id', { count: 'exact', head: true }).eq('email', email).gte('opened_at', d90),
+        db.from('comms_recipients').select('id', { count: 'exact', head: true }).eq('email', email).gte('opened_at', d180).lt('opened_at', d90),
+      ]);
+      emailOpensRecent = rec ?? 0;
+      emailOpensPrior = pri ?? 0;
     }
   }
 

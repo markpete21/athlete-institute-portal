@@ -1,9 +1,4 @@
-import {
-  ancestorIds,
-  descendantIds,
-  torontoInstant,
-  type FacilityNode,
-} from '@ai/foundation';
+import { ancestorIds, descendantIds, torontoInstant, type FacilityNode, fmtTime } from '@ai/foundation';
 import type { BookingRecord } from '@/lib/bookings';
 
 /**
@@ -56,8 +51,7 @@ export interface GanttGroup {
 const frac = (iso: string, dayStartMs: number, dayEndMs: number) =>
   Math.min(1, Math.max(0, (Date.parse(iso) - dayStartMs) / (dayEndMs - dayStartMs)));
 
-const fmtBarTime = (iso: string) =>
-  new Date(iso).toLocaleTimeString('en-CA', { timeZone: 'America/Toronto', hour: 'numeric', minute: '2-digit' });
+const fmtBarTime = (iso: string) => fmtTime(iso);
 
 /**
  * The parent/child resource view. `parents` are the column-1 facilities

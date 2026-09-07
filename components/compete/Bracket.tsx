@@ -1,4 +1,5 @@
 import type { CompeteGame } from '@/lib/compete/compete';
+import { fmtDateTime } from '@ai/foundation';
 
 /**
  * Playoff bracket, rendered from playoff games grouped by round. Round labels
@@ -13,9 +14,7 @@ function roundLabel(gamesInRound: number): string {
   return `Round of ${gamesInRound * 2}`;
 }
 
-const TZ = 'America/Toronto';
-const fmt = (iso: string | null) =>
-  iso ? new Date(iso).toLocaleString('en-CA', { timeZone: TZ, month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }) : 'TBD';
+const fmt = (iso: string | null) => (iso ? fmtDateTime(iso) : 'TBD');
 
 export default function Bracket({ games }: { games: CompeteGame[] }) {
   const rounds = new Map<number, CompeteGame[]>();

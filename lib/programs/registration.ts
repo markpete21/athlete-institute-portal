@@ -2,6 +2,7 @@ import 'server-only';
 import { HOLD_MINUTES, audit, spotsRemaining } from '@ai/foundation';
 import { notify } from '@ai/foundation/notify';
 import { supabaseAdmin } from '@ai/foundation/supabase';
+import { hohContact } from '@/lib/family';
 import { deriveStandingFor } from '@/lib/programs/programs';
 
 /**
@@ -263,21 +264,18 @@ export async function advanceWaitlist(programId: number, actorClerkId: string): 
 
   // Notify the HoH if we can find an email.
   if (next.family_id) {
-    const { data: fam } = await db.from('families').select('hoh_profile_id').eq('id', next.family_id).single();
-    if (fam?.hoh_profile_id) {
-      const { data: prof } = await db.from('profiles').select('email').eq('id', fam.hoh_profile_id).single();
-      if (prof?.email) {
-        await notify({
-          to: { email: prof.email },
-          channels: ['email'],
-          template: 'waitlist.opening',
-          data: {
-            programName: program.name,
-            claimUrl: `${process.env.NEXT_PUBLIC_PLAY_URL ?? 'https://play.athleteinstitute.ca'}/account`,
-            expiresLabel: '48 hours',
-          },
-        });
-      }
+    const email = (await hohContact(next.family_id))?.email;
+    if (email) {
+      await notify({
+        to: { email },
+        channels: ['email'],
+        template: 'waitlist.opening',
+        data: {
+          programName: program.name,
+          claimUrl: `${process.env.NEXT_PUBLIC_PLAY_URL ?? 'https://play.athleteinstitute.ca'}/account`,
+          expiresLabel: '48 hours',
+        },
+      });
     }
   }
   return next.id;

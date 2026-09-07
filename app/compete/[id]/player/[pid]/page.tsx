@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { fmtWeekday, fmtMonthDay } from '@ai/foundation';
 import { notFound } from 'next/navigation';
 import type { Metadata } from 'next';
 import Crest from '@/components/compete/crest';
@@ -6,9 +7,7 @@ import { divisionDetail, playerProfile } from '@/lib/compete/compete';
 
 export const dynamic = 'force-dynamic';
 
-const TZ = 'America/Toronto';
-const fmtDate = (iso: string | null) =>
-  iso ? new Date(iso).toLocaleDateString('en-CA', { timeZone: TZ, weekday: 'short', month: 'short', day: 'numeric' }) : 'TBD';
+const fmtDate = (iso: string | null) => (iso ? `${fmtWeekday(iso)}, ${fmtMonthDay(iso)}` : 'TBD');
 
 /**
  * Public player profile — stats-centric on purpose. The name arrives already

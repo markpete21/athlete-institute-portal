@@ -1,14 +1,12 @@
 import Link from 'next/link';
-import { formatCAD, RENTAL_STATUS_COLOR, type RentalStatus } from '@ai/foundation';
+import { formatCAD, RENTAL_STATUS_COLOR, type RentalStatus, fmtDate } from '@ai/foundation';
 import { supabaseAdmin } from '@ai/foundation/supabase';
 import { searchRentals, type RentalSearchFilters } from '@/lib/rentals/search';
 import { createRentalAction } from './actions';
 
 export const dynamic = 'force-dynamic';
 
-const TZ = 'America/Toronto';
-const fmtDay = (iso: string) =>
-  new Date(iso).toLocaleDateString('en-CA', { timeZone: TZ, month: 'short', day: 'numeric', year: 'numeric' });
+const fmtDay = (iso: string) => fmtDate(iso);
 
 const STATUSES: Array<{ value: string; label: string }> = [
   { value: 'quote', label: 'Quote' },

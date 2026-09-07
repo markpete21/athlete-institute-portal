@@ -1,11 +1,11 @@
 import Link from 'next/link';
+import { fmtDateOnly } from '@ai/foundation';
 import { listSeasons } from '@/lib/seasons/seasons';
 import { createSeasonAction, setSeasonArchivedAction, updateSeasonAction } from './actions';
 
 export const dynamic = 'force-dynamic';
 
-const fmt = (iso: string | null) =>
-  iso ? new Date(`${iso}T12:00:00`).toLocaleDateString('en-CA', { month: 'short', day: 'numeric', year: 'numeric' }) : '—';
+const fmt = (iso: string | null) => (iso ? fmtDateOnly(iso) : '—');
 
 const STATUS_STYLE: Record<string, string> = {
   active: 'pill-status pos',

@@ -1,13 +1,11 @@
 import Link from 'next/link';
-import { formatCAD } from '@ai/foundation';
+import { formatCAD, fmtDateOnly } from '@ai/foundation';
 import { searchInvoices } from '@/lib/rentals/search';
 import { chargeInstallmentAction, recordPaymentAction } from '../actions';
 
 export const dynamic = 'force-dynamic';
 
-const TZ = 'America/Toronto';
-const fmtDue = (d: string) =>
-  new Date(`${d}T12:00:00Z`).toLocaleDateString('en-CA', { timeZone: TZ, month: 'short', day: 'numeric', year: 'numeric' });
+const fmtDue = (d: string) => fmtDateOnly(d);
 
 const STATUS_PILL: Record<string, string> = {
   pending: 'pill-status gold',

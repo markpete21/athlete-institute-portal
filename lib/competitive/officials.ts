@@ -1,5 +1,5 @@
 import 'server-only';
-import { audit, torontoDate, torontoTimeOfDay } from '@ai/foundation';
+import { audit, torontoDate, torontoTimeOfDay, formatCAD } from '@ai/foundation';
 import { notify } from '@ai/foundation/notify';
 import { supabaseAdmin } from '@ai/foundation/supabase';
 
@@ -251,7 +251,7 @@ export async function emailOfficialSchedules(divisionId: number, actorClerkId: s
       '',
       ...s.lines.map((l) => `${l.dateLabel} - ${l.timeLabel} - ${l.facility} - ${l.matchup}`),
       '',
-      `Game fee: $${(s.official.payCents / 100).toFixed(2)} per game.`,
+      `Game fee: ${formatCAD(s.official.payCents)} per game.`,
     ].join('\n');
     await notify({
       to: { email: s.official.email },

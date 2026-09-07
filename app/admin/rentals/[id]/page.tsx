@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { buildTree, flattenTree, formatCAD, type FacilityNode } from '@ai/foundation';
+import { buildTree, flattenTree, formatCAD, type FacilityNode, fmtWeekday, fmtMonthDay, fmtTime } from '@ai/foundation';
 import { supabaseAdmin } from '@ai/foundation/supabase';
 import { findConflictPairs } from '@/lib/conflicts';
 import { RENTAL_STATUS_COLOR, type RentalStatus } from '@ai/foundation';
@@ -23,12 +23,7 @@ import {
 
 export const dynamic = 'force-dynamic';
 
-const TZ = 'America/Toronto';
-const fmtBlock = (startsAt: string, endsAt: string) => {
-  const d = new Date(startsAt).toLocaleDateString('en-CA', { timeZone: TZ, weekday: 'short', month: 'short', day: 'numeric' });
-  const t = (iso: string) => new Date(iso).toLocaleTimeString('en-CA', { timeZone: TZ, hour: 'numeric', minute: '2-digit' });
-  return `${d} · ${t(startsAt)}–${t(endsAt)}`;
-};
+const fmtBlock = (startsAt: string, endsAt: string) => `${fmtWeekday(startsAt)}, ${fmtMonthDay(startsAt)} · ${fmtTime(startsAt)}–${fmtTime(endsAt)}`;
 
 /** The quote builder (Module 3 Stage 2). */
 export default async function RentalBuilderPage({ params }: { params: { id: string } }) {

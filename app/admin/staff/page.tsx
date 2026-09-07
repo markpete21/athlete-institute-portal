@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { biWeeklyPeriod, formatCAD, shiftPeriod, torontoDate, torontoToday, type PayPeriod } from '@ai/foundation';
+import { biWeeklyPeriod, formatCAD, shiftPeriod, torontoDate, torontoToday, type PayPeriod, fmtDateOnly } from '@ai/foundation';
 import { supabaseAdmin } from '@ai/foundation/supabase';
 import { StaffListTable, type StaffListRow, type StaffPeriodSummary } from '@/components/admin/StaffListTable';
 import { staffCertStatuses, staffRatings, staffStats, upcomingUnavailability } from '@/lib/staff/staff';
@@ -8,8 +8,8 @@ import { createStaffAction } from './actions';
 export const dynamic = 'force-dynamic';
 
 const STATUS_COLOR: Record<string, string> = { active: '#3f7a5b', inactive: '#9ea1a1', archived: '#1e1e1e' };
-const fmt = (d: string) => new Date(`${d}T12:00:00Z`).toLocaleDateString('en-CA', { month: 'short', day: 'numeric' });
-const fmtLong = (d: string) => new Date(`${d}T12:00:00Z`).toLocaleDateString('en-CA', { month: 'short', day: 'numeric', year: 'numeric' });
+const fmt = (d: string) => fmtDateOnly(d, { year: false });
+const fmtLong = (d: string) => fmtDateOnly(d);
 
 /** Staff list + create (Module 5 Stage 1). Account-less coaches allowed. */
 export default async function StaffListPage({ searchParams }: { searchParams: { q?: string; status?: string; location?: string; type?: string } }) {

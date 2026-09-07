@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { formatCAD, type ResolvedCapability } from '@ai/foundation';
+import { formatCAD, type ResolvedCapability, fmtDateOnly, fmtDateTime, fmtTime } from '@ai/foundation';
 import type { SelfViewProgram, Staff } from '@/lib/staff/staff';
 import { removeMyUnavailabilityAction, submitMyUnavailabilityAction } from '@/app/play/staff/actions';
 
@@ -8,10 +8,8 @@ import { removeMyUnavailabilityAction, submitMyUnavailabilityAction } from '@/ap
  * gated) and the dev/admin preview. In preview the self-service forms are
  * disabled - the previewer is not the coach.
  */
-const fmtDate = (d: string) => new Date(`${d}T12:00:00Z`).toLocaleDateString('en-CA', { weekday: 'short', month: 'short', day: 'numeric' });
-const fmtSession = (iso: string) =>
-  new Date(iso).toLocaleString('en-CA', { timeZone: 'America/Toronto', weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
-const fmtTime = (iso: string) => new Date(iso).toLocaleTimeString('en-CA', { timeZone: 'America/Toronto', hour: 'numeric', minute: '2-digit' });
+const fmtDate = (d: string) => fmtDateOnly(d, { year: false, weekday: true });
+const fmtSession = (iso: string) => fmtDateTime(iso);
 
 export function StaffSelfViewBody({ staff, caps, programs, pay, unavailability, preview = false }: {
   staff: Staff;

@@ -3,6 +3,7 @@ import { audit } from '@ai/foundation';
 import { ok, rows, supabaseAdmin } from '@ai/foundation/supabase';
 import { applyPlayPoints } from '@/lib/credits';
 import { fireTrigger } from '@/lib/comms/notifications';
+import { hohContactsForFamilies } from '@/lib/family';
 
 /**
  * Promotions & Engagement (Module 20) - the fun layer on Module 19: contests
@@ -35,13 +36,12 @@ export async function announceToActiveFamilies(title: string, message: string): 
   const db = supabaseAdmin();
   const { data: regs } = await db.from('registrations').select('family_id').eq('status', 'active');
   const familyIds = [...new Set((regs ?? []).map((r) => r.family_id).filter((x): x is number => x != null))];
+  const contacts = await hohContactsForFamilies(familyIds);
   let sent = 0;
   for (const familyId of familyIds) {
-    const { data: fam } = await db.from('families').select('hoh_profile_id').eq('id', familyId).maybeSingle();
-    if (!fam?.hoh_profile_id) continue;
-    const { data: prof } = await db.from('profiles').select('email').eq('id', fam.hoh_profile_id).maybeSingle();
-    if (!prof?.email) continue;
-    await fireTrigger('promo.announcement', { email: prof.email }, { title, message });
+    const email = contacts.get(familyId)?.email;
+    if (!email) continue;
+    await fireTrigger('promo.announcement', { email }, { title, message });
     sent += 1;
   }
   return sent;
@@ -104,13 +104,11 @@ export async function closeContest(contestId: number, actorClerkId: string): Pro
 
   const board = await scoreboard(contestId);
   const winners = board.slice(0, contest.reward_top_n).map((b) => b.familyId);
+  const contacts = await hohContactsForFamilies(winners);
   for (const familyId of winners) {
     await applyPlayPoints(familyId, contest.reward_points, `contest: ${contest.name}`, actorClerkId, `contest:${contestId}`);
-    const { data: fam } = await db.from('families').select('hoh_profile_id').eq('id', familyId).maybeSingle();
-    if (fam?.hoh_profile_id) {
-      const { data: prof } = await db.from('profiles').select('email').eq('id', fam.hoh_profile_id).maybeSingle();
-      if (prof?.email) await fireTrigger('promo.winner', { email: prof.email }, { points: contest.reward_points, message: `You placed in the top ${contest.reward_top_n} of ${contest.name}!` });
-    }
+    const email = contacts.get(familyId)?.email;
+    if (email) await fireTrigger('promo.winner', { email }, { points: contest.reward_points, message: `You placed in the top ${contest.reward_top_n} of ${contest.name}!` });
   }
   await audit({ actorId: actorClerkId, action: 'contest.awarded', target: `contest:${contestId}`, meta: { winners: winners.length, points: contest.reward_points } });
   return { winners };

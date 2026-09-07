@@ -1,6 +1,7 @@
 'use client';
 
 import { useMemo, useState } from 'react';
+import { formatCAD } from '@ai/foundation';
 import Link from 'next/link';
 import { Modal } from '@/components/ui/Modal';
 import { DatesPicker } from './DatesPicker';
@@ -61,7 +62,7 @@ interface BlockDraft {
   end: string;
 }
 
-const cad = (cents: number) => `$${(cents / 100).toFixed(2)}`;
+const cad = (cents: number) => formatCAD(cents);
 
 // Business-day walking (weekends skipped) for the payment-schedule defaults.
 const shiftBusinessDays = (iso: string, n: number): string => {

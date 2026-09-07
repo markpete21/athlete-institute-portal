@@ -1,12 +1,12 @@
 import Link from 'next/link';
-import { biWeeklyPeriod, formatCAD, shiftPeriod, torontoToday } from '@ai/foundation';
+import { biWeeklyPeriod, formatCAD, shiftPeriod, torontoToday, fmtDateOnly } from '@ai/foundation';
 import { hasStaffCapability } from '@/lib/auth';
 import { payRows } from '@/lib/staff/staff';
 import { markPayPaidAction } from '../actions';
 
 export const dynamic = 'force-dynamic';
 
-const fmt = (d: string) => new Date(`${d}T12:00:00Z`).toLocaleDateString('en-CA', { month: 'short', day: 'numeric', year: 'numeric' });
+const fmt = (d: string) => fmtDateOnly(d);
 
 /**
  * Staff pay dashboard (Module 5 Stages 5+7): the bi-weekly "who is paid this

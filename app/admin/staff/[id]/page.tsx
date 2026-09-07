@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { formatCAD, torontoToday } from '@ai/foundation';
+import { formatCAD, torontoToday, fmtDateOnly } from '@ai/foundation';
 import { supabaseAdmin } from '@ai/foundation/supabase';
 import { listCertTypes, staffCertStatuses, staffReviewLog } from '@/lib/staff/staff';
 import {
@@ -35,7 +35,7 @@ const FREQS = [
 ];
 const ROLE_LABELS = ['Head Coach', 'Assistant Coach', 'Convenor', 'Trainer', 'Facility Coordinator', 'Volunteer'];
 
-const fmt = (d: string) => new Date(`${d}T12:00:00Z`).toLocaleDateString('en-CA', { month: 'short', day: 'numeric', year: 'numeric' });
+const fmt = (d: string) => fmtDateOnly(d);
 
 export default async function StaffDetailPage({ params }: { params: { id: string } }) {
   const db = supabaseAdmin();

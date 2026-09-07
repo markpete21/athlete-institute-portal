@@ -1,15 +1,10 @@
-import { formatCAD } from '@ai/foundation';
+import { formatCAD, fmtDateLong, fmtTime } from '@ai/foundation';
 import { PrintButton } from '@/components/PrintButton';
 import { getRentalByToken } from '@/lib/rentals/quotes';
 
 export const dynamic = 'force-dynamic';
 
-const TZ = 'America/Toronto';
-const fmtBlock = (startsAt: string, endsAt: string) => {
-  const d = new Date(startsAt).toLocaleDateString('en-CA', { timeZone: TZ, weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
-  const t = (iso: string) => new Date(iso).toLocaleTimeString('en-CA', { timeZone: TZ, hour: 'numeric', minute: '2-digit' });
-  return `${d} · ${t(startsAt)}–${t(endsAt)}`;
-};
+const fmtBlock = (startsAt: string, endsAt: string) => `${fmtDateLong(startsAt)} · ${fmtTime(startsAt)}–${fmtTime(endsAt)}`;
 
 const STATUS_LABEL: Record<string, string> = {
   quote: 'Quote',

@@ -1,5 +1,6 @@
 import 'server-only';
-import { torontoToday } from '@ai/foundation';
+import { cache } from 'react';
+import { torontoToday, formatCAD } from '@ai/foundation';
 import { supabaseAdmin } from '@ai/foundation/supabase';
 import { BUCKETS, getSignedUrl } from '@ai/foundation/storage';
 
@@ -97,7 +98,13 @@ async function memberPhoto(row: { photo_url: string | null; photo_path: string |
  * (not an error) when the visitor has no household yet, so the page can render
  * a sensible first-run state.
  */
-export async function accountView(familyId: number | null, days = 14): Promise<AccountView> {
+/**
+ * The household's account snapshot. Memoised per request: the Play layout
+ * (status bar) and the account page both need it, and it is ~10 queries.
+ */
+export const accountView = cache(accountViewUncached);
+
+async function accountViewUncached(familyId: number | null, days = 14): Promise<AccountView> {
   const db = supabaseAdmin();
   const empty: AccountView = {
     familyId, familyName: null, members: [], days: [], attention: [], registrations: [],
@@ -261,7 +268,7 @@ export async function accountView(familyId: number | null, days = 14): Promise<A
     attention.push({
       kind: 'payment', memberId: null,
       title: `Payment due ${new Date(`${balance.nextDueDate}T12:00:00Z`).toLocaleDateString('en-CA', { month: 'short', day: 'numeric' })}`,
-      detail: `$${(balance.nextDueCents / 100).toFixed(2)} on your payment plan`,
+      detail: `${formatCAD(balance.nextDueCents)} on your payment plan`,
       cta: 'Pay now', href: '/account/pay', urgent: true,
     });
   }

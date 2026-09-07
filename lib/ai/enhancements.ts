@@ -1,6 +1,7 @@
 import 'server-only';
 import { audit, balanceDraft, resolveBrand } from '@ai/foundation';
 import { supabaseAdmin } from '@ai/foundation/supabase';
+import { hohContact } from '@/lib/family';
 import { claudeText } from '@/lib/ai/claude';
 
 /**
@@ -270,10 +271,8 @@ export function bestSendHour(openTimestamps: string[], fallbackHour = 18): numbe
 /** Family's optimal send hour from their M13 open history. */
 export async function familyBestSendHour(familyId: number): Promise<number> {
   const db = supabaseAdmin();
-  const { data: fam } = await db.from('families').select('hoh_profile_id').eq('id', familyId).maybeSingle();
-  if (!fam?.hoh_profile_id) return 18;
-  const { data: prof } = await db.from('profiles').select('email').eq('id', fam.hoh_profile_id).maybeSingle();
-  if (!prof?.email) return 18;
-  const { data: opens } = await db.from('comms_recipients').select('opened_at').eq('email', prof.email).not('opened_at', 'is', null).limit(200);
+  const email = (await hohContact(familyId))?.email;
+  if (!email) return 18;
+  const { data: opens } = await db.from('comms_recipients').select('opened_at').eq('email', email).not('opened_at', 'is', null).limit(200);
   return bestSendHour((opens ?? []).map((o) => o.opened_at as string));
 }

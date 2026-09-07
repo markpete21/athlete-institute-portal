@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { fmtWeekday, fmtMonthDay, fmtTime } from '@ai/foundation';
 import { notFound } from 'next/navigation';
 import type { Metadata } from 'next';
 import Crest from '@/components/compete/crest';
@@ -6,11 +7,7 @@ import { programLanding } from '@/lib/compete/compete';
 
 export const dynamic = 'force-dynamic';
 
-const TZ = 'America/Toronto';
-const fmtWhen = (iso: string) =>
-  new Date(iso).toLocaleDateString('en-CA', { timeZone: TZ, weekday: 'short', month: 'short', day: 'numeric' }) +
-  ' · ' +
-  new Date(iso).toLocaleTimeString('en-CA', { timeZone: TZ, hour: 'numeric', minute: '2-digit' });
+const fmtWhen = (iso: string) => `${fmtWeekday(iso)}, ${fmtMonthDay(iso)} · ${fmtTime(iso)}`;
 
 const PLAY_URL = process.env.NEXT_PUBLIC_PLAY_URL ?? 'https://play.athleteinstitute.ca';
 const STREAM = process.env.STREAM_PLAYBACK_BASE ?? 'https://live.athleteinstitute.ca/watch';

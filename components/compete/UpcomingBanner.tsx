@@ -1,4 +1,5 @@
 import { upcomingGames } from '@/lib/compete/compete';
+import { fmtWeekday, fmtMonthDay, fmtTime as fmtTimeTz, torontoToday } from '@ai/foundation';
 import TickerRail, { type TickerCell } from './TickerRail';
 
 /**
@@ -9,18 +10,12 @@ import TickerRail, { type TickerCell } from './TickerRail';
  * upcomingGames() read as before — bookings join supplies the facility for
  * the division page; the ticker keeps to teams/time/division.
  */
-const TZ = 'America/Toronto';
 const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
 
-const fmtWd = (iso: string) =>
-  new Date(iso).toLocaleDateString('en-CA', { timeZone: TZ, weekday: 'short' }).toUpperCase();
-const fmtMd = (iso: string) =>
-  new Date(iso).toLocaleDateString('en-CA', { timeZone: TZ, month: 'short', day: 'numeric' }).toUpperCase();
-const fmtDayKey = (iso: string) =>
-  new Date(iso).toLocaleDateString('en-CA', { timeZone: TZ }); // YYYY-MM-DD in TZ
-const fmtTime = (iso: string) =>
-  new Date(iso).toLocaleTimeString('en-CA', { timeZone: TZ, hour: 'numeric', minute: '2-digit' })
-    .replace(/\s?([ap])\.?m\.?/i, (_, p) => `${p.toUpperCase()}M`);
+const fmtWd = (iso: string) => fmtWeekday(iso).toUpperCase();
+const fmtMd = (iso: string) => fmtMonthDay(iso).toUpperCase();
+const fmtDayKey = (iso: string) => torontoToday(new Date(iso)); // YYYY-MM-DD in Toronto
+const fmtTime = (iso: string) => fmtTimeTz(iso).replace(/\s?([ap])\.?m\.?/i, (_, p) => `${p.toUpperCase()}M`);
 
 export default async function UpcomingBanner() {
   const games = await upcomingGames(40);
