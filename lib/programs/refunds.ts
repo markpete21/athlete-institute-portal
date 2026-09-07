@@ -2,6 +2,7 @@ import 'server-only';
 import { audit, computeRefund, type RefundException, type RefundInput, type RefundResult } from '@ai/foundation';
 import { must, ok, supabaseAdmin } from '@ai/foundation/supabase';
 import { waiveRemainingInstallments } from '@/lib/programs/orders';
+import { programType } from '@/lib/programs/types';
 import { withdrawRegistration } from '@/lib/programs/registration';
 
 /**
@@ -52,14 +53,10 @@ async function loadRefundContext(registrationId: number): Promise<RefundContext>
 function quoteFromContext(ctx: RefundContext, input: RefundQuoteInput): { result: RefundResult; programType: string; blocked?: string } {
   const result = computeRefund({ ...ctx.input, withdrawalDateISO: input.withdrawalDateISO, totalUnits: input.totalUnits, unitsRemaining: input.unitsRemaining, unitsElapsed: input.unitsElapsed, exception: input.exception });
   let blocked: string | undefined;
-  if (!REFUNDABLE_TYPES_EXCLUDED.has(ctx.programType)) blocked = undefined;
-  else blocked = 'Club and Academy have their own refund handling (tuition/payment plans).';
+  if (!programType(ctx.programType).usesRefundEngine) blocked = 'Club and Academy have their own refund handling (tuition/payment plans).';
   if (!blocked && ctx.status !== 'active' && ctx.status !== 'waitlisted') blocked = `This registration is already ${ctx.status} — a refund was applied or it was withdrawn.`;
   return { result, programType: ctx.programType, blocked };
 }
-
-/** Types whose refunds are case-by-case (tuition / payment plans), never the engine. */
-const REFUNDABLE_TYPES_EXCLUDED = new Set(['club', 'academy']);
 
 /** Compute the policy-default refund for a registration (no side effects). */
 export async function quoteRefund(input: RefundQuoteInput): Promise<{ result: RefundResult; programType: string; blocked?: string }> {

@@ -2,7 +2,6 @@ import 'server-only';
 import { audit, price, torontoToday } from '@ai/foundation';
 import { must, ok, supabaseAdmin } from '@ai/foundation/supabase';
 import { createOrderForRegistration } from '@/lib/programs/orders';
-import { deriveStandingFor } from '@/lib/programs/programs';
 
 /**
  * Drop-in registration (Module 10 Stage 2). The distinct General-Programs flow:
@@ -67,6 +66,7 @@ async function getOrCreateRegistration(
   programId: number,
   familyMemberId: number,
   familyId: number | null,
+  actorClerkId: string,
 ): Promise<number> {
   const { data: existing } = await db
     .from('registrations')
@@ -77,14 +77,14 @@ async function getOrCreateRegistration(
     .maybeSingle();
   if (existing) return existing.id;
 
-  const standing = await deriveStandingFor(familyMemberId, programId);
-  const { data, error } = await db
-    .from('registrations')
-    .insert({ program_id: programId, family_member_id: familyMemberId, family_id: familyId, status: 'active', standing })
-    .select('id')
-    .single();
-  if (error) throw new Error(`registration failed: ${error.message}`);
-  return data.id;
+  // Drop-in capacity is per SESSION (checked in purchaseSessions), not per program.
+  const { createRegistration } = await import('@/lib/programs/registration');
+  const res = await createRegistration({
+    programId, familyMemberId, familyId, actorClerkId,
+    capacity: { scope: 'none' },
+    auditAction: 'dropin.registered',
+  });
+  return res.registrationId;
 }
 
 export interface PurchaseResult {
@@ -122,7 +122,7 @@ export async function purchaseSessions(input: {
   if (error) throw new Error(error.message);
   if ((sessions ?? []).length !== input.sessionIds.length) throw new Error('One or more sessions were not found.');
 
-  const registrationId = await getOrCreateRegistration(db, input.programId, input.familyMemberId, input.familyId);
+  const registrationId = await getOrCreateRegistration(db, input.programId, input.familyMemberId, input.familyId, input.actorClerkId);
 
   // Skip dates already owned (idempotent buy-more), enforce per-session capacity.
   const { data: owned } = await db.from('dropin_purchases').select('session_id').eq('registration_id', registrationId);

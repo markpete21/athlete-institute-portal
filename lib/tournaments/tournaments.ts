@@ -46,15 +46,20 @@ export async function registerTeam(input: {
   if (error) throw new Error(`team create failed: ${error.message}`);
 
   // One team-entry registration (the payable entry), by the captain.
-  const { deriveStandingFor } = await import('@/lib/programs/programs');
-  const standing = await deriveStandingFor(input.captainFamilyMemberId, input.programId);
-  const { data: entry, error: eErr } = await db
-    .from('registrations')
-    .insert({ program_id: input.programId, family_member_id: input.captainFamilyMemberId, family_id: input.familyId, status: 'active', standing, team_id: team.id, league_path: 'captain' })
-    .select('id')
-    .single();
-  if (eErr) throw new Error(`entry registration failed: ${eErr.message}`);
-  await db.from('teams').update({ entry_registration_id: entry.id, captain_registration_id: entry.id }).eq('id', team.id);
+  const { createRegistration } = await import('@/lib/programs/registration');
+  const entryRes = await createRegistration({
+    programId: input.programId,
+    familyMemberId: input.captainFamilyMemberId,
+    familyId: input.familyId,
+    actorClerkId: input.actorClerkId,
+    capacity: { scope: 'none' },
+    extra: { team_id: team.id, league_path: 'captain' },
+    auditAction: 'tournament.team-entered',
+    auditMeta: { team_id: team.id },
+  });
+  const entry = { id: entryRes.registrationId };
+  const { error: tErr } = await db.from('teams').update({ entry_registration_id: entry.id, captain_registration_id: entry.id }).eq('id', team.id);
+  if (tErr) throw new Error(`team entry link failed: ${tErr.message}`);
 
   // Roster rows (team_members) - players uploaded, not individually registered.
   if (input.roster.length) {

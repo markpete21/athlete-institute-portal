@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { buildTree, flattenTree, torontoDate, torontoTimeOfDay } from '@ai/foundation';
+import { BOOKING_SOURCE_META, buildTree, flattenTree, torontoDate, torontoTimeOfDay } from '@ai/foundation';
 import { supabaseAdmin } from '@ai/foundation/supabase';
 import { checkAvailability, getBooking } from '@/lib/bookings';
 import type { FacilityRow } from '@/lib/facilities';
@@ -13,12 +13,7 @@ import {
 
 export const dynamic = 'force-dynamic';
 
-const SOURCE_LABEL: Record<string, string> = {
-  program: 'Program',
-  event: 'Event',
-  rental: 'Rental',
-  internal: 'Internal',
-};
+const SOURCE_LABEL: Record<string, string> = Object.fromEntries(Object.entries(BOOKING_SOURCE_META).map(([k, v]) => [k, v.label]));
 
 /**
  * Booking detail / edit (Module 2 review). The wizard creates bookings and the

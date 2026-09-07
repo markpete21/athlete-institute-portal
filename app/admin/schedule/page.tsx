@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { addDaysISO, buildTree, flattenTree, torontoInstant, type FacilityNode, fmtTime } from '@ai/foundation';
+import { BOOKING_SOURCE_META, addDaysISO, buildTree, flattenTree, torontoInstant, type FacilityNode, fmtTime } from '@ai/foundation';
 import { supabaseAdmin } from '@ai/foundation/supabase';
 import { getPortalSession } from '@/lib/auth';
 import { listBookings, type BookingRecord } from '@/lib/bookings';
@@ -19,12 +19,6 @@ import {
 import { deleteViewAction, saveViewAction } from './actions';
 
 /** Bar colours for the week/month mini-cards (mirrors the Gantt legend). */
-const SOURCE_COLOR: Record<string, string> = {
-  program: 'var(--accent)',
-  event: '#3f7a5b',
-  rental: '#5b7a9e',
-  internal: '#9ea1a1',
-};
 
 export const dynamic = 'force-dynamic';
 
@@ -343,7 +337,7 @@ export default async function SchedulePage({
                       key={b.id}
                       href={`/schedule/booking/${b.id}`}
                       className="flex flex-col gap-0.5 rounded-sm border border-hairline px-2 py-1.5 hover:bg-paper-panel"
-                      style={{ borderLeft: `3px solid ${conflictedIds.has(b.id) ? '#b4483c' : SOURCE_COLOR[b.source] ?? 'var(--accent)'}` }}
+                      style={{ borderLeft: `3px solid ${conflictedIds.has(b.id) ? '#b4483c' : BOOKING_SOURCE_META[b.source]?.color ?? 'var(--accent)'}` }}
                       title={`${b.title} — click to edit`}
                     >
                       <span className="mono whitespace-nowrap text-[10px] tabular-nums text-silver">

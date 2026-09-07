@@ -1,5 +1,6 @@
 'use client';
 
+import { BOOKING_SOURCE_META } from '@ai/foundation';
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { DAY_AXIS, type GanttBar, type GanttGroup } from '@/lib/schedule-views';
@@ -18,19 +19,8 @@ import { DAY_AXIS, type GanttBar, type GanttGroup } from '@/lib/schedule-views';
  *   crosses the grid when viewing today.
  */
 
-const SOURCE_COLOR: Record<string, string> = {
-  program: 'var(--accent)',
-  event: '#3f7a5b',
-  rental: '#5b7a9e',
-  internal: '#9ea1a1',
-};
-
-const SOURCE_LABEL: Record<string, string> = {
-  program: 'Program',
-  event: 'Event',
-  rental: 'Rental',
-  internal: 'Internal',
-};
+const SOURCE_COLOR: Record<string, string> = Object.fromEntries(Object.entries(BOOKING_SOURCE_META).map(([k, v]) => [k, v.color]));
+const SOURCE_LABEL: Record<string, string> = Object.fromEntries(Object.entries(BOOKING_SOURCE_META).map(([k, v]) => [k, v.label]));
 
 /** 12-hour axis label: 7 -> 7 AM, 12 -> 12 PM, 13 -> 1 PM. */
 const fmtHour = (h: number) => `${((h + 11) % 12) + 1} ${h < 12 ? 'AM' : 'PM'}`;

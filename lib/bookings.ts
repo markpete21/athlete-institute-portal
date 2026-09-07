@@ -9,6 +9,7 @@ import {
   type ClosureWarning,
   type Conflict,
   type FacilityClosure,
+  type BookingSource,
   type FacilityHours,
   type FacilityNode,
   type HoursWarning,
@@ -34,7 +35,7 @@ import { supabaseAdmin } from '@ai/foundation/supabase';
  */
 
 export interface BookingRecord extends BookingInterval {
-  source: 'rental' | 'program' | 'event' | 'internal';
+  source: BookingSource;
   status: 'tentative' | 'confirmed';
   is_internal: boolean;
   title: string;

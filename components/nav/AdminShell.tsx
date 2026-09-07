@@ -23,6 +23,8 @@ export interface AdminShellProps {
   email: string | null;
   roleLabel: string;
   favourites: ModuleKey[];
+  /** Modules this staff member may see (capability-filtered by the layout). */
+  allowedModules: ModuleKey[];
   railMinimized: boolean;
   pinnedStats: ProgramStat[];
   statsDays: number;
@@ -68,8 +70,9 @@ export default function AdminShell(props: AdminShellProps) {
     setMinimized(next);
     startTransition(() => { void props.onSetRailMinimized(next); });
   };
-  const favs = props.favourites.map((k) => MODULE_BY_KEY[k]).filter(Boolean);
-  const unpinned = MODULES.filter((m) => !props.favourites.includes(m.key));
+  const visible = MODULES.filter((m) => props.allowedModules.includes(m.key));
+  const favs = props.favourites.map((k) => MODULE_BY_KEY[k]).filter((m) => m && props.allowedModules.includes(m.key));
+  const unpinned = visible.filter((m) => !props.favourites.includes(m.key));
 
   return (
     <div ref={shellRef} className={`admin-shell${minimized ? ' railmin' : ''}`}>
@@ -92,7 +95,7 @@ export default function AdminShell(props: AdminShellProps) {
             <div key={group} className="ash-group">
               <p className="ash-group-head">{group}</p>
               <div>
-                {MODULES.filter((m) => m.group === group).map((m) => (
+                {visible.filter((m) => m.group === group).map((m) => (
                   <div key={m.key} className={`ash-item${active === m.key ? ' active' : ''}`} data-label={m.label}>
                     <Link href={m.href} className="ash-item-link">
                       <span className="ash-ic"><Icon name={m.key} /></span>

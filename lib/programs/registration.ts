@@ -1,7 +1,7 @@
 import 'server-only';
-import { HOLD_MINUTES, audit, spotsRemaining } from '@ai/foundation';
+import { HOLD_MINUTES, audit, spotsRemaining, isRegistrable } from '@ai/foundation';
 import { notify } from '@ai/foundation/notify';
-import { supabaseAdmin } from '@ai/foundation/supabase';
+import { must, supabaseAdmin } from '@ai/foundation/supabase';
 import { hohContact } from '@/lib/family';
 import { deriveStandingFor } from '@/lib/programs/programs';
 
@@ -187,12 +187,14 @@ export async function reserveCart(
   // holds), computed ONCE up front. activeCount is re-read each insert, so we
   // track placements in-loop rather than re-querying (which would double-count).
   const seatsByProgram = new Map<number, number | null>();
+  const seasonByProgram = new Map<number, string | null>();
   const placedActive = new Map<number, number>();
   for (const item of items!) {
     if (!seatsByProgram.has(item.program_id)) {
-      const { data: program } = await db.from('programs').select('capacity').eq('id', item.program_id).single();
+      const program = must(await db.from('programs').select('capacity, season_key').eq('id', item.program_id).maybeSingle(), 'program.read');
       const [active, otherHolds] = await Promise.all([activeCount(item.program_id), heldCount(item.program_id, cartId)]);
-      seatsByProgram.set(item.program_id, spotsRemaining(program!.capacity, active, otherHolds));
+      seatsByProgram.set(item.program_id, spotsRemaining(program.capacity, active, otherHolds));
+      seasonByProgram.set(item.program_id, program.season_key ?? null);
     }
   }
 
@@ -217,7 +219,7 @@ export async function reserveCart(
         program_id: item.program_id,
         family_id: opts.familyId ?? null,
         family_member_id: item.family_member_id,
-        season_key: null,
+        season_key: seasonByProgram.get(item.program_id) ?? null,
         standing,
         status: waitlisted ? 'waitlisted' : 'active',
         cart_id: cartId,
@@ -279,6 +281,109 @@ export async function advanceWaitlist(programId: number, actorClerkId: string): 
     }
   }
   return next.id;
+}
+
+// ---------------------------------------------------------------------------
+// The single registration entry point every program type uses
+// ---------------------------------------------------------------------------
+
+export interface CreateRegistrationInput {
+  programId: number;
+  familyMemberId: number;
+  familyId: number | null;
+  actorClerkId: string;
+  /**
+   * Where the seat count is enforced. 'program' counts active registrations on
+   * the program against programs.capacity; a column scope (camp_week_id …)
+   * counts against that row's capacity; 'none' never waitlists (offer-based
+   * types decide placement themselves).
+   */
+  capacity?: { scope: 'program' } | { scope: 'none' } | { scope: 'column'; column: string; id: number; capacity: number | null };
+  /** Staff may register into a closed/draft program (front-desk override). */
+  allowClosed?: boolean;
+  /** Type-specific columns (camp_week_id, league_path, team_id, friend_request …). */
+  extra?: Record<string, unknown>;
+  /** Audit action, e.g. 'camp.registered'. */
+  auditAction?: string;
+  auditMeta?: Record<string, unknown>;
+}
+
+export interface CreateRegistrationResult {
+  registrationId: number;
+  status: 'active' | 'waitlisted';
+  waitlistPosition: number | null;
+}
+
+/**
+ * Create ONE registration with every framework rule applied: the program must
+ * be registrable (unless a staff override), no duplicate live registration for
+ * the member, standing derived from history, season stamped from the program,
+ * capacity enforced (per the chosen scope) with a waitlist position, audited.
+ *
+ * Camps, leagues, tournaments, drop-in, Club and Academy all call this; the
+ * cart path (reserveCart) applies the same rules with hold awareness.
+ */
+export async function createRegistration(input: CreateRegistrationInput): Promise<CreateRegistrationResult> {
+  const db = supabaseAdmin();
+  const program = must(
+    await db.from('programs').select('id, status, capacity, season_key').eq('id', input.programId).maybeSingle(),
+    'program.read',
+  );
+  if (!input.allowClosed && !isRegistrable(program.status)) throw new Error('Registration is not open for this program.');
+
+  const { count: dup } = await db
+    .from('registrations')
+    .select('id', { count: 'exact', head: true })
+    .eq('program_id', input.programId)
+    .eq('family_member_id', input.familyMemberId)
+    .in('status', ['active', 'waitlisted']);
+  if ((dup ?? 0) > 0) throw new Error('That member is already registered for this program.');
+
+  // Capacity → active or waitlisted.
+  const cap = input.capacity ?? { scope: 'program' as const };
+  let waitlisted = false;
+  let waitlistPosition: number | null = null;
+  if (cap.scope !== 'none') {
+    const limit = cap.scope === 'program' ? program.capacity : cap.capacity;
+    if (limit !== null && limit !== undefined) {
+      let q = db.from('registrations').select('id', { count: 'exact', head: true }).eq('program_id', input.programId).eq('status', 'active');
+      if (cap.scope === 'column') q = q.eq(cap.column, cap.id);
+      const { count } = await q;
+      waitlisted = (count ?? 0) >= limit;
+      if (waitlisted) {
+        let wq = db.from('registrations').select('id', { count: 'exact', head: true }).eq('program_id', input.programId).eq('status', 'waitlisted');
+        if (cap.scope === 'column') wq = wq.eq(cap.column, cap.id);
+        const { count: waiting } = await wq;
+        waitlistPosition = (waiting ?? 0) + 1;
+      }
+    }
+  }
+
+  const standing = await deriveStandingFor(input.familyMemberId, input.programId);
+  const reg = must(
+    await db
+      .from('registrations')
+      .insert({
+        program_id: input.programId,
+        family_member_id: input.familyMemberId,
+        family_id: input.familyId,
+        season_key: program.season_key ?? null,
+        standing,
+        status: waitlisted ? 'waitlisted' : 'active',
+        waitlist_position: waitlistPosition,
+        ...(input.extra ?? {}),
+      })
+      .select('id')
+      .single(),
+    'registration.create',
+  );
+  await audit({
+    actorId: input.actorClerkId,
+    action: input.auditAction ?? 'registration.created',
+    target: `registration:${reg.id}`,
+    meta: { program_id: input.programId, waitlisted, ...(input.auditMeta ?? {}) },
+  });
+  return { registrationId: reg.id, status: waitlisted ? 'waitlisted' : 'active', waitlistPosition };
 }
 
 /** Withdraw/cancel a registration and advance the waitlist behind it. */

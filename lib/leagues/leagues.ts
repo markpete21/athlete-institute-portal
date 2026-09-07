@@ -23,23 +23,24 @@ async function programConfig(programId: number) {
 }
 
 /** Create a registration row for a family member in a program. */
-async function registerMember(programId: number, familyMemberId: number, familyId: number | null, path: LeaguePath, extra: Record<string, unknown> = {}): Promise<number> {
-  const { deriveStandingFor } = await import('@/lib/programs/programs');
-  const standing = await deriveStandingFor(familyMemberId, programId);
-  const { data, error } = await supabaseAdmin()
-    .from('registrations')
-    .insert({ program_id: programId, family_member_id: familyMemberId, family_id: familyId, status: 'active', standing, league_path: path, ...extra })
-    .select('id')
-    .single();
-  if (error) throw new Error(`registration failed: ${error.message}`);
-  return data.id;
+async function registerMember(programId: number, familyMemberId: number, familyId: number | null, path: LeaguePath, extra: Record<string, unknown> = {}, actorClerkId = 'system:leagues'): Promise<number> {
+  const { createRegistration } = await import('@/lib/programs/registration');
+  // Team rosters manage their own size; the program's capacity is not the seat count here.
+  const res = await createRegistration({
+    programId, familyMemberId, familyId, actorClerkId,
+    capacity: { scope: 'none' },
+    extra: { league_path: path, ...extra },
+    auditAction: 'league.registered',
+    auditMeta: { path },
+  });
+  return res.registrationId;
 }
 
 /** Path 1: Captain creates a team (+ join link) and registers into it. */
 export async function captainSignup(input: { programId: number; divisionId: number; teamName: string; familyMemberId: number; familyId: number | null; payTeamRate: boolean; startDateISO: string; actorClerkId: string }): Promise<{ teamId: number; joinToken: string; registrationId: number }> {
   const db = supabaseAdmin();
   const token = randomBytes(9).toString('base64url');
-  const regId = await registerMember(input.programId, input.familyMemberId, input.familyId, 'captain', { team_id: null });
+  const regId = await registerMember(input.programId, input.familyMemberId, input.familyId, 'captain', { team_id: null }, input.actorClerkId);
   const { data: team, error } = await db
     .from('teams')
     .insert({ division_id: input.divisionId, name: input.teamName.trim(), join_token: token, captain_registration_id: regId, join_expires_at: joinLinkExpiry(input.startDateISO) })
@@ -64,7 +65,7 @@ export async function memberJoin(input: { joinToken: string; familyMemberId: num
   const status = joinLinkOpen({ expiresAtISO: team.join_expires_at, memberCount: count ?? 0, maxPlayers: div.max_players, nowISO: new Date().toISOString() });
   if (!status.open) throw new Error(status.reason === 'full' ? 'This team is full.' : 'This join link has expired.');
 
-  const regId = await registerMember(div.program_id, input.familyMemberId, input.familyId, 'member', { team_id: team.id });
+  const regId = await registerMember(div.program_id, input.familyMemberId, input.familyId, 'member', { team_id: team.id }, input.actorClerkId);
   await addRosterMember({ divisionId: team.division_id, registrationId: regId, lockedTeamId: team.id });
   await audit({ actorId: input.actorClerkId, action: 'league.member-join', target: `team:${team.id}`, meta: { registration: regId } });
   return { registrationId: regId, teamId: team.id };
@@ -73,7 +74,7 @@ export async function memberJoin(input: { joinToken: string; familyMemberId: num
 /** Path 3: Small group — each pays individually, held together until complete. */
 export async function smallGroupSignup(input: { programId: number; divisionId: number; familyMemberId: number; familyId: number | null; groupKey: string; teammateNames: string[]; actorClerkId: string }): Promise<{ registrationId: number; complete: boolean }> {
   const db = supabaseAdmin();
-  const regId = await registerMember(input.programId, input.familyMemberId, input.familyId, 'small_group', { group_key: input.groupKey, group_member_names: input.teammateNames });
+  const regId = await registerMember(input.programId, input.familyMemberId, input.familyId, 'small_group', { group_key: input.groupKey, group_member_names: input.teammateNames }, input.actorClerkId);
   await addRosterMember({ divisionId: input.divisionId, registrationId: regId, groupKey: input.groupKey });
 
   const { count } = await db.from('registrations').select('id', { count: 'exact', head: true }).eq('program_id', input.programId).eq('group_key', input.groupKey).eq('status', 'active');
@@ -87,7 +88,7 @@ export async function smallGroupSignup(input: { programId: number; divisionId: n
 
 /** Path 4: Free agent — pays player fee, placed later by the M6 builder. */
 export async function freeAgentSignup(input: { programId: number; divisionId: number; familyMemberId: number; familyId: number | null; actorClerkId: string }): Promise<{ registrationId: number }> {
-  const regId = await registerMember(input.programId, input.familyMemberId, input.familyId, 'free_agent');
+  const regId = await registerMember(input.programId, input.familyMemberId, input.familyId, 'free_agent', {}, input.actorClerkId);
   await addRosterMember({ divisionId: input.divisionId, registrationId: regId });
   await audit({ actorId: input.actorClerkId, action: 'league.free-agent', target: `registration:${regId}` });
   return { registrationId: regId };

@@ -8,6 +8,7 @@ import {
   type PriceResult,
 } from '@ai/foundation';
 import { must, ok, rows, supabaseAdmin } from '@ai/foundation/supabase';
+import { programType } from '@/lib/programs/types';
 import { applyPlayPoints } from '@/lib/credits';
 
 /**
@@ -168,10 +169,9 @@ export async function quoteCheckout(registrationIds: number[], ctx: CheckoutCont
     playPoints,
   });
 
-  // Points earned = $1 per eligible ($ spent on non-academy/club program lines).
-  const excluded = new Set(['academy', 'club']);
+  // Points earned = $1 per eligible dollar (program types that earn points, per the registry).
   const eligibleSpend = result.lines
-    .filter((l) => l.kind === 'program' && !excluded.has((l.programType ?? '')))
+    .filter((l) => l.kind === 'program' && programType(l.programType).earnsPoints)
     .reduce((a, l) => a + l.totalCents, 0);
   return { ...result, earnablePoints: Math.floor(eligibleSpend / 100), staffProfileId };
 }

@@ -20,6 +20,13 @@ export interface ModuleDef {
   group: GroupName;
   href: string;
   actions: QuickAction[];
+  /**
+   * Module 5 capability (view) required to see this module at all. Enforced
+   * ONCE in app/admin/layout.tsx (redirect) and used by AdminShell to hide the
+   * entry, so pages and nav can't disagree. Modules without one are open to
+   * every staff member; their sensitive actions still gate themselves.
+   */
+  capability?: string;
 }
 
 export type GroupName =
@@ -91,7 +98,7 @@ export const MODULES: ModuleDef[] = [
     { label: 'Permissions', href: '/staff/permissions' },
     { label: 'Pay', href: '/staff/pay' },
   ] },
-  { key: 'roles', label: 'Roles & Access', group: 'People & Staff', href: '/roles', actions: [
+  { key: 'roles', label: 'Roles & Access', group: 'People & Staff', href: '/roles', capability: 'manage_roles', actions: [
     { label: 'Roles', href: '/roles' },
   ] },
   { key: 'waivers', label: 'Waivers', group: 'People & Staff', href: '/waivers', actions: [
@@ -112,7 +119,7 @@ export const MODULES: ModuleDef[] = [
   { key: 'feedback', label: 'Feedback', group: 'Engagement', href: '/feedback', actions: [
     { label: 'Ratings overview', href: '/feedback' },
   ] },
-  { key: 'points', label: 'Play Points', group: 'Engagement', href: '/points', actions: [
+  { key: 'points', label: 'Play Points', group: 'Engagement', href: '/points', capability: 'pay', actions: [
     { label: 'Points & referrals', href: '/points' },
   ] },
   { key: 'promotions', label: 'Promotions', group: 'Engagement', href: '/promotions', actions: [
@@ -130,7 +137,7 @@ export const MODULES: ModuleDef[] = [
   { key: 'retention', label: 'Retention', group: 'Business & Insight', href: '/retention', actions: [
     { label: 'At-risk families', href: '/retention' },
   ] },
-  { key: 'dunning', label: 'Dunning', group: 'Business & Insight', href: '/dunning', actions: [
+  { key: 'dunning', label: 'Dunning', group: 'Business & Insight', href: '/dunning', capability: 'pay', actions: [
     { label: 'Failed payments', href: '/dunning' },
   ] },
   { key: 'assist', label: 'Assist (AI)', group: 'Business & Insight', href: '/assist', actions: [
@@ -152,4 +159,9 @@ export function activeModuleFor(pathname: string): ModuleKey | null {
     }
   }
   return best?.key ?? null;
+}
+
+/** Modules a staff member may see, given their resolved capabilities (bootstrap admins see all). */
+export function visibleModules(caps: Record<string, { view: boolean; edit: boolean }>, all = false): ModuleDef[] {
+  return MODULES.filter((m) => all || !m.capability || caps[m.capability]?.view);
 }

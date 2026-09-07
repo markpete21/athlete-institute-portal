@@ -1,7 +1,10 @@
+import { headers } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { ECOSYSTEM_LINKS } from '@ai/foundation';
 import AdminShell from '@/components/nav/AdminShell';
+import { capabilitiesForProfile } from '@/lib/access/capabilities';
 import { getPortalSession } from '@/lib/auth';
+import { MODULE_BY_KEY, activeModuleFor, visibleModules } from '@/lib/nav/modules';
 import { getNavPrefs, pinnablePrograms, pinnedProgramStats } from '@/lib/nav/prefs';
 import { setRailMinimizedAction, toggleFavouriteAction, togglePinnedProgramAction } from './nav-actions';
 
@@ -27,9 +30,18 @@ export default async function AdminLayout({ children }: { children: React.ReactN
     redirect(playUrl);
   }
 
+  // Module gate: a module that declares a capability is invisible AND
+  // unreachable without it (one rule for nav + pages; actions still gate
+  // their own sensitive operations).
+  const caps = session.profileId ? await capabilitiesForProfile(session.profileId) : {};
+  const allowed = visibleModules(caps, session.bootstrapAdmin);
+  const path = headers().get('x-portal-path') ?? '/';
+  const active = activeModuleFor(path);
+  if (active && MODULE_BY_KEY[active].capability && !allowed.some((m) => m.key === active)) redirect('/');
+
   const prefs = await getNavPrefs(session.profileId);
   const [pinnedStats, programs] = await Promise.all([
-    pinnedProgramStats(prefs.pinnedPrograms, STATS_DAYS),
+    pinnedProgramStats(prefs.pinnedPrograms.filter(Boolean), STATS_DAYS),
     pinnablePrograms(),
   ]);
 
@@ -37,7 +49,8 @@ export default async function AdminLayout({ children }: { children: React.ReactN
     <AdminShell
       email={session.email}
       roleLabel={session.roles.length ? session.roles.join(', ') : session.userType}
-      favourites={prefs.favourites}
+      favourites={prefs.favourites.filter((k) => allowed.some((m) => m.key === k))}
+      allowedModules={allowed.map((m) => m.key)}
       railMinimized={prefs.railMinimized}
       pinnedStats={pinnedStats}
       statsDays={STATS_DAYS}

@@ -7,7 +7,7 @@ import {
 } from '@ai/foundation';
 import { ok, supabaseAdmin } from '@ai/foundation/supabase';
 import { createOrderForRegistration } from '@/lib/programs/orders';
-import { deriveStandingFor } from '@/lib/programs/programs';
+import { createRegistration } from '@/lib/programs/registration';
 
 /**
  * Academy (Module 12) - the final program-type front-end. Pure enrollment +
@@ -157,13 +157,17 @@ export async function respondToOffer(token: string, accept: boolean, actorClerkI
   // Season registration (M4). Payment plan built from academy Feb-1 completion.
   let seasonRegistrationId: number | null = null;
   if (seasonProgramId) {
-    const standing = await deriveStandingFor(player.family_member_id, seasonProgramId);
-    const { data: reg, error: rErr } = await db
-      .from('registrations')
-      .insert({ program_id: seasonProgramId, family_member_id: player.family_member_id, family_id: player.family_id, status: 'active', standing })
-      .select('id').single();
-    if (rErr) throw new Error(`season registration failed: ${rErr.message}`);
-    seasonRegistrationId = reg.id;
+    const res = await createRegistration({
+      programId: seasonProgramId,
+      familyMemberId: player.family_member_id,
+      familyId: player.family_id,
+      actorClerkId,
+      capacity: { scope: 'none' },
+      allowClosed: true,
+      auditAction: 'academy.season-registered',
+      auditMeta: { offer_id: offer.id, team_id: offer.team_id },
+    });
+    seasonRegistrationId = res.registrationId;
   }
 
   const { data: academy } = await db.from('academies').select('plan_complete_by').eq('id', player.academy_id).single();

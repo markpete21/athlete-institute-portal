@@ -1,9 +1,9 @@
 import 'server-only';
 import { randomBytes } from 'node:crypto';
 import { addDaysISO, audit, torontoToday } from '@ai/foundation';
-import { ok, supabaseAdmin } from '@ai/foundation/supabase';
+import { must, ok, supabaseAdmin } from '@ai/foundation/supabase';
 import { createOrderForRegistration } from '@/lib/programs/orders';
-import { deriveStandingFor } from '@/lib/programs/programs';
+import { createRegistration } from '@/lib/programs/registration';
 
 /**
  * Club (Module 11). A program-type front-end over Module 4 (billing/waivers/
@@ -239,14 +239,20 @@ export async function respondToOffer(token: string, accept: boolean, actorClerkI
   // Create the season registration (billing/payment-plan runs via M4 at checkout).
   let seasonRegistrationId: number | null = null;
   if (team.season_program_id) {
-    const { data: player } = await db.from('club_tryout_players').select('family_member_id, family_id').eq('id', offer.player_id).single();
-    const standing = await deriveStandingFor(player!.family_member_id, team.season_program_id);
-    const { data: reg, error: rErr } = await db
-      .from('registrations')
-      .insert({ program_id: team.season_program_id, family_member_id: player!.family_member_id, family_id: player!.family_id, status: 'active', standing })
-      .select('id').single();
-    if (rErr) throw new Error(`season registration failed: ${rErr.message}`);
-    seasonRegistrationId = reg.id;
+    const player = must(await db.from('club_tryout_players').select('family_member_id, family_id').eq('id', offer.player_id).maybeSingle(), 'club_player.read');
+    // Offer-based: the roster decided placement, so no program capacity gate,
+    // and the season program may still be unpublished when offers go out.
+    const res = await createRegistration({
+      programId: team.season_program_id,
+      familyMemberId: player.family_member_id,
+      familyId: player.family_id,
+      actorClerkId,
+      capacity: { scope: 'none' },
+      allowClosed: true,
+      auditAction: 'club.season-registered',
+      auditMeta: { offer_id: offer.id, team_id: offer.team_id },
+    });
+    seasonRegistrationId = res.registrationId;
   }
 
   // The receivable (Module 4 tables): deposit due now, the balance due before

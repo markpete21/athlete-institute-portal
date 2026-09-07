@@ -1,6 +1,6 @@
 import 'server-only';
 import { audit, spotsRemaining } from '@ai/foundation';
-import { supabaseAdmin } from '@ai/foundation/supabase';
+import { must, supabaseAdmin } from '@ai/foundation/supabase';
 
 /**
  * Camps front-end (Module 8). Weeks/variations under a camp program, per-week
@@ -46,20 +46,20 @@ export async function listWeeks(programId: number): Promise<Array<CampWeek & { s
 /** Register a camper into a specific week (per-week capacity → waitlist). */
 export async function registerCamper(input: { programId: number; campWeekId: number; familyMemberId: number; familyId: number | null; friendRequest?: string | null; actorClerkId: string }): Promise<{ registrationId: number; waitlisted: boolean }> {
   const db = supabaseAdmin();
-  const { deriveStandingFor } = await import('@/lib/programs/programs');
-  const { data: week } = await db.from('camp_weeks').select('capacity').eq('id', input.campWeekId).single();
-  const { count } = await db.from('registrations').select('id', { count: 'exact', head: true }).eq('camp_week_id', input.campWeekId).eq('status', 'active');
-  const left = spotsRemaining(week!.capacity, count ?? 0, 0);
-  const waitlisted = left !== null && left <= 0;
-  const standing = await deriveStandingFor(input.familyMemberId, input.programId);
-  const { data, error } = await db
-    .from('registrations')
-    .insert({ program_id: input.programId, camp_week_id: input.campWeekId, family_member_id: input.familyMemberId, family_id: input.familyId, standing, status: waitlisted ? 'waitlisted' : 'active', friend_request: input.friendRequest ?? null })
-    .select('id')
-    .single();
-  if (error) throw new Error(`camp registration failed: ${error.message}`);
-  await audit({ actorId: input.actorClerkId, action: 'camp.registered', target: `registration:${data.id}`, meta: { week: input.campWeekId, waitlisted } });
-  return { registrationId: data.id, waitlisted };
+  const week = must(await db.from('camp_weeks').select('capacity, program_id').eq('id', input.campWeekId).maybeSingle(), 'camp_week.read');
+  if (week.program_id !== input.programId) throw new Error('That week belongs to a different camp.');
+  const { createRegistration } = await import('@/lib/programs/registration');
+  const res = await createRegistration({
+    programId: input.programId,
+    familyMemberId: input.familyMemberId,
+    familyId: input.familyId,
+    actorClerkId: input.actorClerkId,
+    capacity: { scope: 'column', column: 'camp_week_id', id: input.campWeekId, capacity: week.capacity },
+    extra: { camp_week_id: input.campWeekId, friend_request: input.friendRequest ?? null },
+    auditAction: 'camp.registered',
+    auditMeta: { week: input.campWeekId },
+  });
+  return { registrationId: res.registrationId, waitlisted: res.status === 'waitlisted' };
 }
 
 // --- Daily check-in / check-out (mobile staff tool) -------------------------

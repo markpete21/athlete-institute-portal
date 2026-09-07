@@ -8,6 +8,7 @@ import {
   computeStandings,
   roundRobin,
   singleElimination,
+  sportRules,
   suggestReplacements,
   torontoInstant,
   type BalanceAttribute,
@@ -214,8 +215,12 @@ export async function saveScore(input: { gameId: number; homeScore: number; away
   for (const v of [input.homeScore, input.awayScore]) {
     if (!Number.isInteger(v) || v < 0) throw new Error('Enter both scores as whole numbers.');
   }
-  const game = must(await db.from('games').select('stage').eq('id', input.gameId).maybeSingle(), 'game.read');
-  if (game.stage === 'playoff' && input.homeScore === input.awayScore) throw new Error('A playoff game needs a winner — record the overtime result.');
+  const game = must(await db.from('games').select('stage, divisions(sport)').eq('id', input.gameId).maybeSingle(), 'game.read');
+  if (input.homeScore === input.awayScore) {
+    const sport = (game.divisions as unknown as { sport: string } | null)?.sport;
+    if (game.stage === 'playoff') throw new Error('A playoff game needs a winner — record the overtime result.');
+    if (!sportRules(sport).allowsTies) throw new Error(`${sportRules(sport).label} games cannot end tied — record the overtime result.`);
+  }
   ok(
     await db
       .from('games')

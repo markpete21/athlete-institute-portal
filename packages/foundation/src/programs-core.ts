@@ -11,15 +11,29 @@ export type ProgramCategory = 'Academy' | 'Club' | 'Camps' | 'Youth Sports' | 'A
 export const PROGRAM_CATEGORIES: ProgramCategory[] = ['Academy', 'Club', 'Camps', 'Youth Sports', 'Adult'];
 
 /** Proration method a program type defaults to (Stage 7 encodes the formulas). */
-export type ProrationMethod = 'league' | 'clinic' | 'camp' | 'dropin' | 'none';
+export const PRORATION_METHODS = ['league', 'clinic', 'camp', 'dropin', 'none'] as const;
+export type ProrationMethod = (typeof PRORATION_METHODS)[number];
 
-export type ProgramStatus =
-  | 'draft'
-  | 'published'
-  | 'registration_open'
-  | 'full'
-  | 'closed'
-  | 'archived';
+export const PROGRAM_STATUSES = ['draft', 'published', 'registration_open', 'full', 'closed', 'archived'] as const;
+export type ProgramStatus = (typeof PROGRAM_STATUSES)[number];
+
+/** Statuses in which a family may register (the catalog, cart, drop-in and type modules all gate on this). */
+export const REGISTRABLE_STATUSES: readonly ProgramStatus[] = ['published', 'registration_open', 'full'];
+export function isRegistrable(status: string): boolean {
+  return (REGISTRABLE_STATUSES as readonly string[]).includes(status);
+}
+
+export const REGISTRATION_STATUSES = ['active', 'waitlisted', 'withdrawn', 'cancelled'] as const;
+export type RegistrationStatus = (typeof REGISTRATION_STATUSES)[number];
+/** A registration that still holds (or is queued for) a seat. */
+export const LIVE_REGISTRATION_STATUSES: readonly RegistrationStatus[] = ['active', 'waitlisted'];
+
+export function isProgramStatus(v: unknown): v is ProgramStatus {
+  return typeof v === 'string' && (PROGRAM_STATUSES as readonly string[]).includes(v);
+}
+export function isProrationMethod(v: unknown): v is ProrationMethod {
+  return typeof v === 'string' && (PRORATION_METHODS as readonly string[]).includes(v);
+}
 
 /**
  * Participant standing - AUTO-DERIVED from registration history (never set by

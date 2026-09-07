@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { fmtWeekday, fmtMonthDay, fmtTime as fmtTimeTz } from '@ai/foundation';
+import { fmtWeekday, fmtMonthDay, fmtTime as fmtTimeTz, sportRules } from '@ai/foundation';
 import { notFound } from 'next/navigation';
 import type { Metadata } from 'next';
 import Bracket from '@/components/compete/Bracket';
@@ -83,8 +83,9 @@ export default async function DivisionPage({ params }: { params: { id: string } 
   const { division, standings, games, rosters } = detail;
   const stats = division.statsEnabled ? await divisionStats(division.id) : null;
 
-  const isVb = standings.sport === 'volleyball';
-  const unit = isVb ? 'S' : 'PF';
+  const rules = sportRules(standings.sport);
+  const isVb = rules.scoreUnit === 'sets';
+  const unit = rules.scoreUnitShort;
   // Tournament-mode programs are a bracket start to finish; leagues split
   // regular season (schedule cards) from playoff games (bracket below).
   const bracketGames = division.tournamentMode ? games : games.filter((g) => g.stage === 'playoff');

@@ -328,12 +328,41 @@ export interface StandingRow {
   gamesBehind: number;
 }
 
-export type Sport = 'basketball' | 'volleyball' | 'other';
+export const SPORTS = ['basketball', 'volleyball', 'other'] as const;
+export type Sport = (typeof SPORTS)[number];
+
+/**
+ * Per-sport rules — the ONE place sport semantics live. Standings, score
+ * entry and the public renderers read from here, so adding a sport (soccer:
+ * ties allowed, 3-1-0 points) is a new entry, not a search for string
+ * comparisons across the codebase.
+ */
+export interface SportRules {
+  label: string;
+  /** Can a regular-season game end level? (Playoffs never can.) */
+  allowsTies: boolean;
+  /** What pf/pa count: points or sets. */
+  scoreUnit: 'points' | 'sets';
+  /** Short column header for pf ("PF" / "S"). */
+  scoreUnitShort: string;
+  /** Default standings tiebreak order (editable per division). */
+  tiebreaks: string[];
+}
+
+export const SPORT_RULES: Record<Sport, SportRules> = {
+  basketball: { label: 'Basketball', allowsTies: false, scoreUnit: 'points', scoreUnitShort: 'PF', tiebreaks: ['wins', 'head_to_head', 'differential'] },
+  volleyball: { label: 'Volleyball', allowsTies: false, scoreUnit: 'sets', scoreUnitShort: 'S', tiebreaks: ['wins', 'head_to_head', 'differential'] },
+  other: { label: 'Other', allowsTies: true, scoreUnit: 'points', scoreUnitShort: 'PF', tiebreaks: ['wins', 'head_to_head', 'win_pct'] },
+};
+
+export function sportRules(sport: string | null | undefined): SportRules {
+  return SPORT_RULES[(sport as Sport) in SPORT_RULES ? (sport as Sport) : 'other'];
+}
 
 export const DEFAULT_TIEBREAKS: Record<Sport, string[]> = {
-  basketball: ['wins', 'head_to_head', 'differential'],
-  volleyball: ['wins', 'head_to_head', 'differential'],
-  other: ['wins', 'head_to_head', 'win_pct'],
+  basketball: SPORT_RULES.basketball.tiebreaks,
+  volleyball: SPORT_RULES.volleyball.tiebreaks,
+  other: SPORT_RULES.other.tiebreaks,
 };
 
 /**

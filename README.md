@@ -1,6 +1,8 @@
 # Athlete Institute Portal
 
-Facility management + registration platform (`play.athleteinstitute.ca` public, `admin.athleteinstitute.ca` staff). Built module-by-module from the specs in [`/specs`](specs/) — read `specs/START-HERE.md`, then `specs/MASTER-build-order.md`.
+Facility management + registration platform (`play.athleteinstitute.ca` public, `admin.athleteinstitute.ca` staff, `compete.athleteinstitute.ca` public standings). Built module-by-module from the specs in [`/specs`](specs/) — read `specs/START-HERE.md`, then `specs/MASTER-build-order.md`.
+
+**Coding conventions** (guards, forms, DB result helpers, API wrappers, the program-type registry, booking source refs, sport rules) live in [`docs/architecture.md`](docs/architecture.md). Read it before adding a module.
 
 ## Ecosystem
 

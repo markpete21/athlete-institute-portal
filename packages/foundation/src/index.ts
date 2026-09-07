@@ -22,6 +22,7 @@ export * from './pricing';
 export * from './csv';
 export * from './facility-tree';
 export * from './availability';
+export * from './bookings-core';
 export * from './recurrence';
 export * from './rentals-core';
 export * from './programs-core';
