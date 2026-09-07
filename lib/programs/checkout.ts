@@ -370,14 +370,15 @@ export async function recalculateOwed(orderId: number): Promise<{ owedCents: num
  * Idempotent — an already-paid installment is a no-op, so the webhook and the
  * success-URL return path can both fire without double audit rows.
  */
-export async function markProgramInstallmentPaid(installmentId: number, actorClerkId: string): Promise<void> {
+export async function markProgramInstallmentPaid(installmentId: number, actorClerkId: string, paymentIntentId?: string | null): Promise<void> {
   const db = supabaseAdmin();
   const { data: inst } = await db.from('program_installments').select('order_id, status').eq('id', installmentId).maybeSingle();
   if (!inst || inst.status === 'paid') return;
   // Precondition on the current status: a webhook and the success-URL return
-  // racing each other settle exactly once.
+  // racing each other settle exactly once. The PaymentIntent id is kept so a
+  // later dunning retry can re-charge the same customer/method.
   const flipped = rows(
-    await db.from('program_installments').update({ status: 'paid', paid_at: new Date().toISOString(), failure_reason: null })
+    await db.from('program_installments').update({ status: 'paid', paid_at: new Date().toISOString(), failure_reason: null, ...(paymentIntentId ? { stripe_payment_intent: paymentIntentId } : {}) })
       .eq('id', installmentId).neq('status', 'paid').select('id'),
     'installment.paid',
   );
@@ -397,11 +398,12 @@ export async function markProgramInstallmentPaid(installmentId: number, actorCle
 }
 
 /** Record an installment failed (webhook) — dunning (M18) sweeps these up. */
-export async function markProgramInstallmentFailed(installmentId: number, reason: string, actorClerkId: string): Promise<void> {
+export async function markProgramInstallmentFailed(installmentId: number, reason: string, actorClerkId: string, paymentIntentId?: string | null): Promise<void> {
   const db = supabaseAdmin();
   const { data: inst } = await db.from('program_installments').select('order_id, status').eq('id', installmentId).maybeSingle();
   if (!inst || inst.status === 'paid' || inst.status === 'waived') return; // never fail-over a settled/waived payment
-  ok(await db.from('program_installments').update({ status: 'failed', failure_reason: reason }).eq('id', installmentId).in('status', ['pending', 'failed']), 'installment.failed');
+  // The failed PaymentIntent is what the dunning ladder retries against.
+  ok(await db.from('program_installments').update({ status: 'failed', failure_reason: reason, ...(paymentIntentId ? { stripe_payment_intent: paymentIntentId } : {}) }).eq('id', installmentId).in('status', ['pending', 'failed']), 'installment.failed');
   await audit({ actorId: actorClerkId, action: 'program_installment.failed', target: `program_installment:${installmentId}`, meta: { reason } });
   await recalculateOwed(inst.order_id);
 }

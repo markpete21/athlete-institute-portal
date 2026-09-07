@@ -37,11 +37,11 @@ export async function register() {
     const programInstallmentIds = (e: { metadata: Record<string, string> }) =>
       (e.metadata.program_installment_ids ?? '').split(',').map(Number).filter(Boolean);
     onBillingEvent('payment.succeeded', async (e) => {
-      for (const id of programInstallmentIds(e)) await markProgramInstallmentPaid(id, 'system:webhook');
+      for (const id of programInstallmentIds(e)) await markProgramInstallmentPaid(id, 'system:webhook', e.objectId);
     });
     onBillingEvent('payment.failed', async (e) => {
       for (const id of programInstallmentIds(e)) {
-        await markProgramInstallmentFailed(id, e.failureMessage ?? 'payment failed', 'system:webhook');
+        await markProgramInstallmentFailed(id, e.failureMessage ?? 'payment failed', 'system:webhook', e.objectId);
       }
     });
   }

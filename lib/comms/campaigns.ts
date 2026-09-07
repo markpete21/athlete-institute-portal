@@ -100,7 +100,13 @@ export async function sendCampaign(campaignId: number, actorClerkId: string): Pr
 
   let countA = 0, countB = 0, recipientCount = 0;
   if (c.status !== 'sending') {
-    ok(await db.from('comms_campaigns').update({ status: 'sending' }).eq('id', campaignId), 'campaign.sending');
+    // Claim the transition: a double-click or two admins racing both read
+    // 'draft'; only the request whose UPDATE matched enqueues recipients.
+    const claimed = rows(
+      await db.from('comms_campaigns').update({ status: 'sending' }).eq('id', campaignId).eq('status', c.status).select('id'),
+      'campaign.sending',
+    );
+    if (!claimed.length) throw new Error('This campaign is already being sent.');
 
     const def = await loadDefinition(db, c.list_id, c.audience as SegmentDefinition | null);
     const recipients = await resolveAudience(def);
@@ -162,11 +168,25 @@ export async function drainCampaign(campaignId: number, actorClerkId: string, bu
   const startedAt = Date.now();
 
   while (Date.now() - startedAt < budgetMs) {
-    const batch = rows(
-      await db.from('comms_recipients').select('id, email, variant, profiles(first_name, phone)').eq('campaign_id', campaignId).eq('status', 'queued').order('id').limit(DRAIN_BATCH),
-      'campaign.batch',
+    // Claim a batch atomically: rows still queued and unclaimed (or whose
+    // claim is stale — a crashed drain releases them after 10 minutes). Two
+    // overlapping drains (staff Send + the hourly cron) can never send the
+    // same recipient twice because only one UPDATE wins each row.
+    const staleBefore = new Date(Date.now() - 10 * 60_000).toISOString();
+    const candidates = rows(
+      await db.from('comms_recipients').select('id').eq('campaign_id', campaignId).eq('status', 'queued')
+        .or(`claimed_at.is.null,claimed_at.lt.${staleBefore}`).order('id').limit(DRAIN_BATCH),
+      'campaign.candidates',
     );
-    if (batch.length === 0) break;
+    if (candidates.length === 0) break;
+    const batch = rows(
+      await db.from('comms_recipients').update({ claimed_at: new Date().toISOString() })
+        .in('id', candidates.map((r) => r.id)).eq('status', 'queued')
+        .or(`claimed_at.is.null,claimed_at.lt.${staleBefore}`)
+        .select('id, email, variant, profiles(first_name, phone)'),
+      'campaign.claim',
+    );
+    if (batch.length === 0) continue; // another drain took these rows
     for (const r of batch) {
       const prof = r.profiles as unknown as { first_name: string | null; phone: string | null } | null;
       const { subject, body, bodyIsHtml } = ctx.render(r.variant as 'A' | 'B' | null, prof?.first_name ?? null);

@@ -93,7 +93,13 @@ export async function retryInstallmentCharge(installmentId: number): Promise<boo
       description: 'Program payment retry',
       metadata: { program_installment_ids: String(inst.id), retry_of: inst.stripe_payment_intent },
     });
-    await db.from('program_installments').update({ stripe_payment_intent: pi.id, status: 'pending', failure_reason: null }).eq('id', inst.id);
+    // A card settles synchronously and its webhook may already have marked
+    // the row paid — only a row still 'failed' goes back to pending.
+    await db.from('program_installments').update({ stripe_payment_intent: pi.id, status: 'pending', failure_reason: null }).eq('id', inst.id).eq('status', 'failed');
+    if (pi.status === 'succeeded') {
+      const { markProgramInstallmentPaid } = await import('@/lib/programs/checkout');
+      await markProgramInstallmentPaid(inst.id, 'system:dunning', pi.id);
+    }
     await audit({ actorId: 'system:dunning', action: 'dunning.retried', target: `installment:${inst.id}`, meta: { pi: pi.id, status: pi.status } });
     return pi.status === 'succeeded';
   } catch (err) {

@@ -1,5 +1,5 @@
 import 'server-only';
-import { audit, price, torontoToday } from '@ai/foundation';
+import { audit, isRegistrable, price, torontoToday } from '@ai/foundation';
 import { must, ok, supabaseAdmin } from '@ai/foundation/supabase';
 import { createOrderForRegistration } from '@/lib/programs/orders';
 
@@ -112,7 +112,7 @@ export async function purchaseSessions(input: {
   // Only a program that is open for registration sells dates — a draft or
   // archived program's sessions are not purchasable by id.
   const program = must(await db.from('programs').select('status').eq('id', input.programId).maybeSingle(), 'program.read');
-  if (!['published', 'registration_open', 'full'].includes(program.status)) throw new Error('Registration is not open for this program.');
+  if (!isRegistrable(program.status)) throw new Error('Registration is not open for this program.');
 
   const { data: sessions, error } = await db
     .from('dropin_sessions')

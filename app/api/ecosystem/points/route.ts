@@ -90,8 +90,14 @@ export const POST = ecosystem(async (req) => {
     const balance = await applyPlayPoints(familyId, delta, `ecosystem: ${reason}`, `ecosystem:${reason.slice(0, 40)}`, ref ?? undefined);
     return NextResponse.json({ familyId, balance });
   } catch (err) {
-    // Insufficient balance surfaces as a 409 the caller can show the user.
     const msg = err instanceof Error ? err.message : 'apply failed';
+    // Two concurrent retries of the same ref: the unique index (0069) refuses
+    // the second insert — answer it exactly like the pre-check does.
+    if (ref && /duplicate key|23505/i.test(msg)) {
+      const { data: fam } = await supabaseAdmin().from('families').select('play_points_balance').eq('id', familyId).maybeSingle();
+      return NextResponse.json({ familyId, balance: fam?.play_points_balance ?? 0, duplicate: true });
+    }
+    // Insufficient balance surfaces as a 409 the caller can show the user.
     return jsonError(msg, /insufficient/i.test(msg) ? 409 : 500);
   }
 });

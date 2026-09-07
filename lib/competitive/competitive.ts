@@ -363,7 +363,8 @@ export async function generatePlayoffRound(divisionId: number, numTeams: number,
   const lastRound = Math.max(...existing.map((g) => g.round ?? 1));
   const lastGames = existing.filter((g) => (g.round ?? 1) === lastRound);
   if (lastGames.length === 1) throw new Error('The final has been generated - the bracket is complete.');
-  if (lastGames.some((g) => g.status !== 'final')) throw new Error(`Round ${lastRound} isn't finished yet.`);
+  // A bye (no opponent) needs no score to be "finished".
+  if (lastGames.some((g) => g.away_team_id != null && g.status !== 'final')) throw new Error(`Round ${lastRound} isn't finished yet.`);
 
   const winners = lastGames.map((g) => {
     if (g.away_team_id == null) return g.home_team_id; // bye

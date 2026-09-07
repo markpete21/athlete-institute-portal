@@ -1,7 +1,9 @@
 import 'server-only';
 import {
+  ancestorIds,
   audit,
   checkClosures,
+  descendantIds,
   checkOperatingHours,
   findConflicts,
   torontoDate,
@@ -101,15 +103,19 @@ async function closureRows(startsAt: string, endsAt: string): Promise<FacilityCl
 }
 
 /** Live bookings that could overlap the window (SQL pre-filter, exact math in code). */
-async function candidateBookings(startsAt: string, endsAt: string): Promise<BookingRecord[]> {
+async function candidateBookings(startsAt: string, endsAt: string, facilityIds?: number[]): Promise<BookingRecord[]> {
   const padStart = new Date(Date.parse(startsAt) - MAX_BUFFER_MIN * 60_000).toISOString();
   const padEnd = new Date(Date.parse(endsAt) + MAX_BUFFER_MIN * 60_000).toISOString();
-  const { data, error } = await supabaseAdmin()
+  let q = supabaseAdmin()
     .from('bookings')
     .select(COLS)
     .is('canceled_at', null)
     .lt('starts_at', padEnd)
     .gt('ends_at', padStart);
+  // Only bookings on the same tree line (the node, its ancestors, its
+  // descendants) can conflict — a long window need not load every court.
+  if (facilityIds?.length) q = q.in('facility_id', facilityIds);
+  const { data, error } = await q;
   if (error) throw new Error(`bookings read failed: ${error.message}`);
   return (data ?? []) as BookingRecord[];
 }
@@ -324,7 +330,8 @@ export async function createBookingsBulk(
 
   const windowStart = slots.reduce((a, s) => (s.startsAt < a ? s.startsAt : a), slots[0].startsAt);
   const windowEnd = slots.reduce((a, s) => (s.endsAt > a ? s.endsAt : a), slots[0].endsAt);
-  const [existing, closures] = await Promise.all([candidateBookings(windowStart, windowEnd), closureRows(windowStart, windowEnd)]);
+  const treeLine = [base.facilityId, ...ancestorIds(tree, base.facilityId), ...descendantIds(tree, base.facilityId)];
+  const [existing, closures] = await Promise.all([candidateBookings(windowStart, windowEnd, treeLine), closureRows(windowStart, windowEnd)]);
 
   const reports = slots.map((slot) => {
     const probe = { facility_id: base.facilityId, starts_at: slot.startsAt, ends_at: slot.endsAt, setup_minutes: base.setupMinutes, cleanup_minutes: base.cleanupMinutes };

@@ -171,10 +171,9 @@ export async function bookWizardAction(payload: WizardPayload): Promise<WizardRe
 
   let conflictCount = 0;
   let warningCount = 0;
-  /** Single-date bookings: buffers + public flag are applied after creation. */
+  /** Single-date bookings: buffers + public flag are applied after creation
+   *  (series bookings are created with both already set). */
   const lineBookingIds: number[] = [];
-  /** Series bookings: created with buffers + public flag already set. */
-  const seriesBookingIds: number[] = [];
 
   let lineCount = 0;
   for (const l of payload.lines) {
@@ -208,7 +207,6 @@ export async function bookWizardAction(payload: WizardPayload): Promise<WizardRe
       conflictCount += res.conflictedDates.length;
       warningCount += res.warningCount;
       createdLineIds.push(...res.lineIds);
-      seriesBookingIds.push(...res.bookingIds);
     } else {
       const dates = [l.date, ...(l.repeat?.mode === 'dates' ? l.repeat.dates : [])];
       for (const d of dates) {

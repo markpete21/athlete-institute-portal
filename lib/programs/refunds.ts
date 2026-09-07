@@ -26,6 +26,30 @@ interface RefundContext {
   familyId: number | null;
   programType: string;
   status: string;
+  /** What the family has actually paid toward this registration (cents). */
+  paidCents: number;
+}
+
+/**
+ * Money the family has PAID toward one registration. The order's paid
+ * installments are attributed to this registration in proportion to its
+ * share of the order (a multi-child cart is one order with several lines).
+ */
+async function paidTowardRegistration(registrationId: number): Promise<number> {
+  const db = supabaseAdmin();
+  const reg = must(await db.from('registrations').select('order_id, line_total_cents').eq('id', registrationId).maybeSingle(), 'registration.read');
+  // No order on file (front-desk / imported registrations): the line total is
+  // the only record of what was paid, so treat it as paid in full.
+  if (!reg.order_id) return reg.line_total_cents ?? 0;
+  const [{ data: order }, { data: insts }] = await Promise.all([
+    db.from('program_orders').select('total_cents').eq('id', reg.order_id).maybeSingle(),
+    db.from('program_installments').select('amount_cents, status').eq('order_id', reg.order_id),
+  ]);
+  const paid = (insts ?? []).filter((i) => i.status === 'paid').reduce((a, i) => a + i.amount_cents, 0);
+  const orderTotal = order?.total_cents ?? 0;
+  const line = reg.line_total_cents ?? 0;
+  if (orderTotal <= 0 || line <= 0) return paid;
+  return Math.min(line, Math.round((paid * line) / orderTotal));
 }
 
 async function loadRefundContext(registrationId: number): Promise<RefundContext> {
@@ -40,13 +64,17 @@ async function loadRefundContext(registrationId: number): Promise<RefundContext>
   );
   const program = data.programs as unknown as { proration_method: RefundInput['method']; program_types: { key: string }; registration_opens_at: string | null };
   // Program start: first session's date if present, else registration open date.
-  const { data: sess } = await db.from('program_sessions').select('starts_at').eq('program_id', data.program_id).order('starts_at').limit(1).maybeSingle();
+  const [{ data: sess }, paidCents] = await Promise.all([
+    db.from('program_sessions').select('starts_at').eq('program_id', data.program_id).order('starts_at').limit(1).maybeSingle(),
+    paidTowardRegistration(registrationId),
+  ]);
   const startISO = (sess?.starts_at ?? program.registration_opens_at ?? new Date().toISOString()).slice(0, 10);
   return {
     input: { method: program.proration_method, feeCents: data.line_total_cents ?? 0, startDateISO: startISO, refundInsurance: data.refund_insurance },
     familyId: data.family_id,
     programType: program.program_types.key,
     status: data.status,
+    paidCents,
   };
 }
 
@@ -83,25 +111,32 @@ export async function applyRefund(input: ApplyRefundInput): Promise<{ amountCent
   if (blocked) throw new Error(blocked);
 
   const policyAmount = input.destination === 'original_method' ? result.refundAmountCents : result.creditAmountCents;
-  const amount = input.overrideAmountCents ?? policyAmount;
+  // The engine prices the refund off the full line fee; a family on a payment
+  // plan may have paid only part of it. Since the unpaid balance is waived
+  // below, the refund can never exceed what was actually paid.
+  const requested = input.overrideAmountCents ?? policyAmount;
+  const amount = Math.min(requested, ctx.paidCents);
   if (input.destination === 'original_method' && !result.refundEligible && input.overrideAmountCents == null) {
     throw new Error(`Not refund-eligible to original method: ${result.ruleText} (override to force, or use Credit on Account).`);
   }
 
-  // Withdraw the registration (advances the waitlist behind it). This is the
-  // idempotency gate: withdrawRegistration only succeeds once, so a retried
-  // refund cannot credit the family twice.
-  await withdrawRegistration(input.registrationId, input.actorClerkId);
-
-  // The family stops owing for a program they left.
-  const { sharedOrder } = await waiveRemainingInstallments(input.registrationId, input.actorClerkId);
-
+  // Order of operations is what makes a retry safe in both directions:
+  //  1. credit FIRST, written once per registration (unique ledger ref — a
+  //     retry after a later failure finds the row and skips);
+  //  2. then withdraw (the registration stays active if step 1 threw, so
+  //     staff simply retry);
+  //  3. then waive whatever is still owed.
+  const creditRef = `registration:${input.registrationId}`;
   if (amount > 0 && input.destination === 'credit_on_account' && ctx.familyId) {
-    ok(
-      await db.rpc('credit_apply', { p_family_id: ctx.familyId, p_delta: amount, p_reason: 'refund', p_ref: `registration:${input.registrationId}`, p_created_by: input.actorClerkId }),
-      'refund.credit-on-account',
-    );
+    const { data: existing } = await db.from('credit_ledger').select('id').eq('family_id', ctx.familyId).eq('ref', creditRef).eq('reason', 'refund').maybeSingle();
+    if (!existing) {
+      const res = await db.rpc('credit_apply', { p_family_id: ctx.familyId, p_delta: amount, p_reason: 'refund', p_ref: creditRef, p_created_by: input.actorClerkId });
+      if (res.error && res.error.code !== '23505') throw new Error(`refund.credit-on-account: ${res.error.message}`);
+    }
   }
+
+  await withdrawRegistration(input.registrationId, input.actorClerkId);
+  const { sharedOrder } = await waiveRemainingInstallments(input.registrationId, input.actorClerkId);
   // original_method: record the intent; the Stripe refund is issued by the
   // rails/ops (kept out of the auto-path so no money moves without review).
 
@@ -114,6 +149,8 @@ export async function applyRefund(input: ApplyRefundInput): Promise<{ amountCent
       destination: input.destination,
       amount_cents: amount,
       policy_amount_cents: policyAmount,
+      paid_cents: ctx.paidCents,
+      capped_to_paid: requested > amount,
       overridden: input.overrideAmountCents != null,
       override_reason: input.overrideReason,
       rule: result.ruleText,
