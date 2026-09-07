@@ -3,8 +3,10 @@ import { randomBytes } from 'node:crypto';
 import {
   academyPlanSchedule, academyRetention, audit, planCompletesBy, processingFeeCents,
   tuitionAfterScholarship, type AcademyPlan, type PaymentMethod, type TuitionTier,
+  torontoToday,
 } from '@ai/foundation';
-import { supabaseAdmin } from '@ai/foundation/supabase';
+import { ok, supabaseAdmin } from '@ai/foundation/supabase';
+import { createOrderForRegistration } from '@/lib/programs/orders';
 import { deriveStandingFor } from '@/lib/programs/programs';
 
 /**
@@ -172,26 +174,40 @@ export async function respondToOffer(token: string, accept: boolean, actorClerkI
     planCompleteByISO: academy?.plan_complete_by ?? seasonFeb1(),
   });
 
-  await db.from('academy_offers').update({ status: 'accepted', applied_deposit_cents: depositCents, accepted_at: new Date().toISOString() }).eq('id', offer.id);
-  await db.from('academy_players').update({ status: 'accepted', tuition_tier: tier, deposit_cents: depositCents, season_registration_id: seasonRegistrationId }).eq('id', offer.player_id);
+  // The receivable (Module 4 tables): deposit due now, the staff-dictated plan
+  // behind it. Without this, acceptance produced a registration nobody billed.
+  if (seasonRegistrationId && netTuition > 0) {
+    const today = torontoToday();
+    await createOrderForRegistration({
+      registrationId: seasonRegistrationId,
+      familyId: player.family_id,
+      totalCents: netTuition,
+      schedule: [
+        ...(plan.depositCents > 0 ? [{ label: 'Deposit', amountCents: plan.depositCents, dueDate: today }] : []),
+        ...plan.installments.map((i, idx) => ({ label: `Tuition ${idx + 1} of ${plan.installments.length}`, amountCents: i.amountCents, dueDate: i.dueDate })),
+      ],
+      actorClerkId,
+      source: `academy-offer:${offer.id}`,
+    });
+  }
+
+  ok(await db.from('academy_offers').update({ status: 'accepted', applied_deposit_cents: depositCents, accepted_at: new Date().toISOString() }).eq('id', offer.id), 'academy_offer.accept');
+  ok(await db.from('academy_players').update({ status: 'accepted', tuition_tier: tier, deposit_cents: depositCents, season_registration_id: seasonRegistrationId }).eq('id', offer.player_id), 'academy_player.accept');
   await audit({ actorId: actorClerkId, action: 'academy.offer-accepted', target: `academy-offer:${offer.id}`, meta: { netTuition, depositCents, installments: plan.installments.length } });
   return { status: 'accepted', seasonRegistrationId, netTuitionCents: netTuition, depositCents, plan };
 }
 
+/** First of next month, from the Toronto calendar (not the server's UTC clock). */
 function firstOfNextMonth(): string {
-  const now = new Date();
-  const y = now.getUTCFullYear();
-  const m = now.getUTCMonth() + 2; // next month, 1-indexed
-  const yy = m > 12 ? y + 1 : y;
-  const mm = ((m - 1) % 12) + 1;
-  return `${yy}-${String(mm).padStart(2, '0')}-01`;
+  const [y, m] = torontoToday().split('-').map(Number);
+  const next = m === 12 ? { y: y + 1, m: 1 } : { y, m: m + 1 };
+  return `${next.y}-${String(next.m).padStart(2, '0')}-01`;
 }
 
 function seasonFeb1(): string {
-  const now = new Date();
-  // Season spans Sept-June; the completing Feb 1 is next calendar year if we're past Feb.
-  const y = now.getUTCMonth() >= 1 ? now.getUTCFullYear() + 1 : now.getUTCFullYear();
-  return `${y}-02-01`;
+  const [y, m] = torontoToday().split('-').map(Number);
+  // Season spans Sept-June; the completing Feb 1 is next calendar year if we're past January.
+  return `${m >= 2 ? y + 1 : y}-02-01`;
 }
 
 /** The processing fee for a payment, waived on PAD (bank debit). */

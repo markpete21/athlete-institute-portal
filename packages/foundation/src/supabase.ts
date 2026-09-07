@@ -46,7 +46,7 @@ export function supabaseAdmin(): SupabaseClient {
 // `ctx` names the operation in the thrown message so logs read as prose.
 
 export interface PostgrestLike<T> {
-  data: T | null;
+  data: T;
   error: { message: string; code?: string } | null;
 }
 
@@ -61,16 +61,16 @@ export class DbError extends Error {
 }
 
 /** Throw if the result carries an error; return data (possibly null). */
-export function ok<T>(result: PostgrestLike<T>, ctx: string): T | null {
+export function ok<T>(result: PostgrestLike<T>, ctx: string): T {
   if (result.error) throw new DbError(ctx, result.error);
   return result.data;
 }
 
 /** Throw if the result carries an error OR no data (a row was expected). */
-export function must<T>(result: PostgrestLike<T>, ctx: string): T {
+export function must<T>(result: PostgrestLike<T>, ctx: string): NonNullable<T> {
   if (result.error) throw new DbError(ctx, result.error);
   if (result.data === null || result.data === undefined) throw new DbError(ctx, { message: 'not found', code: 'NOT_FOUND' });
-  return result.data;
+  return result.data as NonNullable<T>;
 }
 
 /**

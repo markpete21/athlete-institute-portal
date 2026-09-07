@@ -1,7 +1,8 @@
 import 'server-only';
 import { randomBytes } from 'node:crypto';
-import { audit } from '@ai/foundation';
-import { supabaseAdmin } from '@ai/foundation/supabase';
+import { addDaysISO, audit, torontoToday } from '@ai/foundation';
+import { ok, supabaseAdmin } from '@ai/foundation/supabase';
+import { createOrderForRegistration } from '@/lib/programs/orders';
 import { deriveStandingFor } from '@/lib/programs/programs';
 
 /**
@@ -248,8 +249,26 @@ export async function respondToOffer(token: string, accept: boolean, actorClerkI
     seasonRegistrationId = reg.id;
   }
 
-  await db.from('club_offers').update({ status: 'confirmed', applied_deposit_cents: depositCents, season_registration_id: seasonRegistrationId, confirmed_at: new Date().toISOString() }).eq('id', offer.id);
-  await db.from('club_tryout_players').update({ flag: 'confirmed' }).eq('id', offer.player_id);
+  // The receivable (Module 4 tables): deposit due now, the balance due before
+  // the season — staff reshape the plan per family from the account page.
+  if (seasonRegistrationId && team.season_fee_cents > 0) {
+    const today = torontoToday();
+    const balanceDue = addDaysISO(today, 30);
+    await createOrderForRegistration({
+      registrationId: seasonRegistrationId,
+      familyId: (await db.from('registrations').select('family_id').eq('id', seasonRegistrationId).maybeSingle()).data?.family_id ?? null,
+      totalCents: team.season_fee_cents,
+      schedule: [
+        ...(depositCents > 0 ? [{ label: 'Deposit', amountCents: depositCents, dueDate: today }] : []),
+        ...(remainingCents > 0 ? [{ label: 'Season fee balance', amountCents: remainingCents, dueDate: balanceDue }] : []),
+      ],
+      actorClerkId,
+      source: `club-offer:${offer.id}`,
+    });
+  }
+
+  ok(await db.from('club_offers').update({ status: 'confirmed', applied_deposit_cents: depositCents, season_registration_id: seasonRegistrationId, confirmed_at: new Date().toISOString() }).eq('id', offer.id), 'club_offer.confirm');
+  ok(await db.from('club_tryout_players').update({ flag: 'confirmed' }).eq('id', offer.player_id), 'club_player.confirm');
   await audit({ actorId: actorClerkId, action: 'club.offer-confirmed', target: `club-offer:${offer.id}`, meta: { depositCents, remainingCents, seasonRegistrationId } });
   return { flag: 'confirmed', seasonRegistrationId, depositAppliedCents: depositCents, remainingCents };
 }

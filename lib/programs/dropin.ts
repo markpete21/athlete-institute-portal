@@ -1,6 +1,7 @@
 import 'server-only';
-import { audit, price } from '@ai/foundation';
-import { supabaseAdmin } from '@ai/foundation/supabase';
+import { audit, price, torontoToday } from '@ai/foundation';
+import { must, ok, supabaseAdmin } from '@ai/foundation/supabase';
+import { createOrderForRegistration } from '@/lib/programs/orders';
 import { deriveStandingFor } from '@/lib/programs/programs';
 
 /**
@@ -108,6 +109,11 @@ export async function purchaseSessions(input: {
   const db = supabaseAdmin();
   if (input.sessionIds.length === 0) throw new Error('Select at least one session.');
 
+  // Only a program that is open for registration sells dates — a draft or
+  // archived program's sessions are not purchasable by id.
+  const program = must(await db.from('programs').select('status').eq('id', input.programId).maybeSingle(), 'program.read');
+  if (!['published', 'registration_open', 'full'].includes(program.status)) throw new Error('Registration is not open for this program.');
+
   const { data: sessions, error } = await db
     .from('dropin_sessions')
     .select('id, price_cents, capacity, postponed')
@@ -140,6 +146,12 @@ export async function purchaseSessions(input: {
     .insert(toBuy.map((s) => ({ registration_id: registrationId, session_id: s.id })));
   if (pErr) throw new Error(`purchase failed: ${pErr.message}`);
 
+  // The receivable: one payment due today. Buy-more-later accumulates on the
+  // same registration but each purchase is its own order line for /account/pay.
+  if (priced.totalCents > 0) {
+    await createDropInOrder(registrationId, input.familyId, priced.totalCents, input.actorClerkId, toBuy.map((s) => s.id));
+  }
+
   await audit({
     actorId: input.actorClerkId,
     action: 'dropin.purchased',
@@ -147,4 +159,38 @@ export async function purchaseSessions(input: {
     meta: { program: input.programId, sessions: toBuy.map((s) => s.id), totalCents: priced.totalCents },
   });
   return { registrationId, purchasedSessionIds: toBuy.map((s) => s.id), totalCents: priced.totalCents };
+}
+
+/**
+ * Each drop-in purchase is billed as its own installment. The registration's
+ * first purchase creates the order; later purchases append installments to it
+ * so the family sees one running drop-in balance per program.
+ */
+async function createDropInOrder(registrationId: number, familyId: number | null, totalCents: number, actorClerkId: string, sessionIds: number[]): Promise<void> {
+  const db = supabaseAdmin();
+  const reg = must(await db.from('registrations').select('order_id').eq('id', registrationId).maybeSingle(), 'registration.read');
+  const today = torontoToday();
+  if (!reg.order_id) {
+    await createOrderForRegistration({
+      registrationId,
+      familyId,
+      totalCents,
+      schedule: [{ label: `Drop-in sessions (${sessionIds.length})`, amountCents: totalCents, dueDate: today }],
+      actorClerkId,
+      source: `dropin:${sessionIds.join(',')}`,
+    });
+    return;
+  }
+  const { count } = await db.from('program_installments').select('id', { count: 'exact', head: true }).eq('order_id', reg.order_id);
+  ok(
+    await db.from('program_installments').insert({ order_id: reg.order_id, seq: (count ?? 0) + 1, label: `Drop-in sessions (${sessionIds.length})`, amount_cents: totalCents, due_date: today }),
+    'dropin.installment',
+  );
+  const order = must(await db.from('program_orders').select('total_cents, subtotal_cents').eq('id', reg.order_id).maybeSingle(), 'order.read');
+  ok(
+    await db.from('program_orders').update({ total_cents: order.total_cents + totalCents, subtotal_cents: order.subtotal_cents + totalCents }).eq('id', reg.order_id),
+    'order.total',
+  );
+  const { recalculateOwed } = await import('@/lib/programs/checkout');
+  await recalculateOwed(reg.order_id);
 }

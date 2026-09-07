@@ -29,8 +29,10 @@ export function campDepositCents(feeCents: number): number {
 /** Leagues: (fee - $40)/sessions × remaining + $40. */
 export function prorateLeague(feeCents: number, totalSessions: number, sessionsRemaining: number): number {
   if (totalSessions <= 0) return 0;
-  const perSession = (feeCents - LEAGUE_UNIFORM_FEE_CENTS) / totalSessions;
-  return Math.round(perSession * sessionsRemaining) + LEAGUE_UNIFORM_FEE_CENTS;
+  // A fee below the uniform allowance would make the per-session rate negative;
+  // the refund can never exceed what was paid or drop below zero.
+  const perSession = Math.max(0, feeCents - LEAGUE_UNIFORM_FEE_CENTS) / totalSessions;
+  return Math.min(feeCents, Math.round(perSession * sessionsRemaining) + Math.min(LEAGUE_UNIFORM_FEE_CENTS, feeCents));
 }
 
 /** Clinics: fee/sessions × remaining. */

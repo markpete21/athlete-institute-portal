@@ -91,11 +91,13 @@ export async function addToCart(cartId: number, programId: number, familyMemberI
     throw new Error('Registration is not open for this program.');
   }
 
+  // Re-adding an item that is already in the cart keeps its ORIGINAL hold
+  // expiry — otherwise a seat could be held forever by resubmitting.
   const { error } = await db
     .from('cart_items')
     .upsert(
       { cart_id: cartId, program_id: programId, family_member_id: familyMemberId, hold_expires_at: new Date(Date.now() + HOLD_MINUTES * 60_000).toISOString() },
-      { onConflict: 'cart_id,program_id,family_member_id' },
+      { onConflict: 'cart_id,program_id,family_member_id', ignoreDuplicates: true },
     );
   if (error) throw new Error(`add to cart failed: ${error.message}`);
 
@@ -284,10 +286,21 @@ export async function advanceWaitlist(programId: number, actorClerkId: string): 
 /** Withdraw/cancel a registration and advance the waitlist behind it. */
 export async function withdrawRegistration(registrationId: number, actorClerkId: string, cancel = false): Promise<void> {
   const db = supabaseAdmin();
-  const { data: reg, error } = await db.from('registrations').select('program_id, status').eq('id', registrationId).single();
+  const { data: reg, error } = await db.from('registrations').select('program_id, status').eq('id', registrationId).maybeSingle();
   if (error) throw new Error(error.message);
+  if (!reg) throw new Error('Registration not found.');
   const wasActive = reg.status === 'active';
-  await db.from('registrations').update({ status: cancel ? 'cancelled' : 'withdrawn' }).eq('id', registrationId);
+  // Only a live registration can be withdrawn; the precondition makes a
+  // second withdraw (or a refund retry) a clear error instead of a silent
+  // re-run that would advance the waitlist twice.
+  const { data: flipped, error: uErr } = await db
+    .from('registrations')
+    .update({ status: cancel ? 'cancelled' : 'withdrawn' })
+    .eq('id', registrationId)
+    .in('status', ['active', 'waitlisted'])
+    .select('id');
+  if (uErr) throw new Error(uErr.message);
+  if (!flipped?.length) throw new Error(`Registration is already ${reg.status}.`);
   await audit({ actorId: actorClerkId, action: cancel ? 'registration.cancelled' : 'registration.withdrawn', target: `registration:${registrationId}` });
   if (wasActive) await advanceWaitlist(reg.program_id, actorClerkId);
 }

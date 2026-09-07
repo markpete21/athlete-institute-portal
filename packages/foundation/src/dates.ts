@@ -103,6 +103,13 @@ function dateToIso(date: Date): string {
   return `${date.getUTCFullYear()}-${pad(date.getUTCMonth() + 1)}-${pad(date.getUTCDate())}`;
 }
 
+/** Add N calendar days to an ISO date (pure calendar math, DST-proof). */
+export function addDaysISO(iso: string, n: number): string {
+  const date = isoToDate(iso);
+  date.setUTCDate(date.getUTCDate() + n);
+  return dateToIso(date);
+}
+
 /** True for Mon–Fri (weekend = Sat/Sun). Statutory holidays are a later refinement. */
 export function isBusinessDay(iso: string): boolean {
   const day = isoToDate(iso).getUTCDay();

@@ -7,7 +7,7 @@ import {
   type PriceLineInput,
   type PriceResult,
 } from '@ai/foundation';
-import { supabaseAdmin } from '@ai/foundation/supabase';
+import { must, ok, supabaseAdmin } from '@ai/foundation/supabase';
 import { applyPlayPoints } from '@/lib/credits';
 
 /**
@@ -26,6 +26,7 @@ interface RegRow {
   id: number;
   program_id: number;
   family_id: number | null;
+  family_member_id: number | null;
   standing: string | null;
   refund_insurance: boolean;
   type_key: string;
@@ -39,12 +40,17 @@ interface RegRow {
   scholarship_eligible: boolean;
 }
 
-async function loadRegs(registrationIds: number[]): Promise<RegRow[]> {
+async function loadRegs(registrationIds: number[], familyId?: number | null): Promise<RegRow[]> {
   const { data, error } = await supabaseAdmin()
     .from('registrations')
-    .select('id, program_id, family_id, standing, refund_insurance, programs(program_types(key), base_price_cents, early_bird_price_cents, early_bird_until, late_fee_cents, late_fee_after, returning_discount_cents, multi_member_discount_cents, scholarship_eligible)')
+    .select('id, program_id, family_id, family_member_id, standing, refund_insurance, programs(program_types(key), base_price_cents, early_bird_price_cents, early_bird_until, late_fee_cents, late_fee_after, returning_discount_cents, multi_member_discount_cents, scholarship_eligible)')
     .in('id', registrationIds);
   if (error) throw new Error(error.message);
+  // One order = one household. A cart that somehow mixes families would let
+  // one family's balances pay for another's registrations.
+  const families = new Set((data ?? []).map((r) => r.family_id).filter((f): f is number => f != null));
+  if (families.size > 1) throw new Error('These registrations belong to different households.');
+  if (familyId != null && families.size && !families.has(familyId)) throw new Error('Those registrations are not in your household.');
   return (data ?? []).map((r) => {
     const p = r.programs as unknown as {
       program_types: { key: string };
@@ -53,7 +59,7 @@ async function loadRegs(registrationIds: number[]): Promise<RegRow[]> {
       multi_member_discount_cents: number; scholarship_eligible: boolean;
     };
     return {
-      id: r.id, program_id: r.program_id, family_id: r.family_id, standing: r.standing, refund_insurance: r.refund_insurance,
+      id: r.id, program_id: r.program_id, family_id: r.family_id, family_member_id: r.family_member_id, standing: r.standing, refund_insurance: r.refund_insurance,
       type_key: p.program_types.key,
       base_price_cents: p.base_price_cents, early_bird_price_cents: p.early_bird_price_cents, early_bird_until: p.early_bird_until,
       late_fee_cents: p.late_fee_cents, late_fee_after: p.late_fee_after, returning_discount_cents: p.returning_discount_cents,
@@ -62,9 +68,16 @@ async function loadRegs(registrationIds: number[]): Promise<RegRow[]> {
   });
 }
 
-/** Build the Module 1 price lines from registrations (program pricing rules applied). */
+/**
+ * Build the Module 1 price lines from registrations (program pricing rules
+ * applied). The multi-member discount rewards a second CHILD, not a second
+ * program: it applies to lines whose family member differs from the first
+ * distinct member in the order.
+ */
 export function buildPriceLines(regs: RegRow[], today: string, scholarshipByReg: Record<number, number> = {}): PriceLineInput[] {
-  return regs.map((r, idx) => {
+  const firstMember = regs.find((r) => r.family_member_id != null)?.family_member_id ?? null;
+  return regs.map((r) => {
+    const additionalMember = firstMember != null && r.family_member_id != null && r.family_member_id !== firstMember;
     const earlyBird = r.early_bird_price_cents != null && r.early_bird_until != null && today <= r.early_bird_until;
     const late = r.late_fee_after != null && today > r.late_fee_after;
     return {
@@ -75,8 +88,7 @@ export function buildPriceLines(regs: RegRow[], today: string, scholarshipByReg:
       lateFeeCents: late ? r.late_fee_cents : 0,
       returningAthleteDiscountCents:
         r.standing === 'returning_athlete' && r.returning_discount_cents ? r.returning_discount_cents : 0,
-      // Multi-member discount: applied to every line after the first.
-      multiMemberDiscountCents: idx > 0 ? r.multi_member_discount_cents : 0,
+      multiMemberDiscountCents: additionalMember ? r.multi_member_discount_cents : 0,
       scholarshipCents: scholarshipByReg[r.id] ?? 0,
       scholarshipEligible: r.scholarship_eligible,
     };
@@ -84,6 +96,8 @@ export function buildPriceLines(regs: RegRow[], today: string, scholarshipByReg:
 }
 
 export interface CheckoutContext {
+  /** The caller's household; when given, every registration must belong to it. */
+  familyId?: number | null;
   promoCents?: number;
   staffCreditCents?: number;
   /** Resolve + apply the household's staff season credit automatically. */
@@ -124,16 +138,16 @@ async function resolveStaffCredit(familyId: number): Promise<{ profileId: number
 
 /** Price a set of registrations WITHOUT persisting (the checkout preview). */
 export async function quoteCheckout(registrationIds: number[], ctx: CheckoutContext = {}): Promise<PriceQuote> {
-  const regs = await loadRegs(registrationIds);
+  const regs = await loadRegs(registrationIds, ctx.familyId);
   const today = torontoToday();
   const family = regs.find((r) => r.family_id)?.family_id ?? null;
 
   let creditOnAccount = 0;
   let playPoints = 0;
   if (family) {
-    const { data: fam } = await supabaseAdmin().from('families').select('credit_balance_cents, play_points_balance').eq('id', family).single();
-    creditOnAccount = ctx.useCreditOnAccount ? fam!.credit_balance_cents : 0;
-    playPoints = ctx.usePlayPoints ? fam!.play_points_balance : 0;
+    const fam = must(await supabaseAdmin().from('families').select('credit_balance_cents, play_points_balance').eq('id', family).maybeSingle(), 'family.balances');
+    creditOnAccount = ctx.useCreditOnAccount ? fam.credit_balance_cents : 0;
+    playPoints = ctx.usePlayPoints ? fam.play_points_balance : 0;
   }
 
   let staffCreditCents = ctx.staffCreditCents ?? 0;
@@ -171,6 +185,20 @@ export interface OrderAddonInput {
   qty?: number;
 }
 
+/** Catalogue variants are priced from product_variants; ad-hoc add-ons keep the caller's price. */
+async function priceAddons(addons: OrderAddonInput[]): Promise<OrderAddonInput[]> {
+  const variantIds = [...new Set(addons.map((a) => a.variantId).filter((v): v is number => v != null))];
+  if (variantIds.length === 0) return addons;
+  const rows = ok(await supabaseAdmin().from('product_variants').select('id, price_cents').in('id', variantIds), 'variants.read') ?? [];
+  const priceById = new Map(rows.map((r) => [r.id as number, r.price_cents as number]));
+  return addons.map((a) => {
+    if (a.variantId == null) return a;
+    const catalogue = priceById.get(a.variantId);
+    if (catalogue == null) throw new Error(`Unknown product variant ${a.variantId}.`);
+    return { ...a, priceCents: catalogue };
+  });
+}
+
 export interface PlaceOrderInput extends CheckoutContext {
   registrationIds: number[];
   addons?: OrderAddonInput[];  // purchased merch/gear add-ons (fixed price, no discounts/points)
@@ -188,7 +216,7 @@ export interface PlaceOrderInput extends CheckoutContext {
  */
 export async function placeProgramOrder(input: PlaceOrderInput): Promise<{ orderId: number; quote: PriceQuote }> {
   const db = supabaseAdmin();
-  const regs = await loadRegs(input.registrationIds);
+  const regs = await loadRegs(input.registrationIds, input.familyId);
   if (regs.length === 0) throw new Error('No registrations to check out.');
   const familyId = regs.find((r) => r.family_id)?.family_id ?? null;
 
@@ -215,8 +243,11 @@ export async function placeProgramOrder(input: PlaceOrderInput): Promise<{ order
 
   const quote = await quoteCheckout(input.registrationIds, input);
 
-  // Add-ons: fixed-price merch/gear, added after discounts (no points, per spec).
-  const addonsCents = (input.addons ?? []).reduce((a, x) => a + x.priceCents * (x.qty ?? 1), 0);
+  // Add-ons: fixed-price merch/gear, added after discounts (no points, per
+  // spec). A catalogue variant is priced from the catalogue, never from the
+  // caller; only ad-hoc add-ons (no variantId) carry their own price.
+  const addons = await priceAddons(input.addons ?? []);
+  const addonsCents = addons.reduce((a, x) => a + x.priceCents * (x.qty ?? 1), 0);
   const orderTotal = quote.totalCents + addonsCents;
 
   const { data: order, error } = await db
@@ -233,7 +264,7 @@ export async function placeProgramOrder(input: PlaceOrderInput): Promise<{ order
       total_cents: orderTotal,
       points_earned: quote.earnablePoints,
       pay_in_full: input.payInFull ?? true,
-      status: orderTotal === 0 ? 'paid' : input.payInFull === false ? 'plan_active' : 'pending',
+      status: orderTotal === 0 ? 'paid' : input.payInFull === false && (input.installmentCount ?? 1) > 1 ? 'plan_active' : 'pending',
       created_by: input.actorClerkId,
     })
     .select('id')
@@ -241,9 +272,9 @@ export async function placeProgramOrder(input: PlaceOrderInput): Promise<{ order
   if (error) throw new Error(`order create failed: ${error.message}`);
   const orderId = order.id as number;
 
-  if ((input.addons ?? []).length) {
+  if (addons.length) {
     const { error: aErr } = await db.from('order_addons').insert(
-      input.addons!.map((x) => ({ order_id: orderId, registration_id: x.registrationId ?? null, product_id: x.productId ?? null, variant_id: x.variantId ?? null, label: x.label, price_cents: x.priceCents, qty: x.qty ?? 1 })),
+      addons.map((x) => ({ order_id: orderId, registration_id: x.registrationId ?? null, product_id: x.productId ?? null, variant_id: x.variantId ?? null, label: x.label, price_cents: x.priceCents, qty: x.qty ?? 1 })),
     );
     if (aErr) throw new Error(`add-ons save failed: ${aErr.message}`);
   }
@@ -254,13 +285,23 @@ export async function placeProgramOrder(input: PlaceOrderInput): Promise<{ order
     await spendStaffCredit(quote.staffProfileId, quote.staffCreditUsedCents, input.actorClerkId, `order:${orderId}`);
   }
 
-  // Spend the household balances atomically (never overdraw - RPCs guard).
+  // Spend the household balances atomically (never overdraw — the RPCs raise).
+  // A raised deduction must not leave a discounted order behind: the order is
+  // cancelled and the error surfaces to the caller.
   if (familyId) {
-    if (quote.creditOnAccountUsedCents > 0) {
-      await db.rpc('credit_apply', { p_family_id: familyId, p_delta: -quote.creditOnAccountUsedCents, p_reason: 'checkout.redeem', p_ref: `order:${orderId}`, p_created_by: input.actorClerkId });
-    }
-    if (quote.playPointsUsed > 0) {
-      await applyPlayPoints(familyId, -quote.playPointsUsed, 'checkout.redeem', input.actorClerkId, `order:${orderId}`);
+    try {
+      if (quote.creditOnAccountUsedCents > 0) {
+        ok(
+          await db.rpc('credit_apply', { p_family_id: familyId, p_delta: -quote.creditOnAccountUsedCents, p_reason: 'checkout.redeem', p_ref: `order:${orderId}`, p_created_by: input.actorClerkId }),
+          'checkout.credit-on-account',
+        );
+      }
+      if (quote.playPointsUsed > 0) {
+        await applyPlayPoints(familyId, -quote.playPointsUsed, 'checkout.redeem', input.actorClerkId, `order:${orderId}`);
+      }
+    } catch (err) {
+      await db.from('program_orders').update({ status: 'cancelled' }).eq('id', orderId);
+      throw err;
     }
     // Earn points on eligible spend (Module 19 rule: programs only).
     if (quote.earnablePoints > 0) {
@@ -268,10 +309,12 @@ export async function placeProgramOrder(input: PlaceOrderInput): Promise<{ order
     }
   }
 
-  // Link registrations + snapshot each line total.
-  for (const l of quote.lines) {
-    await db.from('registrations').update({ order_id: orderId, line_total_cents: l.totalCents }).eq('id', Number(l.id));
-  }
+  // Link registrations + snapshot each line total (refunds are computed from it).
+  await Promise.all(
+    quote.lines.map((l) =>
+      db.from('registrations').update({ order_id: orderId, line_total_cents: l.totalCents }).eq('id', Number(l.id)).then((r) => ok(r, 'checkout.link-registration')),
+    ),
+  );
 
   // Installment schedule (on the order total incl. add-ons).
   const today = torontoToday();
@@ -309,12 +352,14 @@ export async function placeProgramOrder(input: PlaceOrderInput): Promise<{ order
  */
 export async function recalculateOwed(orderId: number): Promise<{ owedCents: number; status: string }> {
   const db = supabaseAdmin();
-  const { data: insts } = await db.from('program_installments').select('amount_cents, status, due_date').eq('order_id', orderId);
+  const order = must(await db.from('program_orders').select('status').eq('id', orderId).maybeSingle(), 'order.read');
+  const insts = ok(await db.from('program_installments').select('amount_cents, status, due_date').eq('order_id', orderId), 'installments.read') ?? [];
   const today = torontoToday();
-  const owed = (insts ?? []).filter((i) => i.status !== 'paid' && i.status !== 'waived').reduce((a, i) => a + i.amount_cents, 0);
-  const anyOverdue = (insts ?? []).some((i) => (i.status === 'pending' && i.due_date < today) || i.status === 'failed');
-  const status = owed === 0 ? 'paid' : anyOverdue ? 'overdue' : (insts ?? []).length > 1 ? 'plan_active' : 'pending';
-  await db.from('program_orders').update({ status }).eq('id', orderId);
+  const owed = insts.filter((i) => i.status !== 'paid' && i.status !== 'waived').reduce((a, i) => a + i.amount_cents, 0);
+  if (order.status === 'cancelled') return { owedCents: owed, status: 'cancelled' }; // a cancelled order stays cancelled
+  const anyOverdue = insts.some((i) => (i.status === 'pending' && i.due_date < today) || i.status === 'failed');
+  const status = owed === 0 ? 'paid' : anyOverdue ? 'overdue' : insts.length > 1 ? 'plan_active' : 'pending';
+  ok(await db.from('program_orders').update({ status }).eq('id', orderId), 'order.status');
   return { owedCents: owed, status };
 }
 
@@ -325,9 +370,16 @@ export async function recalculateOwed(orderId: number): Promise<{ owedCents: num
  */
 export async function markProgramInstallmentPaid(installmentId: number, actorClerkId: string): Promise<void> {
   const db = supabaseAdmin();
-  const { data: inst } = await db.from('program_installments').select('order_id, status').eq('id', installmentId).single();
+  const { data: inst } = await db.from('program_installments').select('order_id, status').eq('id', installmentId).maybeSingle();
   if (!inst || inst.status === 'paid') return;
-  await db.from('program_installments').update({ status: 'paid', paid_at: new Date().toISOString(), failure_reason: null }).eq('id', installmentId);
+  // Precondition on the current status: a webhook and the success-URL return
+  // racing each other settle exactly once.
+  const flipped = ok(
+    await db.from('program_installments').update({ status: 'paid', paid_at: new Date().toISOString(), failure_reason: null })
+      .eq('id', installmentId).neq('status', 'paid').select('id'),
+    'installment.paid',
+  );
+  if (!flipped?.length) return;
   await audit({ actorId: actorClerkId, action: 'program_installment.paid', target: `program_installment:${installmentId}` });
   await recalculateOwed(inst.order_id);
 }
@@ -335,9 +387,9 @@ export async function markProgramInstallmentPaid(installmentId: number, actorCle
 /** Record an installment failed (webhook) — dunning (M18) sweeps these up. */
 export async function markProgramInstallmentFailed(installmentId: number, reason: string, actorClerkId: string): Promise<void> {
   const db = supabaseAdmin();
-  const { data: inst } = await db.from('program_installments').select('order_id, status').eq('id', installmentId).single();
-  if (!inst || inst.status === 'paid') return; // never fail-over a settled payment
-  await db.from('program_installments').update({ status: 'failed', failure_reason: reason }).eq('id', installmentId);
+  const { data: inst } = await db.from('program_installments').select('order_id, status').eq('id', installmentId).maybeSingle();
+  if (!inst || inst.status === 'paid' || inst.status === 'waived') return; // never fail-over a settled/waived payment
+  ok(await db.from('program_installments').update({ status: 'failed', failure_reason: reason }).eq('id', installmentId).in('status', ['pending', 'failed']), 'installment.failed');
   await audit({ actorId: actorClerkId, action: 'program_installment.failed', target: `program_installment:${installmentId}`, meta: { reason } });
   await recalculateOwed(inst.order_id);
 }

@@ -1,7 +1,8 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
-import { supabaseAdmin } from '@ai/foundation/supabase';
+import { torontoInstant } from '@ai/foundation';
+import { ok, supabaseAdmin } from '@ai/foundation/supabase';
 import type { NotifyChannel } from '@ai/foundation/notify';
 import { requireStaff } from '@/lib/auth';
 import { rescheduleSession, type SessionKind } from '@/lib/programs/reschedule';
@@ -13,14 +14,15 @@ export async function addDropInSessionAction(formData: FormData): Promise<void> 
   const date = String(formData.get('date'));
   const start = String(formData.get('start'));
   const end = String(formData.get('end'));
-  await supabaseAdmin().from('dropin_sessions').insert({
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || !/^\d{2}:\d{2}$/.test(start) || !/^\d{2}:\d{2}$/.test(end)) throw new Error('Date and start/end times are required.');
+  ok(await supabaseAdmin().from('dropin_sessions').insert({
     program_id: programId,
     session_date: date,
-    starts_at: new Date(`${date}T${start}`).toISOString(),
-    ends_at: new Date(`${date}T${end}`).toISOString(),
+    starts_at: torontoInstant(date, start),
+    ends_at: torontoInstant(date, end),
     capacity: formData.get('capacity') ? Number(formData.get('capacity')) : null,
     price_cents: Math.round(Number(formData.get('price') ?? 0) * 100) || 0,
-  });
+  }), 'dropin_session.insert');
   revalidatePath(`/programs/general/${programId}`);
 }
 
@@ -38,8 +40,8 @@ export async function rescheduleAction(formData: FormData): Promise<void> {
     programId,
     sessionId: Number(formData.get('sessionId')),
     kind: String(formData.get('kind')) as SessionKind,
-    newStartsAt: withDate ? new Date(`${newDate}T${newStart}`).toISOString() : null,
-    newEndsAt: withDate ? new Date(`${newDate}T${newEnd}`).toISOString() : null,
+    newStartsAt: withDate ? torontoInstant(newDate, newStart) : null,
+    newEndsAt: withDate ? torontoInstant(newDate, newEnd) : null,
     notifyChannels: channels,
     actorClerkId: session.userId,
   });

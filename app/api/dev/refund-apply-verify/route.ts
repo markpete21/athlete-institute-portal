@@ -47,6 +47,11 @@ export async function GET() {
     const { data: famRow } = await db.from('families').select('credit_balance_cents').eq('id', fam!.id).single();
     const { data: regRow } = await db.from('registrations').select('status').eq('id', reg!.id).single();
     record('refund to Credit on Account + withdrawal', applied.amountCents === 10800 && famRow!.credit_balance_cents === 10800 && regRow!.status === 'withdrawn', `credit ${famRow!.credit_balance_cents}, reg ${regRow!.status}`);
+    // 3b. a second refund of the same registration is refused (idempotent — no double credit)
+    let repeatBlocked = false;
+    try { await applyRefund({ registrationId: reg!.id, withdrawalDateISO: '2026-10-10', totalUnits: 10, unitsRemaining: 4, unitsElapsed: 6, destination: 'credit_on_account', actorClerkId: 'system:verify' }); } catch { repeatBlocked = true; }
+    const { data: famRepeat } = await db.from('families').select('credit_balance_cents').eq('id', fam!.id).single();
+    record('re-refunding a withdrawn registration is refused', repeatBlocked && famRepeat!.credit_balance_cents === 10800, `credit ${famRepeat!.credit_balance_cents}`);
 
     // 4. staff override amount
     const { data: m2 } = await db.from('family_members').insert({ family_id: fam!.id, first_name: 'S', last_name: 'K', member_role: 'dependent' }).select('id').single();
