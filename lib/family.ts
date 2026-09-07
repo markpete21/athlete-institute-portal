@@ -75,9 +75,28 @@ export async function getOrCreateFamily(profile: Profile): Promise<Family> {
       action: 'family.created',
       target: `family:${familyId}`,
     });
+    await recordReferralFromCookie(familyId);
   }
 
   return loadFamily(familyId);
+}
+
+/**
+ * A new household created after arriving via /sign-up?ref=<code> is linked to
+ * its referrer (middleware parked the code in a cookie). Best-effort: no
+ * request scope (verify routes) or an unknown code just means no referral.
+ */
+async function recordReferralFromCookie(familyId: number): Promise<void> {
+  try {
+    const { cookies } = await import('next/headers');
+    const code = cookies().get('ai_referral_code')?.value;
+    if (!code) return;
+    const { recordReferral } = await import('@/lib/points/points');
+    const res = await recordReferral(code, familyId);
+    await audit({ actorId: 'system:referrals', action: 'referral.captured', target: `family:${familyId}`, meta: { recorded: res.recorded, reason: res.reason } });
+  } catch {
+    /* outside a request, or cookie store unavailable */
+  }
 }
 
 /** Load a family incl. members, applying the 18+ auto-conversion lazily. */

@@ -114,6 +114,13 @@ check constraint, and (if it owns rows) a `SOURCE_REF_KINDS` entry.
   a family's `hide_from_public_rosters` removes the athlete from rosters,
   stats and profiles regardless of division settings.
 
+## Referrals (Module 19)
+
+`/sign-up?ref=<code>` is parked in a 30-day cookie by the middleware; the
+household's first creation (`getOrCreateFamily`) records the referral; the
+reward fires from `markProgramInstallmentPaid` on the referred household's
+first paid installment (or at placement for a fully-covered order).
+
 ## Notifications
 
 - `notify()` → channels; `fireTrigger()` → editable templates; the `generic`

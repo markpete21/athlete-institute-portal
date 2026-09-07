@@ -59,15 +59,17 @@ export default clerkMiddleware(async (auth, req) => {
     // finishes sign-up — with WHATEVER email the user chose — the first
     // getOrCreateProfile() can adopt the imported profile by token.
     if (pathname.startsWith('/sign-up')) {
+      const cookie = { httpOnly: true, sameSite: 'lax' as const, secure: process.env.NODE_ENV === 'production', path: '/' };
       const claim = req.nextUrl.searchParams.get('claim');
       if (claim && /^[a-f0-9-]{16,64}$/i.test(claim)) {
-        res.cookies.set('ai_claim_token', claim, {
-          httpOnly: true,
-          sameSite: 'lax',
-          secure: process.env.NODE_ENV === 'production',
-          maxAge: 3600,
-          path: '/',
-        });
+        res.cookies.set('ai_claim_token', claim, { ...cookie, maxAge: 3600 });
+      }
+      // Referral link (Module 19): /sign-up?ref=<code>. Parked for 30 days so
+      // the referral is recorded when the household is first created, even if
+      // sign-up finishes days later; rewards fire on the first PAID registration.
+      const ref = req.nextUrl.searchParams.get('ref');
+      if (ref && /^[A-Za-z0-9_-]{4,32}$/.test(ref)) {
+        res.cookies.set('ai_referral_code', ref, { ...cookie, maxAge: 30 * 86400 });
       }
     }
     return res;

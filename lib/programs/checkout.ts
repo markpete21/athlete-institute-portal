@@ -333,12 +333,14 @@ export async function placeProgramOrder(input: PlaceOrderInput): Promise<{ order
 
   await audit({ actorId: input.actorClerkId, action: 'program_order.placed', target: `program_order:${orderId}`, meta: { total: quote.totalCents, installments: schedule.length, pointsEarned: quote.earnablePoints } });
 
-  // Module 19 hooks: a placed (paid) order is the referral-reward trigger and
-  // may unlock loyalty milestones. Best-effort - never blocks checkout.
+  // Module 19 hooks (best-effort, never block checkout): loyalty milestones
+  // count registered seasons; the referral reward fires on the first PAID
+  // registration — from markProgramInstallmentPaid when money settles, or
+  // right here when balances covered the whole order.
   if (familyId) {
     try {
       const { awardLoyaltyMilestones, onFirstPaidRegistration } = await import('@/lib/points/points');
-      await onFirstPaidRegistration(familyId);
+      if (orderTotal === 0) await onFirstPaidRegistration(familyId);
       await awardLoyaltyMilestones(familyId);
     } catch { /* points hooks are non-critical */ }
   }
@@ -386,6 +388,12 @@ export async function markProgramInstallmentPaid(installmentId: number, actorCle
   // escalation ladder keeps emailing a family that has already paid.
   const { markRecovered } = await import('@/lib/dunning/dunning');
   await markRecovered(installmentId).catch((err) => console.error('[dunning] markRecovered failed:', err));
+  // Module 19: the referred household's first PAID registration rewards both sides.
+  const { data: order } = await db.from('program_orders').select('family_id').eq('id', inst.order_id).maybeSingle();
+  if (order?.family_id) {
+    const { onFirstPaidRegistration } = await import('@/lib/points/points');
+    await onFirstPaidRegistration(order.family_id).catch((err) => console.error('[points] referral reward failed:', err));
+  }
 }
 
 /** Record an installment failed (webhook) — dunning (M18) sweeps these up. */
