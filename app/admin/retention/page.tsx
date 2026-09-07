@@ -21,7 +21,7 @@ export default async function RetentionPage() {
       <header className="flex items-end justify-between border-b border-hairline pb-4">
         <div>
           <p className="label text-[11px]">Predictive Retention · internal-only</p>
-          <h1 className="text-3xl">At-risk families<span style={{ color: 'var(--accent)' }}>.</span></h1>
+          <h1 className="text-3xl">At-risk families<span className="text-accent">.</span></h1>
         </div>
         <form action={recomputeAction}><button className="btn-ghost btn-sm">Recompute flags</button></form>
       </header>

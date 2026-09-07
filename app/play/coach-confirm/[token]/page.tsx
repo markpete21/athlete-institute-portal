@@ -17,7 +17,7 @@ export default async function CoachConfirmPage({ params }: { params: { token: st
       <main className="mx-auto flex min-h-[60vh] max-w-xl flex-col justify-center gap-3 px-6 py-14">
         <div className="card flex flex-col gap-2 p-6">
           <p className="label text-[11px]">Coach confirmation</p>
-          <h1 className="text-2xl">This link is no longer valid<span style={{ color: 'var(--accent)' }}>.</span></h1>
+          <h1 className="text-2xl">This link is no longer valid<span className="text-accent">.</span></h1>
           <p className="text-body text-sm">A newer confirmation email may have replaced it, or the team&apos;s coach has changed. Check your inbox for the latest link, or contact the program office.</p>
         </div>
       </main>
@@ -30,7 +30,7 @@ export default async function CoachConfirmPage({ params }: { params: { token: st
     <main className="mx-auto flex min-h-[60vh] max-w-xl flex-col justify-center gap-4 px-6 py-14">
       <header className="flex flex-col gap-1">
         <p className="label text-[11px]">{view.programName} &middot; {view.divisionName}</p>
-        <h1 className="text-3xl">Hi {view.coachFirstName} — you&apos;re coaching {view.teamName}<span style={{ color: 'var(--accent)' }}>.</span></h1>
+        <h1 className="text-3xl">Hi {view.coachFirstName} — you&apos;re coaching {view.teamName}<span className="text-accent">.</span></h1>
       </header>
 
       {answered ? (

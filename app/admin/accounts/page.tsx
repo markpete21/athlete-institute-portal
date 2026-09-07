@@ -63,7 +63,7 @@ export default async function AccountsPage({
       <header className="flex flex-col gap-2 border-b border-hairline pb-5">
         <p className="label text-[11px]">Admin · People &amp; staff</p>
         <h1 className="text-4xl">
-          Accounts<span style={{ color: 'var(--accent)' }}>.</span>
+          Accounts<span className="text-accent">.</span>
         </h1>
         <p className="text-body">
           Three high-level account types — Member, Organization, Staff (staff

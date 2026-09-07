@@ -32,7 +32,7 @@ export function StaffSelfViewBody({ staff, caps, programs, pay, unavailability, 
       )}
       <header className="flex flex-col gap-2 border-b border-hairline pb-5">
         <p className="label text-[11px]">Play · Staff</p>
-        <h1 className="text-4xl">{staff.first_name}&apos;s programs<span style={{ color: 'var(--accent)' }}>.</span></h1>
+        <h1 className="text-4xl">{staff.first_name}&apos;s programs<span className="text-accent">.</span></h1>
         <p className="text-sm text-silver">Read-only roster and schedule for your assignments. What you can see here is set by the office.</p>
       </header>
 

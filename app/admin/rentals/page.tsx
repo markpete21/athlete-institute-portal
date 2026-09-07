@@ -63,7 +63,7 @@ export default async function RentalsListPage({
         <div>
           <p className="label text-[11px]">Admin · Rentals</p>
           <h1 className="text-4xl">
-            Rentals<span style={{ color: 'var(--accent)' }}>.</span>
+            Rentals<span className="text-accent">.</span>
           </h1>
           <p className="mt-1 text-sm text-silver">
             Quotes, agreements and their invoices. Search by title, contact,

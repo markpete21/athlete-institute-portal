@@ -17,7 +17,7 @@ export default async function BrandsPage() {
     <main className="mx-auto flex max-w-4xl flex-col gap-8 px-7 py-9">
       <header className="flex flex-col gap-1 border-b border-hairline pb-4">
         <p className="label text-[11px]">Settings</p>
-        <h1 className="text-4xl">Brands<span style={{ color: 'var(--accent)' }}>.</span></h1>
+        <h1 className="text-4xl">Brands<span className="text-accent">.</span></h1>
         <p className="text-body max-w-[65ch] text-sm">
           The logo you upload here is what appears as the brand tile at the top of the public site.
           SVG is best (sharp at any size); PNG or WebP with a transparent background also work. Max 2&nbsp;MB.

@@ -53,7 +53,7 @@ export default async function AccountDetailPage({
           <Link href="/accounts" className="hover:text-ink">Admin · Accounts</Link> · Detail
         </p>
         <div className="flex flex-wrap items-center gap-3">
-          <h1 className="text-4xl">{name}<span style={{ color: 'var(--accent)' }}>.</span></h1>
+          <h1 className="text-4xl">{name}<span className="text-accent">.</span></h1>
           <span className="tag">{ACCOUNT_TYPES.find((t) => t.value === profile.user_type)?.label ?? profile.user_type}</span>
           <span className="tag" style={profile.status !== 'active' ? { color: 'var(--accent)', borderColor: 'var(--accent)' } : undefined}>{profile.status}</span>
           {d.isHoh && <span className="tag">HoH</span>}

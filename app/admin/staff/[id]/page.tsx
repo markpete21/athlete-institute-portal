@@ -94,7 +94,7 @@ export default async function StaffDetailPage({ params }: { params: { id: string
           </div>
           <div>
             <p className="label text-[11px]">Admin · Staff · #{staff.id}</p>
-            <h1 className="text-4xl">{staff.first_name} {staff.last_name}<span style={{ color: 'var(--accent)' }}>.</span></h1>
+            <h1 className="text-4xl">{staff.first_name} {staff.last_name}<span className="text-accent">.</span></h1>
             <div className="mt-2 flex flex-wrap gap-2">
               <span className="tag">{staff.status}</span>
               {!staff.profile_id && <span className="tag">account-less</span>}

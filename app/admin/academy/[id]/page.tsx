@@ -27,7 +27,7 @@ export default async function AcademyDetailPage({ params }: { params: { id: stri
     <main className="mx-auto flex max-w-4xl flex-col gap-10 px-6 py-10">
       <header className="flex flex-col gap-1 border-b border-hairline pb-4">
         <p className="label text-[11px]">Academy · fee {String(academy.processing_fee_percent)}% (waived on PAD)</p>
-        <h1 className="text-3xl">{academy.name}<span style={{ color: 'var(--accent)' }}>.</span></h1>
+        <h1 className="text-3xl">{academy.name}<span className="text-accent">.</span></h1>
       </header>
 
       {/* Dashboard */}

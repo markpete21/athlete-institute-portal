@@ -73,7 +73,7 @@ export default async function RentalDocumentPage({
     return (
       <main className="mx-auto max-w-3xl px-6 py-16">
         <p className="label text-[11px]">Admin · Rentals · #{rental.id}</p>
-        <h1 className="mt-2 text-3xl">No invoice yet<span style={{ color: 'var(--accent)' }}>.</span></h1>
+        <h1 className="mt-2 text-3xl">No invoice yet<span className="text-accent">.</span></h1>
         <p className="mt-3 text-body">
           This rental has no payment schedule, so there is nothing to invoice.
           Mark the quote booked to raise the deposit and balance.

@@ -12,7 +12,7 @@ export default async function SignWaiverPage({ params }: { params: { token: stri
   if (!rental.waiver_id) {
     return (
       <main className="mx-auto flex min-h-screen max-w-xl flex-col justify-center gap-3 px-6">
-        <h1 className="text-3xl">No waiver required<span style={{ color: 'var(--accent)' }}>.</span></h1>
+        <h1 className="text-3xl">No waiver required<span className="text-accent">.</span></h1>
         <p className="text-body">This rental has no waiver attached.</p>
       </main>
     );
@@ -28,7 +28,7 @@ export default async function SignWaiverPage({ params }: { params: { token: stri
     <main className="mx-auto flex min-h-screen max-w-2xl flex-col gap-6 px-6 py-14">
       <header className="flex flex-col gap-2 border-b border-hairline pb-5">
         <p className="label text-[11px]">{rental.title} · Waiver</p>
-        <h1 className="text-4xl">{waiver?.name}<span style={{ color: 'var(--accent)' }}>.</span></h1>
+        <h1 className="text-4xl">{waiver?.name}<span className="text-accent">.</span></h1>
       </header>
 
       <div className="card whitespace-pre-wrap p-6 text-sm leading-relaxed text-body">{waiver?.body}</div>

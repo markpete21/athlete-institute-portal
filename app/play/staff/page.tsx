@@ -19,7 +19,7 @@ export default async function StaffSelfViewPage() {
   if (!staff) {
     return (
       <main className="mx-auto flex min-h-screen max-w-xl flex-col gap-4 px-6 py-16">
-        <h1 className="text-4xl">Staff view<span style={{ color: 'var(--accent)' }}>.</span></h1>
+        <h1 className="text-4xl">Staff view<span className="text-accent">.</span></h1>
         <p className="text-body">
           {session.profileId
             ? 'No staff record is linked to this account. If you coach with us, ask the office to add your email to your staff record.'

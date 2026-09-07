@@ -18,7 +18,7 @@ export default async function PromotionsPage() {
   return (
     <main className="mx-auto flex max-w-3xl flex-col gap-8 px-6 py-10">
       <header className="flex items-end justify-between border-b border-hairline pb-4">
-        <div><p className="label text-[11px]">Promotions &amp; Engagement</p><h1 className="text-3xl">Promotions<span style={{ color: 'var(--accent)' }}>.</span></h1></div>
+        <div><p className="label text-[11px]">Promotions &amp; Engagement</p><h1 className="text-3xl">Promotions<span className="text-accent">.</span></h1></div>
         <Link href="/points" className="btn-ghost btn-sm">Points &amp; grants →</Link>
       </header>
 

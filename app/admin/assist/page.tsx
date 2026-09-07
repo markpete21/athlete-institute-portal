@@ -11,7 +11,7 @@ export default async function AdminAssistPage() {
     <main className="mx-auto flex max-w-2xl flex-col gap-8 px-6 py-10">
       <header className="flex flex-col gap-1 border-b border-hairline pb-4">
         <p className="label text-[11px]">Assist · admin copilot</p>
-        <h1 className="text-3xl">Copilot<span style={{ color: 'var(--accent)' }}>.</span></h1>
+        <h1 className="text-3xl">Copilot<span className="text-accent">.</span></h1>
         <p className="text-body text-sm">Try: &quot;who hasn&apos;t paid?&quot;, &quot;take me to conflicts&quot;, &quot;how is program 12 filling?&quot;</p>
       </header>
       <AssistChat surface="admin" />

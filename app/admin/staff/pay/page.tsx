@@ -20,7 +20,7 @@ export default async function PayDashboardPage({ searchParams }: { searchParams:
     return (
       <main className="mx-auto flex min-h-screen max-w-4xl flex-col gap-4 px-6 py-12">
         <p className="label text-[11px]">Admin · Staff</p>
-        <h1 className="text-5xl">Pay<span style={{ color: 'var(--accent)' }}>.</span></h1>
+        <h1 className="text-5xl">Pay<span className="text-accent">.</span></h1>
         <p className="text-body">You lack the pay capability. Ask an administrator to grant it on your role under Staff → Permissions.</p>
       </main>
     );
@@ -59,7 +59,7 @@ export default async function PayDashboardPage({ searchParams }: { searchParams:
       <header className="flex flex-wrap items-end justify-between gap-3 border-b border-hairline pb-6">
         <div>
           <p className="label text-[11px]">Admin · Staff</p>
-          <h1 className="text-5xl">Pay<span style={{ color: 'var(--accent)' }}>.</span></h1>
+          <h1 className="text-5xl">Pay<span className="text-accent">.</span></h1>
           <p className="text-body mt-2">Tracking only — exports to QuickBooks/payroll; never moves money. Feeds Module 4 program margin.</p>
         </div>
         <Link href="/staff" className="btn-ghost btn-sm">← Staff</Link>

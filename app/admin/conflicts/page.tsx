@@ -42,7 +42,7 @@ export default async function ConflictsPage() {
       <header className="flex flex-col gap-2 border-b border-hairline pb-6">
         <p className="label text-[11px]">Admin · Schedule</p>
         <h1 className="text-5xl">
-          Conflicts<span style={{ color: 'var(--accent)' }}>.</span>
+          Conflicts<span className="text-accent">.</span>
         </h1>
         <p className="text-body">
           Collisions never auto-resolve - you decide: cancel one side, edit, or

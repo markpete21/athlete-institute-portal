@@ -18,7 +18,7 @@ export default async function PointsAdminPage() {
     <main className="mx-auto flex max-w-3xl flex-col gap-8 px-6 py-10">
       <header className="flex flex-col gap-1 border-b border-hairline pb-4">
         <p className="label text-[11px]">Play Points &amp; Referrals</p>
-        <h1 className="text-3xl">Points<span style={{ color: 'var(--accent)' }}>.</span></h1>
+        <h1 className="text-3xl">Points<span className="text-accent">.</span></h1>
       </header>
 
       <section className="grid grid-cols-2 gap-3 sm:grid-cols-4">

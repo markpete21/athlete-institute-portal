@@ -27,7 +27,7 @@ export function TopNav({
       <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-3">
         <Link href="/" className="shrink-0 text-lg font-extrabold tracking-tight text-ink">
           {brandName}
-          <span style={{ color: 'var(--accent)' }}>.</span>
+          <span className="text-accent">.</span>
         </Link>
 
         <nav className="flex flex-1 items-center gap-5 overflow-x-auto">

@@ -17,7 +17,7 @@ export default async function CampWeeksPage({ params }: { params: { id: string }
     <main className="mx-auto flex min-h-screen max-w-3xl flex-col gap-8 px-6 py-14">
       <header className="flex flex-col gap-2 border-b border-hairline pb-5">
         <p className="label text-[11px]">Admin · Camps · {prog.name}</p>
-        <h1 className="text-4xl">Weeks<span style={{ color: 'var(--accent)' }}>.</span></h1>
+        <h1 className="text-4xl">Weeks<span className="text-accent">.</span></h1>
       </header>
 
       {weeks.map((w) => (

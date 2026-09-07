@@ -47,7 +47,7 @@ export default async function InvoicesPage({
         <div>
           <p className="label text-[11px]">Admin · Rentals · Invoices</p>
           <h1 className="text-4xl">
-            Invoices<span style={{ color: 'var(--accent)' }}>.</span>
+            Invoices<span className="text-accent">.</span>
           </h1>
           <p className="mt-1 text-sm text-silver">
             Every deposit and balance instalment across all rentals. Charge,

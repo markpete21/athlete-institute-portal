@@ -3,7 +3,7 @@
  * so they inherit rail/active/accent states). Keys match ModuleKey plus a few
  * UI glyphs.
  */
-const PATHS: Record<string, string> = {
+const PATHS = {
   programs: 'M3 7l9-4 9 4-9 4-9-4zM3 12l9 4 9-4M3 17l9 4 9-4',
   camps: 'M12 4l9 16H3zM12 4v16M7 20l5-7 5 7',
   club: 'M12 3l7 3v5c0 5-3 8-7 10-4-2-7-5-7-10V6z',
@@ -15,6 +15,7 @@ const PATHS: Record<string, string> = {
   rentals: 'M11 12l8-8M17 3l3 3M14 7l2 2',
   displays: 'M2 4h20v13H2zM8 21h8M12 17v4',
   staff: 'M5 20a7 7 0 0 1 14 0',
+  accounts: 'M4 20a5 5 0 0 1 10 0M15 20a4 4 0 0 1 6 0M12 6a3 3 0 1 1 0 6 3 3 0 0 1 0-6M17 9a2 2 0 1 1 0 4 2 2 0 0 1 0-4',
   roles: 'M4 10h16v10H4zM8 10V7a4 4 0 0 1 8 0v3',
   waivers: 'M7 3h7l5 5v13H7zM14 3v5h5M10 13h6M10 17h6',
   import: 'M12 3v12M8 11l4 4 4-4M4 21h16',
@@ -34,9 +35,18 @@ const PATHS: Record<string, string> = {
   pin: 'M12 17v5M8 3h8l-1 6 3 3H6l3-3z',
   collapse: 'M14 6l-6 6 6 6M20 6l-6 6 6 6',
   list: 'M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01',
-};
+  // Play status bar + attention rows
+  credit: 'M3 7h18v10H3zM3 11h18M7 15h3',
+  card: 'M3 6h18v12H3zM3 10h18M7 14h4',
+  cal: 'M3 5h18v16H3zM3 10h18M8 3v4M16 3v4M8 14h3v3H8z',
+  warn: 'M12 3l9 16H3zM12 10v4M12 17v.5',
+} as const satisfies Record<string, string>;
 
-const CIRCLES: Record<string, { cx: number; cy: number; r: number }[]> = {
+/** Every glyph the shells and pages may ask for — a typo is a compile error, not a blank square. */
+export type IconName = keyof typeof PATHS;
+export const ICON_NAMES = Object.keys(PATHS) as IconName[];
+
+const CIRCLES: Partial<Record<IconName, { cx: number; cy: number; r: number }[]>> = {
   staff: [{ cx: 12, cy: 8, r: 3.5 }],
   points: [{ cx: 12, cy: 12, r: 8 }],
   dunning: [{ cx: 12, cy: 12, r: 9 }],
@@ -44,8 +54,8 @@ const CIRCLES: Record<string, { cx: number; cy: number; r: number }[]> = {
   gallery: [{ cx: 8.5, cy: 9.5, r: 1.5 }],
 };
 
-export function Icon({ name, size = 18 }: { name: string; size?: number }) {
-  const d = PATHS[name];
+export function Icon({ name, size = 18 }: { name: IconName; size?: number }) {
+  const d: string = PATHS[name];
   const circles = CIRCLES[name] ?? [];
   return (
     <svg viewBox="0 0 24 24" width={size} height={size} fill="none" stroke="currentColor" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">

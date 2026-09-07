@@ -27,7 +27,7 @@ export default async function CampaignPage({ params }: { params: { id: string } 
   return (
     <main className="mx-auto flex max-w-3xl flex-col gap-6 px-6 py-10">
       <header className="flex items-end justify-between border-b border-hairline pb-4">
-        <div><Link href="/comms" className="label text-[11px]">← Communications</Link><h1 className="text-3xl">{c.name}<span style={{ color: 'var(--accent)' }}>.</span></h1></div>
+        <div><Link href="/comms" className="label text-[11px]">← Communications</Link><h1 className="text-3xl">{c.name}<span className="text-accent">.</span></h1></div>
         <span className="tag">{c.status}</span>
       </header>
 

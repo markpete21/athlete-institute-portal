@@ -38,7 +38,7 @@ export default async function ProgramDetailPage({ params }: { params: { token: s
     <main style={brandVars} className="mx-auto flex min-h-screen max-w-2xl flex-col gap-6 px-6 py-16">
       <header className="flex flex-col gap-2 border-b border-hairline pb-6">
         <p className="label text-[11px]">{program.type_name} · {program.category}</p>
-        <h1 className="text-5xl">{program.name}<span style={{ color: 'var(--accent)' }}>.</span></h1>
+        <h1 className="text-5xl">{program.name}<span className="text-accent">.</span></h1>
         {program.sport_tag && <span className="tag">{program.sport_tag}</span>}
       </header>
 

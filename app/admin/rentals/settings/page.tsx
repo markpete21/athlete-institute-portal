@@ -40,7 +40,7 @@ export default async function RentalSettingsPage() {
       <header className="flex flex-col gap-2 border-b border-hairline pb-6">
         <p className="label text-[11px]">Admin · Rentals</p>
         <h1 className="text-5xl">
-          Rental settings<span style={{ color: 'var(--accent)' }}>.</span>
+          Rental settings<span className="text-accent">.</span>
         </h1>
         <p className="text-body">
           Default rates per facility (blank = inherits the nearest parent rate;

@@ -45,9 +45,14 @@ const config: Config = {
         body: '#333333',
         hairline: 'rgba(30,30,30,0.14)',
         'hairline-soft': 'rgba(30,30,30,0.08)',
+        // The live brand accent (set on <body> by brandCssVars, overridden per
+        // brand-scoped subtree). Use text-accent / border-accent / bg-accent
+        // instead of an inline style so utilities follow the active brand.
+        accent: 'var(--accent)',
         // Quiet signal colors (muted to respect the single-accent rule).
         pos: '#3F7A5B',
         neg: '#B4483C',
+        warn: '#8A6D1F',
       },
       fontFamily: {
         sans: ['var(--font-display)', 'Inter', 'Helvetica Neue', 'Arial', 'sans-serif'],

@@ -11,7 +11,7 @@ export default async function AcademyIndexPage() {
     <main className="mx-auto flex max-w-2xl flex-col gap-8 px-6 py-10">
       <header className="flex flex-col gap-1 border-b border-hairline pb-4">
         <p className="label text-[11px]">Academy</p>
-        <h1 className="text-3xl">Academies<span style={{ color: 'var(--accent)' }}>.</span></h1>
+        <h1 className="text-3xl">Academies<span className="text-accent">.</span></h1>
       </header>
       <section className="flex flex-col gap-2">
         {(academies ?? []).length === 0 && <p className="text-body">No academies yet.</p>}

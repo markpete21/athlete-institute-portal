@@ -13,7 +13,7 @@ export default async function GalleryListPage() {
     <main className="mx-auto flex min-h-screen max-w-md flex-col gap-6 px-5 py-10">
       <header className="flex flex-col gap-1 border-b border-hairline pb-4">
         <p className="label text-[11px]">Your galleries</p>
-        <h1 className="text-4xl">Photos &amp; video<span style={{ color: 'var(--accent)' }}>.</span></h1>
+        <h1 className="text-4xl">Photos &amp; video<span className="text-accent">.</span></h1>
         <p className="text-body text-sm">Galleries from your programs appear here automatically.</p>
       </header>
 

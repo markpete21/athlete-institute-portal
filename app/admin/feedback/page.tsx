@@ -25,7 +25,7 @@ export default async function FeedbackAdminPage() {
     <main className="mx-auto flex max-w-3xl flex-col gap-8 px-6 py-10">
       <header className="flex flex-col gap-1 border-b border-hairline pb-4">
         <p className="label text-[11px]">Feedback &amp; Ratings</p>
-        <h1 className="text-3xl">Feedback<span style={{ color: 'var(--accent)' }}>.</span></h1>
+        <h1 className="text-3xl">Feedback<span className="text-accent">.</span></h1>
         <p className="text-body text-sm">Low scores (1–2★) alert staff automatically. Ratings are private unless toggled public.</p>
       </header>
 

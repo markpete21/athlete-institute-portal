@@ -47,7 +47,7 @@ export default function UiGallery({ searchParams }: { searchParams: { brand?: st
         <main className="mx-auto flex max-w-6xl flex-col gap-10 px-4 py-10">
           <header className="flex flex-col gap-2">
             <p className="label text-[11px]">Module 0 · Stage 8 · UI kit</p>
-            <h1 className="text-5xl">Components<span style={{ color: 'var(--accent)' }}>.</span></h1>
+            <h1 className="text-5xl">Components<span className="text-accent">.</span></h1>
             <p className="text-body">
               Themed to <span className="mono" style={{ color: 'var(--accent)' }}>{brand.name}</span>.
               Append <code className="mono">?brand=bears</code> etc. to re-theme.

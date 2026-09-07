@@ -27,7 +27,7 @@ export default async function SeasonsPage() {
     <main className="mx-auto flex min-h-screen max-w-4xl flex-col gap-8 px-6 py-14">
       <header className="flex flex-col gap-2 border-b border-hairline pb-5">
         <p className="label text-[11px]">Admin · Programs · Seasons</p>
-        <h1 className="text-4xl">Seasons<span style={{ color: 'var(--accent)' }}>.</span></h1>
+        <h1 className="text-4xl">Seasons<span className="text-accent">.</span></h1>
         <p className="text-body max-w-[62ch] text-sm">
           One list, used everywhere a season appears — program builder, filters, Compete.
           Status follows the dates on its own; archive a season to retire it from new

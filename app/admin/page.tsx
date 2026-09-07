@@ -157,7 +157,7 @@ export default async function AdminHome({ searchParams }: { searchParams?: { ran
         <div className="flex flex-col gap-1">
           <p className="label text-[11px]">Overview · {kickerFmt.format(new Date(now))}</p>
           <h1 className="text-4xl capitalize">
-            Welcome back, {firstName}<span style={{ color: 'var(--accent)' }}>.</span>
+            Welcome back, {firstName}<span className="text-accent">.</span>
           </h1>
         </div>
         <div className="flex flex-wrap items-center gap-2.5">

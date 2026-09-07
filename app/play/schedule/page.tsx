@@ -63,7 +63,7 @@ export default async function PlaySchedulePage() {
       <header className="flex flex-col gap-2 border-b border-hairline pb-6">
         <p className="label text-[11px]">Program schedule</p>
         <h1 className="text-5xl">
-          Schedule<span style={{ color: 'var(--accent)' }}>.</span>
+          Schedule<span className="text-accent">.</span>
         </h1>
         {session.userType === 'tenant' && (
           <p className="text-body">Read-only facility schedule - your view of the campus.</p>

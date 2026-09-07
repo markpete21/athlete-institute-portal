@@ -30,7 +30,7 @@ export default async function DisplaysAdminPage() {
       <header className="flex flex-col gap-2 border-b border-hairline pb-6">
         <p className="label text-[11px]">Admin · TV displays</p>
         <h1 className="text-5xl">
-          Displays<span style={{ color: 'var(--accent)' }}>.</span>
+          Displays<span className="text-accent">.</span>
         </h1>
         <p className="text-body">
           Each display is a public unguessable URL - point any TV stick or kiosk

@@ -15,7 +15,7 @@ export default async function PointsPage() {
     <main className="mx-auto flex min-h-screen max-w-md flex-col gap-6 px-5 py-10">
       <header className="flex flex-col gap-1 border-b border-hairline pb-4">
         <p className="label text-[11px]">Play Points</p>
-        <h1 className="text-4xl">Your points<span style={{ color: 'var(--accent)' }}>.</span></h1>
+        <h1 className="text-4xl">Your points<span className="text-accent">.</span></h1>
       </header>
 
       {!session.userId ? (

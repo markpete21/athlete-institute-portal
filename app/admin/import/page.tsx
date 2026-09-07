@@ -51,7 +51,7 @@ export default async function ImportAdminPage({ searchParams }: { searchParams: 
       <header className="flex flex-col gap-2 border-b border-hairline pb-6">
         <p className="label text-[11px]">Admin · Accounts</p>
         <h1 className="text-5xl">
-          Playbook import<span style={{ color: 'var(--accent)' }}>.</span>
+          Playbook import<span className="text-accent">.</span>
         </h1>
         <p className="text-body">
           Staged and reviewable — nothing is written to real accounts until you commit.

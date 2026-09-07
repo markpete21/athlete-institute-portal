@@ -18,7 +18,7 @@ export default async function CheckinPage({ params, searchParams }: { params: { 
     <main className="mx-auto flex min-h-screen max-w-md flex-col gap-5 px-5 py-10">
       <header className="flex flex-col gap-1 border-b border-hairline pb-4">
         <p className="label text-[11px]">{week.name}</p>
-        <h1 className="text-3xl">Check-in<span style={{ color: 'var(--accent)' }}>.</span></h1>
+        <h1 className="text-3xl">Check-in<span className="text-accent">.</span></h1>
         <form method="get" className="flex items-end gap-2">
           <div><label className="field-label">Day</label><input name="day" type="date" defaultValue={day} className="input text-sm" /></div>
           <button className="btn-ghost btn-sm">Go</button>

@@ -75,7 +75,7 @@ export default async function BookingEditPage({ params }: { params: { id: string
         </p>
         <h1 className="text-4xl">
           {booking.title}
-          <span style={{ color: 'var(--accent)' }}>.</span>
+          <span className="text-accent">.</span>
         </h1>
         <div className="flex flex-wrap items-center gap-1.5">
           <span className="tag">{SOURCE_LABEL[booking.source] ?? booking.source}</span>

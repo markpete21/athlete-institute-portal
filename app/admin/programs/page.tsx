@@ -22,7 +22,7 @@ export default async function ProgramsListPage() {
       <header className="flex flex-wrap items-end justify-between gap-3 border-b border-hairline pb-6">
         <div>
           <p className="label text-[11px]">Admin · Programs</p>
-          <h1 className="text-5xl">Programs<span style={{ color: 'var(--accent)' }}>.</span></h1>
+          <h1 className="text-5xl">Programs<span className="text-accent">.</span></h1>
         </div>
         <Link href="/programs/types" className="btn-ghost btn-sm">Manage types</Link>
       </header>

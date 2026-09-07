@@ -19,7 +19,7 @@ export default async function GearOrderPage({ params }: { params: { id: string }
       <header className="flex items-baseline justify-between border-b border-hairline pb-4">
         <div>
           <p className="label text-[11px]">Gear order</p>
-          <h1 className="text-3xl">{programName}<span style={{ color: 'var(--accent)' }}>.</span></h1>
+          <h1 className="text-3xl">{programName}<span className="text-accent">.</span></h1>
         </div>
         <div className="no-print"><PrintButton label="Download PDF" /></div>
       </header>

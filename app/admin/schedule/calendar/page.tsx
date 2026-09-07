@@ -24,7 +24,7 @@ export default async function CalendarSyncPage() {
       <header className="flex flex-col gap-2 border-b border-hairline pb-5">
         <p className="label text-[11px]">Admin · Master schedule</p>
         <h1 className="text-4xl">
-          Calendar sync<span style={{ color: 'var(--accent)' }}>.</span>
+          Calendar sync<span className="text-accent">.</span>
         </h1>
         <p className="text-body">
           Subscribe your calendar to the master schedule. The feed updates

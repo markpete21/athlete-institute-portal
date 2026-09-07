@@ -20,7 +20,7 @@ export default async function FeedbackPage({ params }: { params: { token: string
     <main className="mx-auto flex min-h-screen max-w-md flex-col gap-6 px-5 py-12">
       <header className="flex flex-col gap-1 border-b border-hairline pb-4">
         <p className="label text-[11px]">Feedback · {form.participantName}</p>
-        <h1 className="text-3xl">{form.programName}<span style={{ color: 'var(--accent)' }}>.</span></h1>
+        <h1 className="text-3xl">{form.programName}<span className="text-accent">.</span></h1>
       </header>
 
       {form.submitted ? (

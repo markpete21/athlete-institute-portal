@@ -60,7 +60,7 @@ export default async function ProgramBuilderPage({ params }: { params: { id: str
       <header className="flex flex-wrap items-end justify-between gap-3 border-b border-hairline pb-5">
         <div>
           <p className="label text-[11px]">Admin · Programs · #{program.id}</p>
-          <h1 className="text-4xl">{program.name}<span style={{ color: 'var(--accent)' }}>.</span></h1>
+          <h1 className="text-4xl">{program.name}<span className="text-accent">.</span></h1>
           <div className="mt-2 flex flex-wrap gap-2">
             <span className="tag">{program.category}</span>
             <span className="tag">{program.brand_key}</span>

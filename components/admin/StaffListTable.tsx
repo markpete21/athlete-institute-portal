@@ -83,7 +83,7 @@ type SortKey = 'name' | 'program';
 
 function SortHeader({ label, active, dir, onClick }: { label: string; active: boolean; dir: 1 | -1; onClick: () => void }) {
   return (
-    <button type="button" onClick={onClick} className={`inline-flex items-center gap-1 uppercase ${active ? 'text-ink' : ''} hover:text-ink`} aria-sort={active ? (dir === 1 ? 'ascending' : 'descending') : undefined}>
+    <button type="button" onClick={onClick} className={`inline-flex items-center gap-1 uppercase ${active ? 'text-ink' : ''} hover:text-ink`} aria-label={`Sort by ${label}${active ? (dir === 1 ? ', ascending' : ', descending') : ''}`}>
       {label}
       <span className="mono text-[9px]" style={active ? { color: 'var(--accent)' } : { opacity: 0.4 }}>{active ? (dir === 1 ? '▲' : '▼') : '↕'}</span>
     </button>
@@ -118,8 +118,8 @@ export function StaffListTable({ rows }: { rows: StaffListRow[] }) {
       <thead>
         <tr>
           <th />
-          <th><SortHeader label="Name" active={sortKey === 'name'} dir={dir} onClick={() => toggleSort('name')} /></th>
-          <th className="w-[32%]"><SortHeader label="Programs & roles" active={sortKey === 'program'} dir={dir} onClick={() => toggleSort('program')} /></th>
+          <th aria-sort={sortKey === 'name' ? (dir === 1 ? 'ascending' : 'descending') : 'none'}><SortHeader label="Name" active={sortKey === 'name'} dir={dir} onClick={() => toggleSort('name')} /></th>
+          <th className="w-[32%]" aria-sort={sortKey === 'program' ? (dir === 1 ? 'ascending' : 'descending') : 'none'}><SortHeader label="Programs & roles" active={sortKey === 'program'} dir={dir} onClick={() => toggleSort('program')} /></th>
           <th>Rating</th>
           <th>Account</th>
           <th>Status</th>

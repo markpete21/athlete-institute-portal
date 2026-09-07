@@ -20,7 +20,7 @@ export default async function DunningPage() {
     <main className="mx-auto flex max-w-3xl flex-col gap-8 px-6 py-10">
       <header className="flex flex-col gap-1 border-b border-hairline pb-4">
         <p className="label text-[11px]">Dunning &amp; Team Explainer</p>
-        <h1 className="text-3xl">Payment recovery<span style={{ color: 'var(--accent)' }}>.</span></h1>
+        <h1 className="text-3xl">Payment recovery<span className="text-accent">.</span></h1>
         <p className="text-body text-sm">Failed payments escalate automatically: retry → email → SMS → staff call task + Overdue flag.</p>
       </header>
 

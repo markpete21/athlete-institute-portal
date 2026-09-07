@@ -12,7 +12,7 @@ export default async function NotificationsPage() {
     <main className="mx-auto flex max-w-3xl flex-col gap-6 px-6 py-10">
       <header className="flex flex-col gap-1 border-b border-hairline pb-4">
         <Link href="/comms" className="label text-[11px]">← Communications</Link>
-        <h1 className="text-3xl">Auto-notifications<span style={{ color: 'var(--accent)' }}>.</span></h1>
+        <h1 className="text-3xl">Auto-notifications<span className="text-accent">.</span></h1>
         <p className="text-body text-sm">Transactional triggers fired across the platform. Each has a default, merge tags, channels, and an on/off toggle.</p>
       </header>
 

@@ -173,7 +173,7 @@ export default async function SchedulePage({
         <div>
           <p className="label text-[11px]">Admin · Master schedule</p>
           <h1 className="text-4xl">
-            Schedule<span style={{ color: 'var(--accent)' }}>.</span>
+            Schedule<span className="text-accent">.</span>
           </h1>
         </div>
         <div className="flex items-center gap-2">

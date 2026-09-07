@@ -214,7 +214,7 @@ export default async function StaffListPage({ searchParams }: { searchParams: { 
       <header className="flex flex-wrap items-end justify-between gap-3 border-b border-hairline pb-6">
         <div>
           <p className="label text-[11px]">Admin · People &amp; staff</p>
-          <h1 className="text-5xl">Staff<span style={{ color: 'var(--accent)' }}>.</span></h1>
+          <h1 className="text-5xl">Staff<span className="text-accent">.</span></h1>
           <p className="text-body mt-2">Records, roles, per-program pay, certifications. Status derives itself: assigned to a current program or owed pay = active.</p>
         </div>
         <div className="flex items-start gap-2">

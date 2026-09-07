@@ -41,7 +41,7 @@ export default async function StaffSelfViewPreviewPage({ searchParams }: { searc
   if (!staff) {
     return (
       <main className="mx-auto flex min-h-screen max-w-xl flex-col gap-4 px-6 py-16">
-        <h1 className="text-4xl">Coach view preview<span style={{ color: 'var(--accent)' }}>.</span></h1>
+        <h1 className="text-4xl">Coach view preview<span className="text-accent">.</span></h1>
         <p className="text-body">No staff record to preview — add a coach (or pass ?staff=&lt;id&gt;).</p>
         <Link href="/account" className="btn-ghost btn-sm self-start">← My account</Link>
       </main>

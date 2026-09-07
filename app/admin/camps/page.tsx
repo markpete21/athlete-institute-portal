@@ -16,7 +16,7 @@ export default async function CampsPage() {
     <main className="mx-auto flex min-h-screen max-w-3xl flex-col gap-8 px-6 py-16">
       <header className="flex flex-col gap-2 border-b border-hairline pb-6">
         <p className="label text-[11px]">Admin · Camps</p>
-        <h1 className="text-5xl">Camps<span style={{ color: 'var(--accent)' }}>.</span></h1>
+        <h1 className="text-5xl">Camps<span className="text-accent">.</span></h1>
         <p className="text-body">Create a camp in <Link href="/programs" className="text-gold">Programs</Link> (type “Camp”), then manage its weeks + check-in here.</p>
       </header>
       <table className="data-table">

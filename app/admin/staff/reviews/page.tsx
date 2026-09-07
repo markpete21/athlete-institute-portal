@@ -69,7 +69,7 @@ export default async function StaffReviewsPage() {
       <header className="flex flex-wrap items-end justify-between gap-3 border-b border-hairline pb-6">
         <div>
           <p className="label text-[11px]">Admin · Staff</p>
-          <h1 className="text-5xl">Reviews<span style={{ color: 'var(--accent)' }}>.</span></h1>
+          <h1 className="text-5xl">Reviews<span className="text-accent">.</span></h1>
           <p className="text-body mt-2 max-w-3xl">
             Collected and coordinated by the <Link href="/feedback" className="underline">Feedback module</Link> — a program&apos;s
             responses count for every coach who publicly delivered it. Per-coach questions are planned with the Feedback review;

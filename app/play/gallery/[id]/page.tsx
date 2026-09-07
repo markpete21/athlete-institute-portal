@@ -25,7 +25,7 @@ export default async function GalleryPage({ params }: { params: { id: string } }
     <main className="mx-auto flex min-h-screen max-w-2xl flex-col gap-6 px-5 py-10">
       <header className="flex flex-col gap-1 border-b border-hairline pb-4">
         <p className="label text-[11px]">{(gallery.programs as unknown as { name: string } | null)?.name}</p>
-        <h1 className="text-3xl">{gallery.title}<span style={{ color: 'var(--accent)' }}>.</span></h1>
+        <h1 className="text-3xl">{gallery.title}<span className="text-accent">.</span></h1>
       </header>
       <GalleryGrid galleryId={galleryId} media={media} />
     </main>

@@ -20,7 +20,7 @@ export default function BrandsPreview({
       <header className="flex flex-col gap-3 border-b border-hairline pb-6">
         <p className="label text-[11px]">Module 0 · Stage 5 · Brand theming</p>
         <h1 className="text-5xl">
-          Brands<span style={{ color: 'var(--accent)' }}>.</span>
+          Brands<span className="text-accent">.</span>
         </h1>
         <p className="max-w-xl text-body">
           One shared design system (Orangeville Prep / Vanguard), four brands.
@@ -57,7 +57,7 @@ function BrandCard({ brand, isActive }: { brand: Brand; isActive: boolean }) {
     <div style={vars} className="card flex flex-col gap-4 p-6">
       <div className="flex items-baseline justify-between">
         <h2 className="text-3xl">
-          {brand.name}<span style={{ color: 'var(--accent)' }}>.</span>
+          {brand.name}<span className="text-accent">.</span>
         </h2>
         {isActive && <span className="tag">active</span>}
       </div>

@@ -15,7 +15,7 @@ export default async function RentalRequestPage({ searchParams }: { searchParams
   if (searchParams.sent) {
     return (
       <main className="mx-auto flex min-h-screen max-w-xl flex-col justify-center gap-4 px-6">
-        <h1 className="text-4xl">Request received<span style={{ color: 'var(--accent)' }}>.</span></h1>
+        <h1 className="text-4xl">Request received<span className="text-accent">.</span></h1>
         <p className="text-body">Our team will build your quote and email it to you shortly.</p>
         <Link href="/" className="btn-ghost btn-sm self-start">Back to portal</Link>
       </main>
@@ -26,7 +26,7 @@ export default async function RentalRequestPage({ searchParams }: { searchParams
     <main className="mx-auto flex min-h-screen max-w-2xl flex-col gap-6 px-6 py-16">
       <header className="flex flex-col gap-2 border-b border-hairline pb-6">
         <p className="label text-[11px]">Rentals</p>
-        <h1 className="text-5xl">Request a rental<span style={{ color: 'var(--accent)' }}>.</span></h1>
+        <h1 className="text-5xl">Request a rental<span className="text-accent">.</span></h1>
         <p className="text-body">
           Tell us what you need and our team will prepare a quote. A deposit is
           required to confirm any booking.

@@ -1,11 +1,11 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import PlayWordmark from '@/components/brand/PlayWordmark';
 import AppsMenu from '@/components/nav/AppsMenu';
-import { Icon } from '@/components/nav/icons';
+import { Icon, type IconName } from '@/components/nav/icons';
 import type { BrandTile } from '@/lib/play/brands';
 
 /**
@@ -19,7 +19,7 @@ import type { BrandTile } from '@/lib/play/brands';
  */
 
 export interface StatusItem {
-  icon: string;
+  icon: IconName;
   value: string;
   name?: string | null;
   label?: string | null;
@@ -66,9 +66,12 @@ export default function PlayShell({ brands, status, signedIn, initials, children
   }, []);
 
   // Hover opens the tile menu; a short close delay lets you travel into it.
-  let closeTimer: ReturnType<typeof setTimeout> | null = null;
-  const open = (k: string) => { if (closeTimer) clearTimeout(closeTimer); setOpenBrand(k); };
-  const close = () => { closeTimer = setTimeout(() => setOpenBrand(null), 160); };
+  // The timer lives in a ref: a per-render local would be a fresh variable
+  // after every state change, so leaving tile A could close tile B.
+  const closeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const open = (k: string) => { if (closeTimer.current) clearTimeout(closeTimer.current); setOpenBrand(k); };
+  const close = () => { if (closeTimer.current) clearTimeout(closeTimer.current); closeTimer.current = setTimeout(() => setOpenBrand(null), 160); };
+  useEffect(() => () => { if (closeTimer.current) clearTimeout(closeTimer.current); }, []);
 
   return (
     <div className="play-shell">

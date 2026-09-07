@@ -71,7 +71,7 @@ export default async function BookPage({
       <header className="flex flex-col gap-2 border-b border-hairline pb-5">
         <p className="label text-[11px]">Admin · Master schedule</p>
         <h1 className="text-4xl">
-          {intent === 'quote' ? 'Quote' : 'Book'}<span style={{ color: 'var(--accent)' }}>.</span>
+          {intent === 'quote' ? 'Quote' : 'Book'}<span className="text-accent">.</span>
         </h1>
         {intent === 'quote' && (
           <p className="text-body">A quote holds the slots tentatively until the customer confirms.</p>

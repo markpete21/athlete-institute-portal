@@ -60,7 +60,7 @@ export default async function RentalBuilderPage({ params }: { params: { id: stri
         <div>
           <p className="label text-[11px]">Admin · Rentals · #{rental.id}</p>
           <h1 className="text-4xl">
-            {rental.title}<span style={{ color: 'var(--accent)' }}>.</span>
+            {rental.title}<span className="text-accent">.</span>
           </h1>
           <div className="mt-2 flex gap-2">
             <span className="tag" style={{ color: RENTAL_STATUS_COLOR[rental.status as RentalStatus], borderColor: RENTAL_STATUS_COLOR[rental.status as RentalStatus] }}>

@@ -16,7 +16,7 @@ export default async function GalleryAdminPage() {
   return (
     <main className="mx-auto flex max-w-3xl flex-col gap-8 px-6 py-10">
       <header className="flex items-end justify-between border-b border-hairline pb-4">
-        <div><p className="label text-[11px]">Photo &amp; Video Gallery</p><h1 className="text-3xl">Galleries<span style={{ color: 'var(--accent)' }}>.</span></h1></div>
+        <div><p className="label text-[11px]">Photo &amp; Video Gallery</p><h1 className="text-3xl">Galleries<span className="text-accent">.</span></h1></div>
         <form action={archiveAction}><button className="btn-ghost btn-sm">Archive &gt; 6 months</button></form>
       </header>
 

@@ -16,7 +16,7 @@ export default async function WaiversPage() {
     <main className="mx-auto flex min-h-screen max-w-3xl flex-col gap-8 px-6 py-16">
       <header className="flex flex-col gap-2 border-b border-hairline pb-6">
         <p className="label text-[11px]">Admin · Forms</p>
-        <h1 className="text-5xl">Waivers<span style={{ color: 'var(--accent)' }}>.</span></h1>
+        <h1 className="text-5xl">Waivers<span className="text-accent">.</span></h1>
         <p className="text-body">
           Compose waivers and attach them to rentals (or programs). The renter
           signs once electronically; a signed waiver gates confirming the

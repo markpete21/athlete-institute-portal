@@ -13,7 +13,7 @@ export default async function CommsPage() {
   return (
     <main className="mx-auto flex max-w-3xl flex-col gap-8 px-6 py-10">
       <header className="flex items-end justify-between border-b border-hairline pb-4">
-        <div><p className="label text-[11px]">Communications</p><h1 className="text-3xl">Campaigns<span style={{ color: 'var(--accent)' }}>.</span></h1></div>
+        <div><p className="label text-[11px]">Communications</p><h1 className="text-3xl">Campaigns<span className="text-accent">.</span></h1></div>
         <nav className="flex gap-2">
           <Link href="/comms/announce" className="btn-ghost btn-sm">Announcement</Link>
           <Link href="/comms/notifications" className="btn-ghost btn-sm">Auto-notifications</Link>

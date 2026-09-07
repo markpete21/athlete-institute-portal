@@ -27,7 +27,7 @@ export default async function OfficialSchedulesPage({ params }: { params: { id: 
     <main className="mx-auto flex min-h-screen max-w-3xl flex-col gap-6 px-6 py-14">
       <header className="flex flex-col gap-2 border-b border-hairline pb-5">
         <p className="label text-[11px]">{(div.programs as unknown as { name: string } | null)?.name} · {div.name}</p>
-        <h1 className="text-3xl">Officiating schedules<span style={{ color: 'var(--accent)' }}>.</span></h1>
+        <h1 className="text-3xl">Officiating schedules<span className="text-accent">.</span></h1>
         <div className="no-print flex flex-wrap items-center gap-3 pt-1">
           <form action={emailOfficialSchedulesAction}>
             <input type="hidden" name="divisionId" value={divisionId} />

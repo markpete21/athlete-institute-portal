@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { formatCAD } from '@ai/foundation';
-import { Icon } from '@/components/nav/icons';
+import { Icon, type IconName } from '@/components/nav/icons';
 import { getPortalSession } from '@/lib/auth';
 import { accountView, type AttentionItem, type Member } from '@/lib/play/account';
 import { staffForProfile } from '@/lib/staff/staff';
@@ -28,7 +28,7 @@ function Avatar({ m, size = 24 }: { m: Member; size?: number }) {
   );
 }
 
-const ATTN_ICON: Record<AttentionItem['kind'], string> = {
+const ATTN_ICON: Record<AttentionItem['kind'], IconName> = {
   payment: 'card', waiver: 'waivers', jersey: 'warn', consent: 'gallery', waitlist: 'programs',
 };
 

@@ -37,7 +37,7 @@ export default async function DivisionAdminPage({ params }: { params: { id: stri
     <main className="mx-auto flex min-h-screen max-w-4xl flex-col gap-8 px-6 py-14">
       <header className="flex flex-col gap-2 border-b border-hairline pb-5">
         <p className="label text-[11px]">Admin · Competitive · #{div.id}</p>
-        <h1 className="text-4xl">{div.name}<span style={{ color: 'var(--accent)' }}>.</span></h1>
+        <h1 className="text-4xl">{div.name}<span className="text-accent">.</span></h1>
         <div className="flex flex-wrap items-center gap-2">
           <span className="tag">{div.sport}</span><span className="tag">{(div.programs as unknown as { name: string } | null)?.name}</span><span className="tag">{rosterCount} registered · {(teams ?? []).length} teams</span>
           <Link href={`/competitive/${divisionId}/media-day`} className="label ml-auto text-[10px] hover:text-ink">Media day →</Link>

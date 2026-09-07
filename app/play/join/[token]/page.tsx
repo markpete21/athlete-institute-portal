@@ -28,7 +28,7 @@ export default async function JoinTeamPage({ params }: { params: { token: string
   return (
     <main className="mx-auto flex min-h-screen max-w-xl flex-col justify-center gap-5 px-6">
       <p className="label text-[11px]">{div.programs.name} · {div.name}</p>
-      <h1 className="text-4xl">Join {team.name}<span style={{ color: 'var(--accent)' }}>.</span></h1>
+      <h1 className="text-4xl">Join {team.name}<span className="text-accent">.</span></h1>
 
       {!status.open ? (
         <div className="card p-6">

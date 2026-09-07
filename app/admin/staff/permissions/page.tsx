@@ -33,7 +33,7 @@ export default async function PermissionMatrixPage() {
     <main className="mx-auto flex min-h-screen max-w-4xl flex-col gap-8 px-6 py-12">
       <header className="flex flex-col gap-2 border-b border-hairline pb-6">
         <p className="label text-[11px]">Admin · Staff</p>
-        <h1 className="text-5xl">Permissions<span style={{ color: 'var(--accent)' }}>.</span></h1>
+        <h1 className="text-5xl">Permissions<span className="text-accent">.</span></h1>
         <p className="text-body">Roles × capabilities. Sensitive roster fields default OFF — grant only where explicitly needed (PIPEDA).</p>
         {!canManage && (
           <p className="pill-status neg self-start">Read-only — changing permissions needs the manage-roles capability.</p>

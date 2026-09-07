@@ -21,7 +21,7 @@ export default async function CatalogPage({ searchParams }: { searchParams: Reco
     <main className="mx-auto flex min-h-screen max-w-5xl flex-col gap-8 px-6 py-14">
       <header className="flex flex-col gap-2 border-b border-hairline pb-6">
         <p className="label text-[11px]">Programs</p>
-        <h1 className="text-5xl">Register<span style={{ color: 'var(--accent)' }}>.</span></h1>
+        <h1 className="text-5xl">Register<span className="text-accent">.</span></h1>
       </header>
 
       <form method="get" className="card flex flex-wrap items-end gap-3 p-4">

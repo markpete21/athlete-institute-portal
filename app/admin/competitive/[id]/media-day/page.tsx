@@ -32,7 +32,7 @@ export default async function MediaDayPage({ params }: { params: { id: string } 
     <main className="mx-auto flex min-h-screen max-w-3xl flex-col gap-6 px-6 py-14">
       <header className="flex flex-col gap-2 border-b border-hairline pb-5">
         <p className="label text-[11px]">{(div.programs as unknown as { name: string } | null)?.name} · {div.name}</p>
-        <h1 className="text-3xl">Media day<span style={{ color: 'var(--accent)' }}>.</span></h1>
+        <h1 className="text-3xl">Media day<span className="text-accent">.</span></h1>
         <p className="text-body max-w-[62ch] text-sm">
           Each team gets a timed window sized from its actual roster: team photo, then one portrait
           slot per player whose family gave photo consent at registration. The hold books through

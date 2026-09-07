@@ -69,7 +69,7 @@ export default async function DisplayPage({ params }: { params: { token: string 
         <header className="flex shrink-0 items-baseline justify-between border-b border-white/15 pb-6">
           {/* !text-white: the global h1 rule paints ink, invisible on this dark page */}
           <h1 className="!text-white text-5xl font-extrabold tracking-tight">
-            {heading}<span style={{ color: 'var(--accent)' }}>.</span>
+            {heading}<span className="text-accent">.</span>
           </h1>
           <p className="flex items-baseline gap-6 font-mono uppercase tracking-[0.2em] text-white/60">
             <span className="text-xl">

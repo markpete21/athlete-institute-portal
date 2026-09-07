@@ -37,7 +37,7 @@ export default async function ReportsPage({ searchParams }: { searchParams: { pe
   return (
     <main className="mx-auto flex max-w-4xl flex-col gap-10 px-6 py-10">
       <header className="flex items-end justify-between border-b border-hairline pb-4">
-        <div><p className="label text-[11px]">Dashboard &amp; Reporting</p><h1 className="text-3xl">Reports<span style={{ color: 'var(--accent)' }}>.</span></h1></div>
+        <div><p className="label text-[11px]">Dashboard &amp; Reporting</p><h1 className="text-3xl">Reports<span className="text-accent">.</span></h1></div>
         <nav className="seg">
           {PERIODS.map((p) => (
             <Link key={p} href={`/reports?period=${p}`} className={p === period ? 'on' : ''}>{p}</Link>

@@ -22,7 +22,7 @@ export default async function GeneralAdminPage({ params }: { params: { id: strin
     <main className="mx-auto flex max-w-3xl flex-col gap-8 px-6 py-10">
       <header className="flex flex-col gap-1 border-b border-hairline pb-4">
         <p className="label text-[11px]">General Program</p>
-        <h1 className="text-3xl">{program.name}<span style={{ color: 'var(--accent)' }}>.</span></h1>
+        <h1 className="text-3xl">{program.name}<span className="text-accent">.</span></h1>
         {Array.isArray(program.tags) && program.tags.length > 0 && (
           <div className="flex gap-2 pt-1">{program.tags.map((t: string) => <span key={t} className="tag">{t.replace('_', ' ')}</span>)}</div>
         )}

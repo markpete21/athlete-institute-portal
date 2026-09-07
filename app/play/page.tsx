@@ -16,7 +16,7 @@ export default async function PlayHome() {
       <div className="flex flex-col gap-4">
         <p className="label text-[11px]">play.athleteinstitute.ca</p>
         <h1 className="text-6xl">
-          Athlete Institute<span style={{ color: 'var(--accent)' }}>.</span>
+          Athlete Institute<span className="text-accent">.</span>
         </h1>
         <p className="max-w-md text-lg text-body">
           Register for programs, book rentals, and see schedules — all in one

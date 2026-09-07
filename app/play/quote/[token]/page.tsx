@@ -26,7 +26,7 @@ export default async function QuotePage({ params }: { params: { token: string } 
   if (!rental) {
     return (
       <main className="mx-auto flex min-h-screen max-w-xl flex-col justify-center gap-3 px-6">
-        <h1 className="text-4xl">Quote not found<span style={{ color: 'var(--accent)' }}>.</span></h1>
+        <h1 className="text-4xl">Quote not found<span className="text-accent">.</span></h1>
         <p className="text-body">This link may have expired - contact us and we will resend it.</p>
       </main>
     );
@@ -43,7 +43,7 @@ export default async function QuotePage({ params }: { params: { token: string } 
       <header className="flex flex-col gap-2 border-b border-hairline pb-6">
         <p className="label text-[11px]">Athlete Institute · Rental quote</p>
         <h1 className="text-4xl">
-          {rental.title}<span style={{ color: 'var(--accent)' }}>.</span>
+          {rental.title}<span className="text-accent">.</span>
         </h1>
         <div className="flex items-center gap-3">
           <span className="tag">{STATUS_LABEL[rental.status]}</span>
