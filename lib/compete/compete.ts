@@ -1,4 +1,5 @@
 import 'server-only';
+import { cache } from 'react';
 import { supabaseAdmin } from '@ai/foundation/supabase';
 import { divisionStandings } from '@/lib/competitive/competitive';
 
@@ -135,7 +136,7 @@ export function displayName(
 }
 
 /** Publicly visible divisions, newest first. */
-export async function listDivisions(): Promise<CompeteDivision[]> {
+async function listDivisionsUncached(): Promise<CompeteDivision[]> {
   const db = supabaseAdmin();
   const { data } = await db
     .from('divisions')
@@ -168,7 +169,7 @@ export async function listDivisions(): Promise<CompeteDivision[]> {
 }
 
 /** Published divisions grouped by program — the Compete top nav. */
-export async function listPrograms(): Promise<CompeteProgram[]> {
+async function listProgramsUncached(): Promise<CompeteProgram[]> {
   const byProgram = new Map<number, CompeteProgram>();
   const db = supabaseAdmin();
   const { data } = await db
@@ -190,12 +191,14 @@ export async function listPrograms(): Promise<CompeteProgram[]> {
  * comes through the Module 2 booking when the game has one; the stream ref
  * feeds the Watch-live handoff. Nothing person-level is ever in here.
  */
-export async function upcomingGames(limit = 12): Promise<UpcomingGame[]> {
+async function upcomingGamesUncached(limit = 12, opts: { divisionIds?: number[] } = {}): Promise<UpcomingGame[]> {
   const db = supabaseAdmin();
-  const { data: divs } = await db
+  let divQuery = db
     .from('divisions')
     .select('id, name, programs(name, brand_key)')
     .eq('show_on_compete', true);
+  if (opts.divisionIds?.length) divQuery = divQuery.in('id', opts.divisionIds);
+  const { data: divs } = await divQuery;
   if (!divs?.length) return [];
   const divById = new Map(divs.map((d) => [d.id, d]));
 
@@ -233,7 +236,7 @@ export async function upcomingGames(limit = 12): Promise<UpcomingGame[]> {
 }
 
 /** One division's public page: standings, games, rosters. Null if not published. */
-export async function divisionDetail(divisionId: number): Promise<{
+async function divisionDetailUncached(divisionId: number): Promise<{
   division: CompeteDivision;
   standings: Awaited<ReturnType<typeof divisionStandings>>;
   games: CompeteGame[];
@@ -340,17 +343,16 @@ async function memberNames(divisionId: number, showFullNames: boolean) {
     .from('team_members')
     .select('id, team_id, teams(name), registrations(family_members(first_name, last_name, hide_from_public_rosters))')
     .eq('division_id', divisionId);
-  const map = new Map<number, { name: string; teamId: number | null; teamName: string }>();
+  const map = new Map<number, { name: string; teamId: number | null; teamName: string; hidden: boolean }>();
   for (const m of members ?? []) {
     const team = m.teams as unknown as { name: string } | null;
     const fm = (m.registrations as unknown as { family_members: { first_name: string; last_name: string; hide_from_public_rosters: boolean } | null } | null)?.family_members ?? null;
+    const hidden = !!fm?.hide_from_public_rosters;
     map.set(m.id, {
-      name: displayName(fm?.first_name ?? null, fm?.last_name ?? null, {
-        showFullNames,
-        hidden: !!fm?.hide_from_public_rosters,
-      }),
+      name: displayName(fm?.first_name ?? null, fm?.last_name ?? null, { showFullNames, hidden }),
       teamId: m.team_id,
       teamName: team?.name ?? 'Unassigned',
+      hidden,
     });
   }
   return map;
@@ -361,7 +363,7 @@ async function memberNames(divisionId: number, showFullNames: boolean) {
  * isn't published or its stats platform is off — the public page treats
  * both identically (no Stats tab at all).
  */
-export async function divisionStats(divisionId: number): Promise<DivisionStats | null> {
+async function divisionStatsUncached(divisionId: number): Promise<DivisionStats | null> {
   const db = supabaseAdmin();
   const { data: div } = await db
     .from('divisions')
@@ -385,7 +387,9 @@ export async function divisionStats(divisionId: number): Promise<DivisionStats |
     agg.set(l.team_member_id, a);
   }
 
-  const players: PlayerAverages[] = [...agg.entries()].map(([memberId, a]) => {
+  // A family that hid its athlete gets no public stat line at all: a masked
+  // name next to a game log is trivially re-identified from the roster.
+  const players: PlayerAverages[] = [...agg.entries()].filter(([memberId]) => !names.get(memberId)?.hidden).map(([memberId, a]) => {
     const who = names.get(memberId);
     return {
       memberId,
@@ -419,7 +423,7 @@ export async function divisionStats(divisionId: number): Promise<DivisionStats |
 
 /** One player's public profile: averages + game-by-game log. Same gates as
  *  divisionStats — a profile can never show more than the page that links it. */
-export async function playerProfile(divisionId: number, memberId: number): Promise<PlayerProfile | null> {
+async function playerProfileUncached(divisionId: number, memberId: number): Promise<PlayerProfile | null> {
   const db = supabaseAdmin();
   const { data: div } = await db
     .from('divisions')
@@ -430,7 +434,7 @@ export async function playerProfile(divisionId: number, memberId: number): Promi
 
   const names = await memberNames(divisionId, !!div.show_full_names);
   const who = names.get(memberId);
-  if (!who) return null;
+  if (!who || who.hidden) return null; // hidden athletes have no public profile
 
   const { data: teams } = await db.from('teams').select('id, name').eq('division_id', divisionId);
   const teamName = new Map((teams ?? []).map((t) => [t.id, t.name]));
@@ -522,7 +526,7 @@ export function normalizeBrand(raw: unknown): CompeteBrand {
  * published divisions — an unpublished league is a 404, same rule as
  * divisions. Sponsors come back in display order.
  */
-export async function programLanding(programId: number): Promise<ProgramLanding | null> {
+async function programLandingUncached(programId: number): Promise<ProgramLanding | null> {
   const db = supabaseAdmin();
   const { data: prog } = await db
     .from('programs')
@@ -548,7 +552,9 @@ export async function programLanding(programId: number): Promise<ProgramLanding 
       const { data: s } = await db.from('seasons').select('name').eq('key', prog.season_key).maybeSingle();
       return s?.name ?? prog.season_key;
     })(),
-    upcomingGames(24),
+    // Scoped to THIS program's divisions — a site-wide "next 24" could be
+    // entirely another league's games and leave this landing page empty.
+    upcomingGames(5, { divisionIds: divIds }),
   ]);
   const counts = new Map<number, number>();
   for (const t of teams ?? []) counts.set(t.division_id, (counts.get(t.division_id) ?? 0) + 1);
@@ -562,6 +568,21 @@ export async function programLanding(programId: number): Promise<ProgramLanding 
     ticketsUrl: prog.tickets_url || null,
     sponsors: (sponsors ?? []).map((s) => ({ id: s.id, name: s.name, logoUrl: s.logo_url })),
     divisions: divs.map((d) => ({ id: d.id, name: d.name, sport: d.sport, teamCount: counts.get(d.id) ?? 0 })),
-    nextGames: games.filter((g) => divIds.includes(g.divisionId)).slice(0, 5),
+    nextGames: games,
   };
 }
+
+// ---------------------------------------------------------------------------
+// Per-request memoisation. Compete is fully public and read-heavy: the
+// layout (program tabs, upcoming banner), generateMetadata and the page body
+// all resolve the same division or program within one request. React
+// cache() dedupes those to a single set of queries per request. A longer
+// lived (cross-request) cache is the next step — see docs/architecture.md.
+// ---------------------------------------------------------------------------
+export const listDivisions = cache(listDivisionsUncached);
+export const listPrograms = cache(listProgramsUncached);
+export const upcomingGames = cache(upcomingGamesUncached);
+export const divisionDetail = cache(divisionDetailUncached);
+export const divisionStats = cache(divisionStatsUncached);
+export const playerProfile = cache(playerProfileUncached);
+export const programLanding = cache(programLandingUncached);

@@ -91,6 +91,7 @@ export async function updateMemberAction(formData: FormData): Promise<void> {
     lastName,
     dob: String(formData.get('dob') ?? '').trim() || null,
     email: String(formData.get('email') ?? '').trim() || null,
+    hideFromPublicRosters: formData.get('hidePublic') === 'on',
     actorClerkId: session.userId,
   });
   revalidatePath('/account');

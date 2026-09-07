@@ -63,6 +63,25 @@ const ok = (n, c, d = '') => { console.log(`${c ? '✓' : '✗'} ${n}${c ? '' : 
   // no team wildly skewed to one slot (max per-slot count reasonable)
   const skew = Math.max(...Object.values(distribution).map((d) => Math.max(...Object.values(d)) - Math.min(...Object.values(d).length ? Object.values(d) : [0])));
   ok('time slots reasonably balanced', skew <= 2, `skew ${skew}`);
+  // Court capacity: no two games in the same round share a slot AND a court.
+  const seen = new Set();
+  let collision = false;
+  for (const g of slotted) { const k = `${g.round}:${g.timeSlot}:${g.court}`; if (seen.has(k)) collision = true; seen.add(k); }
+  ok('no (round, slot, court) collision', !collision);
+  // 8 teams = 4 games per round on 2 courts × 3 slots fits; 1 court × 1 slot overflows.
+  const big = assignSlots(roundRobin(8), ['18:00', '19:00', '20:00'], 2);
+  const seen8 = new Set();
+  let collision8 = false;
+  for (const g of big.games) { const k = `${g.round}:${g.timeSlot}:${g.court}`; if (seen8.has(k)) collision8 = true; seen8.add(k); }
+  ok('8 teams: every round fits 2 courts x 3 slots without collision', !collision8 && big.overflow === 0, `overflow ${big.overflow}`);
+  const tight = assignSlots(roundRobin(8), ['18:00'], 1);
+  ok('over-capacity rounds are reported as overflow, not silently stacked', tight.overflow > 0, `overflow ${tight.overflow}`);
+}
+
+// --- ties -------------------------------------------------------------------
+{
+  const s = computeStandings([{ homeTeam: 1, awayTeam: 2, homeScore: 50, awayScore: 50 }], [1, 2]);
+  ok('a drawn game is a tie for both sides (not an away win)', s.every((r) => r.w === 0 && r.l === 0 && r.t === 1 && r.winPct === 0.5 && r.streak === 'T1'), JSON.stringify(s.map((r) => [r.w, r.l, r.t])));
 }
 
 // --- standings --------------------------------------------------------------

@@ -5,7 +5,8 @@ import { revalidatePath } from 'next/cache';
 import { audit, type BalanceAttribute, type Sport } from '@ai/foundation';
 import { supabaseAdmin } from '@ai/foundation/supabase';
 import { requireStaff, requireStaffCapability } from '@/lib/auth';
-import { buildLeagueSchedule, createDivision, generatePlayoffRound, runTeamBuilder, saveScore, setSkillRating, updateTiebreaks } from '@/lib/competitive/competitive';
+import { buildLeagueSchedule, createDivision, generatePlayoffRound, reopenGame, saveScore, setGameStream, setSkillRating, updateTiebreaks } from '@/lib/competitive/competitive';
+import { bool, id, int, strOrNull } from '@/lib/forms';
 
 export async function createDivisionAction(formData: FormData): Promise<void> {
   const session = await requireStaff();
@@ -20,13 +21,6 @@ export async function createDivisionAction(formData: FormData): Promise<void> {
   redirect(`/competitive/${id}`);
 }
 
-export async function runBuilderAction(formData: FormData): Promise<void> {
-  const session = await requireStaff();
-  const divisionId = Number(formData.get('divisionId'));
-  const attributes = formData.getAll('attributes').map(String) as BalanceAttribute[];
-  await runTeamBuilder({ divisionId, numTeams: Number(formData.get('numTeams')) || 2, attributes, actorClerkId: session.userId });
-  revalidatePath(`/competitive/${divisionId}`);
-}
 
 export async function buildScheduleAction(formData: FormData): Promise<void> {
   const session = await requireStaff();
@@ -48,15 +42,27 @@ export async function buildScheduleAction(formData: FormData): Promise<void> {
 export async function saveScoreAction(formData: FormData): Promise<void> {
   // Score entry gated by the Module 5 capability matrix (convenor/coach on-site).
   const session = await requireStaffCapability('score_entry', 'edit', 'You do not have the score-entry capability.');
-  const divisionId = Number(formData.get('divisionId'));
-  await saveScore({
-    gameId: Number(formData.get('gameId')),
-    homeScore: Number(formData.get('homeScore')),
-    awayScore: Number(formData.get('awayScore')),
-    overtime: formData.get('overtime') === 'on',
-    liveStreamRef: String(formData.get('liveStreamRef') ?? '').trim() || null,
-    actorClerkId: session.userId,
-  });
+  const divisionId = id(formData.get('divisionId'), 'division');
+  const gameId = id(formData.get('gameId'), 'game');
+  const homeScore = int(formData.get('homeScore'));
+  const awayScore = int(formData.get('awayScore'));
+  const liveStreamRef = strOrNull(formData.get('liveStreamRef'));
+  // Blank score boxes are NOT a 0-0 result: with no scores the form only
+  // updates the watch link, and the game stays scheduled.
+  if (homeScore === null && awayScore === null) {
+    await setGameStream(gameId, liveStreamRef, session.userId);
+  } else {
+    if (homeScore === null || awayScore === null) throw new Error('Enter both scores (or neither).');
+    await saveScore({ gameId, homeScore, awayScore, overtime: bool(formData.get('overtime')), liveStreamRef, actorClerkId: session.userId });
+  }
+  revalidatePath(`/competitive/${divisionId}`);
+}
+
+/** Clear a saved result so the game is scheduled again (wrong entry, stray click). */
+export async function reopenGameAction(formData: FormData): Promise<void> {
+  const session = await requireStaffCapability('score_entry', 'edit', 'You do not have the score-entry capability.');
+  const divisionId = id(formData.get('divisionId'), 'division');
+  await reopenGame(id(formData.get('gameId'), 'game'), session.userId);
   revalidatePath(`/competitive/${divisionId}`);
 }
 
@@ -180,6 +186,7 @@ export async function saveBoxScoreAction(formData: FormData): Promise<void> {
   const upserts: Array<{ game_id: number; division_id: number; team_id: number | null; team_member_id: number; pts: number; reb: number; ast: number }> = [];
   const deletes: number[] = [];
   for (const [mid, r] of rows) {
+    if (!teamOf.has(mid)) continue; // only this division's members can carry a line
     if (r.pts === '' && r.reb === '' && r.ast === '') { deletes.push(mid); continue; }
     upserts.push({
       game_id: gameId,

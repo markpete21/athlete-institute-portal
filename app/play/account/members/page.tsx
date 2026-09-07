@@ -123,6 +123,10 @@ export default async function MembersPage() {
                           <label className="field-label" htmlFor={`em-${m.id}`}>Email</label>
                           <input id={`em-${m.id}`} name="email" type="email" defaultValue={m.email ?? ''} className="input h-9 text-sm" />
                         </div>
+                        <label className="flex items-center gap-2 text-sm text-body sm:col-span-2" htmlFor={`hide-${m.id}`}>
+                          <input id={`hide-${m.id}`} name="hidePublic" type="checkbox" defaultChecked={m.hide_from_public_rosters} />
+                          Keep {m.first_name} off public rosters and stats on Compete. (shown as “Team member”)
+                        </label>
                         <div className="flex items-end">
                           <button type="submit" className="btn-gold btn-sm">Save</button>
                         </div>

@@ -7,6 +7,7 @@ import {
   balanceDraft,
   computeStandings,
   roundRobin,
+  singleElimination,
   suggestReplacements,
   torontoInstant,
   type BalanceAttribute,
@@ -15,7 +16,7 @@ import {
   type Sport,
   type StandingRow,
 } from '@ai/foundation';
-import { supabaseAdmin } from '@ai/foundation/supabase';
+import { must, ok, rows, supabaseAdmin } from '@ai/foundation/supabase';
 import { createBooking } from '@/lib/bookings';
 
 /**
@@ -149,6 +150,12 @@ export interface ScheduleParams {
   timeSlots: string[];     // 'HH:MM' start times
   gameMinutes: number;
   numCourts: number;
+  /**
+   * Optional: the bookable child facilities (courts) in court order. When
+   * supplied, game N on court c books courtFacilityIds[c] instead of the
+   * division facility, so parallel games are real bookings, not conflicts.
+   */
+  courtFacilityIds?: number[];
   doubleRound?: boolean;
   actorClerkId: string;
 }
@@ -158,16 +165,20 @@ export interface ScheduleParams {
  * one booking per game via Module 2 (double-bookings surface in the conflicts
  * queue), one game row per matchup. Returns the per-team slot distribution.
  */
-export async function buildLeagueSchedule(params: ScheduleParams): Promise<{ gameCount: number; distribution: Record<number, Record<string, number>>; conflicts: number }> {
+export async function buildLeagueSchedule(params: ScheduleParams): Promise<{ gameCount: number; distribution: Record<number, Record<string, number>>; conflicts: number; overflow: number }> {
   const db = supabaseAdmin();
-  const { data: teamsRows } = await db.from('teams').select('id, name').eq('division_id', params.divisionId).order('sort_order');
-  const teamIds = (teamsRows ?? []).map((t) => t.id);
+  const teamsRows = rows(await db.from('teams').select('id, name').eq('division_id', params.divisionId).order('sort_order'), 'teams.read');
+  const teamIds = teamsRows.map((t) => t.id);
   if (teamIds.length < 2) throw new Error('Need at least 2 teams to schedule.');
-  const { data: div } = await db.from('divisions').select('program_id, name').eq('id', params.divisionId).single();
-  const { data: prog } = await db.from('programs').select('name').eq('id', div!.program_id).single();
+  const div = must(await db.from('divisions').select('program_id, name').eq('id', params.divisionId).maybeSingle(), 'division.read');
+  const prog = must(await db.from('programs').select('name').eq('id', div.program_id).maybeSingle(), 'program.read');
+
+  // Publishing twice would stack a second full season on top of the first.
+  const { count: existingGames } = await db.from('games').select('id', { count: 'exact', head: true }).eq('division_id', params.divisionId).eq('stage', 'regular');
+  if ((existingGames ?? 0) > 0) throw new Error('This division already has a regular-season schedule. Cancel or delete its games before generating a new one.');
 
   const rr = roundRobin(teamIds.length, params.doubleRound);
-  const { games, distribution } = assignSlots(rr, params.timeSlots, params.numCourts);
+  const { games, distribution, overflow } = assignSlots(rr, params.timeSlots, params.numCourts);
 
   // Spread rounds across weekdays starting startDate: round r -> r-th matching weekday.
   const dates = upcomingDates(params.startDate, params.weekdays, Math.max(...games.map((g) => g.round)));
@@ -178,22 +189,56 @@ export async function buildLeagueSchedule(params: ScheduleParams): Promise<{ gam
     const [h, m] = g.timeSlot.split(':').map(Number);
     const endMin = h * 60 + m + params.gameMinutes;
     const endsAt = torontoInstant(date, `${String(Math.floor(endMin / 60)).padStart(2, '0')}:${String(endMin % 60).padStart(2, '0')}`);
-    const booking = await createBooking({ facilityId: params.facilityId, startsAt, endsAt, source: 'program', title: `${prog!.name}: ${teamsRows![g.home].name} vs ${teamsRows![g.away].name}`, sourceRef: `division:${params.divisionId}`, actorClerkId: params.actorClerkId });
+    // Courts are child facilities when the caller supplies them; otherwise
+    // every game books the division's facility and same-slot games surface
+    // in the conflicts queue for the operator to place.
+    const facilityId = params.courtFacilityIds?.[g.court] ?? params.facilityId;
+    const booking = await createBooking({ facilityId, startsAt, endsAt, source: 'program', title: `${prog.name}: ${teamsRows[g.home].name} vs ${teamsRows[g.away].name}`, sourceRef: `division:${params.divisionId}`, actorClerkId: params.actorClerkId });
     if (booking.conflicts.length) conflicts++;
-    await db.from('games').insert({ division_id: params.divisionId, round: g.round, home_team_id: teamIds[g.home], away_team_id: teamIds[g.away], booking_id: booking.booking.id, starts_at: startsAt, ends_at: endsAt, court: g.court });
+    ok(
+      await db.from('games').insert({ division_id: params.divisionId, round: g.round, home_team_id: teamIds[g.home], away_team_id: teamIds[g.away], booking_id: booking.booking.id, starts_at: startsAt, ends_at: endsAt, court: g.court }),
+      'game.insert',
+    );
   }
-  await audit({ actorId: params.actorClerkId, action: 'division.scheduled', target: `division:${params.divisionId}`, meta: { games: games.length, conflicts } });
-  return { gameCount: games.length, distribution, conflicts };
+  await audit({ actorId: params.actorClerkId, action: 'division.scheduled', target: `division:${params.divisionId}`, meta: { games: games.length, conflicts, overflow } });
+  return { gameCount: games.length, distribution, conflicts, overflow };
 }
 
-/** Score entry (permission-gated at the action layer): save -> winner + final + Watch toggle. */
+/**
+ * Score entry (permission-gated at the action layer). Both scores must be
+ * non-negative integers; a playoff game cannot end tied (the bracket needs a
+ * winner). Saving a result finalises the game.
+ */
 export async function saveScore(input: { gameId: number; homeScore: number; awayScore: number; overtime?: boolean; liveStreamRef?: string | null; actorClerkId: string }): Promise<void> {
-  const { error } = await supabaseAdmin()
-    .from('games')
-    .update({ home_score: input.homeScore, away_score: input.awayScore, overtime: input.overtime ?? false, status: 'final', live_stream_ref: input.liveStreamRef ?? null })
-    .eq('id', input.gameId);
-  if (error) throw new Error(`score save failed: ${error.message}`);
+  const db = supabaseAdmin();
+  for (const v of [input.homeScore, input.awayScore]) {
+    if (!Number.isInteger(v) || v < 0) throw new Error('Enter both scores as whole numbers.');
+  }
+  const game = must(await db.from('games').select('stage').eq('id', input.gameId).maybeSingle(), 'game.read');
+  if (game.stage === 'playoff' && input.homeScore === input.awayScore) throw new Error('A playoff game needs a winner — record the overtime result.');
+  ok(
+    await db
+      .from('games')
+      .update({ home_score: input.homeScore, away_score: input.awayScore, overtime: input.overtime ?? false, status: 'final', live_stream_ref: input.liveStreamRef ?? null })
+      .eq('id', input.gameId),
+    'score.save',
+  );
   await audit({ actorId: input.actorClerkId, action: 'game.scored', target: `game:${input.gameId}`, meta: { home: input.homeScore, away: input.awayScore, overtime: input.overtime } });
+}
+
+/** Reopen a finalised game (wrong entry, or a stray click) — clears the result. */
+export async function reopenGame(gameId: number, actorClerkId: string): Promise<void> {
+  ok(
+    await supabaseAdmin().from('games').update({ home_score: null, away_score: null, overtime: false, status: 'scheduled' }).eq('id', gameId),
+    'game.reopen',
+  );
+  await audit({ actorId: actorClerkId, action: 'game.reopened', target: `game:${gameId}` });
+}
+
+/** Update the watch link on a game without touching its score or status. */
+export async function setGameStream(gameId: number, liveStreamRef: string | null, actorClerkId: string): Promise<void> {
+  ok(await supabaseAdmin().from('games').update({ live_stream_ref: liveStreamRef }).eq('id', gameId), 'game.stream');
+  await audit({ actorId: actorClerkId, action: 'game.stream-set', target: `game:${gameId}`, meta: { liveStreamRef } });
 }
 
 /** Sport-aware standings for a division from final games. */
@@ -294,10 +339,16 @@ export async function generatePlayoffRound(divisionId: number, numTeams: number,
     if (played === 0) throw new Error('No regular-season results yet - playoffs seed from standings.');
     if (standings.length < numTeams) throw new Error(`Only ${standings.length} teams in the division.`);
     const seeds = standings.slice(0, numTeams).map((s) => s.team);
-    const rows = [];
-    for (let i = 0; i < numTeams / 2; i++) {
-      rows.push({ division_id: divisionId, stage: 'playoff', round: 1, home_team_id: seeds[i], away_team_id: seeds[numTeams - 1 - i] });
-    }
+    // Standard bracket order (1v8, 4v5, 2v7, 3v6 for 8) so pairing adjacent
+    // winners in later rounds keeps the 1 and 2 seeds apart until the final.
+    const { firstRound } = singleElimination(numTeams);
+    const rows = firstRound.map((m) => ({
+      division_id: divisionId,
+      stage: 'playoff',
+      round: 1,
+      home_team_id: seeds[(m.seedA ?? 1) - 1],
+      away_team_id: m.seedB ? seeds[m.seedB - 1] : null,
+    }));
     const { error } = await db.from('games').insert(rows);
     if (error) throw new Error(error.message);
     await audit({ actorId: actorClerkId, action: 'division.playoffs-seeded', target: `division:${divisionId}`, meta: { numTeams } });
@@ -309,7 +360,13 @@ export async function generatePlayoffRound(divisionId: number, numTeams: number,
   if (lastGames.length === 1) throw new Error('The final has been generated - the bracket is complete.');
   if (lastGames.some((g) => g.status !== 'final')) throw new Error(`Round ${lastRound} isn't finished yet.`);
 
-  const winners = lastGames.map((g) => (g.home_score! > g.away_score! ? g.home_team_id : g.away_team_id));
+  const winners = lastGames.map((g) => {
+    if (g.away_team_id == null) return g.home_team_id; // bye
+    if (g.home_score == null || g.away_score == null || g.home_score === g.away_score) {
+      throw new Error(`Round ${lastRound} has a game without a winner — enter the overtime result first.`);
+    }
+    return g.home_score > g.away_score ? g.home_team_id : g.away_team_id;
+  });
   const rows = [];
   for (let i = 0; i < winners.length; i += 2) {
     rows.push({ division_id: divisionId, stage: 'playoff', round: lastRound + 1, home_team_id: winners[i], away_team_id: winners[i + 1] ?? null });

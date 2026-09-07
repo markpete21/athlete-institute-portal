@@ -4,7 +4,7 @@ import { buildTree, DEFAULT_TIEBREAKS, flattenTree, type FacilityNode, type Spor
 import { supabaseAdmin } from '@ai/foundation/supabase';
 import RatingSelect from '@/components/admin/RatingSelect';
 import { divisionStandings, rosterWithRatings, TIEBREAK_OPTIONS } from '@/lib/competitive/competitive';
-import { buildScheduleAction, generatePlayoffsAction, saveBoxScoreAction, saveCompeteSettingsAction, saveScoreAction, saveStatsSettingsAction, saveTiebreaksAction, setSkillRatingAction } from '../actions';
+import { buildScheduleAction, generatePlayoffsAction, reopenGameAction, saveBoxScoreAction, saveCompeteSettingsAction, saveScoreAction, saveStatsSettingsAction, saveTiebreaksAction, setSkillRatingAction } from '../actions';
 import { CoachSection, DraftSection, OfficialsSection } from './sections';
 
 export const dynamic = 'force-dynamic';
@@ -130,6 +130,13 @@ export default async function DivisionAdminPage({ params }: { params: { id: stri
             <input name="liveStreamRef" defaultValue={g.live_stream_ref ?? ''} placeholder="Stream ref (Watch link)" className="input w-44 text-sm" />
             <button type="submit" className="btn-ghost btn-sm ml-auto">Save game</button>
           </form>
+          {g.status === 'final' && (
+            <form action={reopenGameAction} className="mt-1 flex justify-end">
+              <input type="hidden" name="divisionId" value={divisionId} />
+              <input type="hidden" name="gameId" value={g.id} />
+              <button type="submit" className="btn-ghost btn-sm text-[11px]">Reopen (clear result)</button>
+            </form>
+          )}
           {/* Box score — one line per rostered player on either team. Only
               counts publicly once the game is final and stats are enabled. */}
           {div.stats_enabled && gamePlayers.length > 0 && (

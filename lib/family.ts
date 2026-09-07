@@ -27,6 +27,8 @@ export interface FamilyMember {
   /** Dual-household (divorced parents): a dependent may also belong to a second family. */
   second_family_id: number | null;
   photo_path: string | null;
+  /** Compete. privacy opt-out: name masked and no public stats, whatever the division shows. */
+  hide_from_public_rosters: boolean;
 }
 
 export interface Family {
@@ -37,7 +39,7 @@ export interface Family {
   members: FamilyMember[];
 }
 
-const MEMBER_COLS = 'id, family_id, profile_id, first_name, last_name, dob, email, member_role, second_family_id, photo_path';
+const MEMBER_COLS = 'id, family_id, profile_id, first_name, last_name, dob, email, member_role, second_family_id, photo_path, hide_from_public_rosters';
 
 /**
  * A customer's household, created on first touch: signing in with no family
@@ -245,6 +247,8 @@ export interface UpdateMemberInput {
   lastName?: string;
   dob?: string | null;
   email?: string | null;
+  /** Compete. privacy: never show this athlete's name or stats publicly (always wins over division settings). */
+  hideFromPublicRosters?: boolean;
   actorClerkId: string;
 }
 
@@ -255,6 +259,7 @@ export async function updateFamilyMember(input: UpdateMemberInput): Promise<Fami
   if (input.lastName !== undefined) patch.last_name = input.lastName.trim();
   if (input.dob !== undefined) patch.dob = input.dob || null;
   if (input.email !== undefined) patch.email = input.email?.trim() || null;
+  if (input.hideFromPublicRosters !== undefined) patch.hide_from_public_rosters = input.hideFromPublicRosters;
   if (Object.keys(patch).length === 0) throw new Error('Nothing to update.');
 
   const { data, error } = await supabaseAdmin()

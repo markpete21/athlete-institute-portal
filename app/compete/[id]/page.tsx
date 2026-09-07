@@ -138,18 +138,19 @@ export default async function DivisionPage({ params }: { params: { id: string } 
     </>
   );
 
+  const anyTies = standings.standings.some((r) => r.t > 0);
   const standingsPane = !anyPlayed ? (
     <p className="cs-empty">No games played yet.</p>
   ) : (
     <div className="cs-tablewrap">
       <table className="cs-table">
-        <thead><tr><th>#</th><th>Team</th><th>GP</th><th>W</th><th>L</th><th>Win%</th><th>{unit}</th><th>Diff</th><th>Strk</th></tr></thead>
+        <thead><tr><th>#</th><th>Team</th><th>GP</th><th>W</th><th>L</th>{anyTies && <th>T</th>}<th>Win%</th><th>{unit}</th><th>Diff</th><th>Strk</th></tr></thead>
         <tbody>
           {standings.standings.map((r, i) => (
             <tr key={r.team}>
               <td className="mono">{i + 1}</td>
               <td className="cs-team"><span className="cs-team-in"><Crest name={standings.teamNames.get(r.team) ?? ''} small />{standings.teamNames.get(r.team)}</span></td>
-              <td className="mono">{r.gp}</td><td className="mono">{r.w}</td><td className="mono">{r.l}</td>
+              <td className="mono">{r.gp}</td><td className="mono">{r.w}</td><td className="mono">{r.l}</td>{anyTies && <td className="mono">{r.t}</td>}
               <td className="mono">{r.winPct.toFixed(3)}</td><td className="mono">{r.pf}</td>
               <td className="mono">{r.diff > 0 ? `+${r.diff}` : r.diff}</td><td className="mono">{r.streak}</td>
             </tr>

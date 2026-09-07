@@ -224,31 +224,50 @@ export interface SlotAssignment extends RoundRobinGame {
  * Assign each round-robin game a time slot + court, softly balancing so each
  * team gets a similar count of each slot. Deterministic; returns games with
  * slots plus the per-team slot distribution for the overview panel.
+ *
+ * Capacity is real: within one round, a time slot holds at most `numCourts`
+ * games and every game in that slot gets its own court, so two games can
+ * never share a court at the same instant. When a round has more games than
+ * slots × courts, the overflow wraps onto the slots again (and the caller
+ * sees it as `overflow`), because a schedule with a warning beats none.
  */
 export function assignSlots(
   games: RoundRobinGame[],
   timeSlots: string[],
   numCourts: number,
-): { games: SlotAssignment[]; distribution: Record<number, Record<string, number>> } {
+): { games: SlotAssignment[]; distribution: Record<number, Record<string, number>>; overflow: number } {
   const dist: Record<number, Record<string, number>> = {};
   const bump = (team: number, slot: string) => { (dist[team] ??= {})[slot] = (dist[team][slot] ?? 0) + 1; };
   const teamSlot = (team: number, slot: string) => dist[team]?.[slot] ?? 0;
+  const courts = Math.max(1, numCourts);
+  const slots = timeSlots.length ? timeSlots : ['18:00'];
 
+  // (round, slot) -> games already placed there.
+  const used = new Map<string, number>();
   const out: SlotAssignment[] = [];
-  let court = 0;
+  let overflow = 0;
   for (const g of games) {
-    // Choose the slot minimizing the two teams' combined count of that slot.
-    let bestSlot = timeSlots[0];
+    // Among slots with a free court this round, pick the one that best
+    // balances the two teams' slot history; ties go to the earliest slot.
+    let bestSlot: string | null = null;
     let bestCost = Infinity;
-    for (const slot of timeSlots) {
+    for (const slot of slots) {
+      if ((used.get(`${g.round}:${slot}`) ?? 0) >= courts) continue;
       const cost = teamSlot(g.home, slot) + teamSlot(g.away, slot);
       if (cost < bestCost) { bestCost = cost; bestSlot = slot; }
     }
-    out.push({ ...g, timeSlot: bestSlot, court: court % Math.max(1, numCourts) });
+    if (bestSlot === null) {
+      // Round is over capacity: least-loaded slot, court keeps counting up.
+      overflow++;
+      bestSlot = slots.reduce((a, b) => ((used.get(`${g.round}:${a}`) ?? 0) <= (used.get(`${g.round}:${b}`) ?? 0) ? a : b));
+    }
+    const key = `${g.round}:${bestSlot}`;
+    const index = used.get(key) ?? 0;
+    used.set(key, index + 1);
+    out.push({ ...g, timeSlot: bestSlot, court: index % courts });
     bump(g.home, bestSlot); bump(g.away, bestSlot);
-    court++;
   }
-  return { games: out, distribution: dist };
+  return { games: out, distribution: dist, overflow };
 }
 
 // ---------------------------------------------------------------------------
@@ -303,9 +322,9 @@ export interface GameResult {
 
 export interface StandingRow {
   team: number;
-  gp: number; w: number; l: number; winPct: number;
+  gp: number; w: number; l: number; t: number; winPct: number;
   pf: number; pa: number; diff: number;
-  streak: string;      // e.g. "W3", "L1"
+  streak: string;      // e.g. "W3", "L1", "T1"
   gamesBehind: number;
 }
 
@@ -317,11 +336,15 @@ export const DEFAULT_TIEBREAKS: Record<Sport, string[]> = {
   other: ['wins', 'head_to_head', 'win_pct'],
 };
 
-/** Compute standings from final results. `pf/pa` = points or sets per sport. */
+/**
+ * Compute standings from final results. `pf/pa` = points or sets per sport.
+ * A drawn game (equal scores) is a tie for both sides — half a win in the
+ * percentage, neutral in games-behind — never an away win.
+ */
 export function computeStandings(results: GameResult[], teamIds: number[], tiebreaks: string[] = DEFAULT_TIEBREAKS.other): StandingRow[] {
   const rows = new Map<number, StandingRow>();
   const streaks = new Map<number, string[]>();
-  for (const t of teamIds) { rows.set(t, { team: t, gp: 0, w: 0, l: 0, winPct: 0, pf: 0, pa: 0, diff: 0, streak: '', gamesBehind: 0 }); streaks.set(t, []); }
+  for (const t of teamIds) { rows.set(t, { team: t, gp: 0, w: 0, l: 0, t: 0, winPct: 0, pf: 0, pa: 0, diff: 0, streak: '', gamesBehind: 0 }); streaks.set(t, []); }
 
   const h2h = new Map<string, number>(); // "a:b" -> a's wins over b
   for (const g of results) {
@@ -330,6 +353,10 @@ export function computeStandings(results: GameResult[], teamIds: number[], tiebr
     home.gp++; away.gp++;
     home.pf += g.homeScore; home.pa += g.awayScore;
     away.pf += g.awayScore; away.pa += g.homeScore;
+    if (g.homeScore === g.awayScore) {
+      home.t++; away.t++; streaks.get(g.homeTeam)!.push('T'); streaks.get(g.awayTeam)!.push('T');
+      continue;
+    }
     const homeWon = g.homeScore > g.awayScore;
     if (homeWon) { home.w++; away.l++; streaks.get(g.homeTeam)!.push('W'); streaks.get(g.awayTeam)!.push('L'); h2h.set(`${g.homeTeam}:${g.awayTeam}`, (h2h.get(`${g.homeTeam}:${g.awayTeam}`) ?? 0) + 1); }
     else { away.w++; home.l++; streaks.get(g.awayTeam)!.push('W'); streaks.get(g.homeTeam)!.push('L'); h2h.set(`${g.awayTeam}:${g.homeTeam}`, (h2h.get(`${g.awayTeam}:${g.homeTeam}`) ?? 0) + 1); }
@@ -337,7 +364,7 @@ export function computeStandings(results: GameResult[], teamIds: number[], tiebr
 
   for (const [t, row] of rows) {
     row.diff = row.pf - row.pa;
-    row.winPct = row.gp ? Math.round((row.w / row.gp) * 1000) / 1000 : 0;
+    row.winPct = row.gp ? Math.round(((row.w + row.t / 2) / row.gp) * 1000) / 1000 : 0;
     const s = streaks.get(t)!;
     if (s.length) { let k = 1; for (let i = s.length - 2; i >= 0 && s[i] === s[s.length - 1]; i--) k++; row.streak = `${s[s.length - 1]}${k}`; }
   }

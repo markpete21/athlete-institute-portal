@@ -197,9 +197,11 @@ export async function confirmationByToken(token: string): Promise<ConfirmationVi
 /** Public response from the token page: confirm (with answers) or decline (with a note). */
 export async function respondToConfirmation(token: string, input: { decision: 'confirmed' | 'declined'; answers?: Record<string, string>; note?: string | null }): Promise<void> {
   const db = supabaseAdmin();
-  const { data: row } = await db.from('coach_confirmations').select('id, team_id').eq('token', token).maybeSingle();
+  const { data: row } = await db.from('coach_confirmations').select('id, team_id, status').eq('token', token).maybeSingle();
   if (!row) throw new Error('This confirmation link is no longer valid.');
-  const { error } = await db
+  if (row.status !== 'pending') throw new Error('This confirmation has already been answered. Contact the office to change it.');
+  // Precondition on status: a replayed form post cannot flip a settled answer.
+  const { data: flipped, error } = await db
     .from('coach_confirmations')
     .update({
       status: input.decision,
@@ -207,7 +209,10 @@ export async function respondToConfirmation(token: string, input: { decision: 'c
       note: input.note?.trim() || null,
       responded_at: new Date().toISOString(),
     })
-    .eq('id', row.id);
+    .eq('id', row.id)
+    .eq('status', 'pending')
+    .select('id');
   if (error) throw new Error(error.message);
+  if (!flipped?.length) throw new Error('This confirmation has already been answered. Contact the office to change it.');
   await audit({ actorId: `coach-token:${row.team_id}`, action: `coach.${input.decision}`, target: `team:${row.team_id}`, meta: { viaToken: true } });
 }

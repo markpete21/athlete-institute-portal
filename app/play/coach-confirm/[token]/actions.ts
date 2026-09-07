@@ -26,5 +26,5 @@ export async function respondAction(formData: FormData): Promise<void> {
     answers,
     note: String(formData.get('note') ?? '').trim() || null,
   });
-  redirect(`/coach-confirm/${token}?done=1`);
+  redirect(`/coach-confirm/${token}`);
 }
