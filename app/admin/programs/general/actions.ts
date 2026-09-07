@@ -3,14 +3,8 @@
 import { revalidatePath } from 'next/cache';
 import { supabaseAdmin } from '@ai/foundation/supabase';
 import type { NotifyChannel } from '@ai/foundation/notify';
-import { getPortalSession } from '@/lib/auth';
+import { requireStaff } from '@/lib/auth';
 import { rescheduleSession, type SessionKind } from '@/lib/programs/reschedule';
-
-async function requireStaff() {
-  const s = await getPortalSession();
-  if (!s.isStaff) throw new Error('Staff only.');
-  return s;
-}
 
 /** Add a bookable drop-in date with per-session capacity + price. */
 export async function addDropInSessionAction(formData: FormData): Promise<void> {
@@ -47,7 +41,7 @@ export async function rescheduleAction(formData: FormData): Promise<void> {
     newStartsAt: withDate ? new Date(`${newDate}T${newStart}`).toISOString() : null,
     newEndsAt: withDate ? new Date(`${newDate}T${newEnd}`).toISOString() : null,
     notifyChannels: channels,
-    actorClerkId: session.userId!,
+    actorClerkId: session.userId,
   });
   revalidatePath(`/programs/general/${programId}`);
 }

@@ -62,6 +62,23 @@ export function torontoToday(now: Date = new Date()): string {
   }).format(now);
 }
 
+/**
+ * Toronto-local calendar parts for an instant — the DST-correct way to ask
+ * "is it Monday / the 1st in Toronto right now" from a cron that runs in UTC.
+ */
+export function torontoParts(now: Date = new Date()): { weekday: number; dayOfMonth: number; hour: number } {
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: TIMEZONE,
+    weekday: 'short',
+    day: 'numeric',
+    hour: 'numeric',
+    hour12: false,
+  }).formatToParts(now);
+  const get = (t: string) => parts.find((x) => x.type === t)?.value ?? '';
+  const weekday = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].indexOf(get('weekday').slice(0, 3));
+  return { weekday, dayOfMonth: Number(get('day')), hour: Number(get('hour')) % 24 };
+}
+
 /** Human-friendly Toronto label for a timestamp, e.g. "Tue, Jul 28, 6:00 PM". */
 export function torontoLabel(iso: string, now: Date = new Date(iso)): string {
   return new Intl.DateTimeFormat('en-CA', {

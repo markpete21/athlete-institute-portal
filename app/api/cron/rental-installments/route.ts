@@ -1,19 +1,11 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
+import { cronRoute } from '@/lib/api/handlers';
 import { processDueInstallments } from '@/lib/rentals/payments';
 
 export const dynamic = 'force-dynamic';
 
 /**
  * Cron: process due rental installments (PAD auto-charge or invoice+reminder)
- * and flip past-due rentals to overdue. Wire in vercel.json (e.g. daily 6am):
- *   { "crons": [{ "path": "/api/cron/rental-installments", "schedule": "0 10 * * *" }] }
- * (10:00 UTC = 6am ET). Guarded by CRON_SECRET when set.
+ * and flip past-due rentals to overdue. Daily 10:00 UTC (6am ET) per vercel.json.
  */
-export async function GET(req: NextRequest) {
-  const secret = process.env.CRON_SECRET;
-  if (secret && req.headers.get('authorization') !== `Bearer ${secret}`) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
-  const result = await processDueInstallments();
-  return NextResponse.json(result);
-}
+export const GET = cronRoute(async () => NextResponse.json(await processDueInstallments()));

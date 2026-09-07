@@ -2,7 +2,7 @@
 
 import { redirect } from 'next/navigation';
 import { revalidatePath } from 'next/cache';
-import { getPortalSession } from '@/lib/auth';
+import { requireStaff } from '@/lib/auth';
 import {
   addRentalAddon,
   addRentalLine,
@@ -12,12 +12,6 @@ import {
   removeRentalLine,
   updateRentalDetails,
 } from '@/lib/rentals/quotes';
-
-async function requireStaff() {
-  const session = await getPortalSession();
-  if (!session.isStaff) throw new Error('Staff only.');
-  return session;
-}
 
 export async function createRentalAction(formData: FormData): Promise<void> {
   const session = await requireStaff();
@@ -32,7 +26,7 @@ export async function createRentalAction(formData: FormData): Promise<void> {
     contactEmail: String(formData.get('contactEmail') ?? '').trim() || null,
     contactPhone: String(formData.get('contactPhone') ?? '').trim() || null,
     depositPct: Number(formData.get('depositPct')) || 25,
-    actorClerkId: session.userId!,
+    actorClerkId: session.userId,
   });
   redirect(`/rentals/${rental.id}`);
 }
@@ -53,7 +47,7 @@ export async function addLineAction(formData: FormData): Promise<void> {
     startsAt: `${date}T${start}:00-04:00`,
     endsAt: `${date}T${end}:00-04:00`,
     rateCentsOverride: overrideRaw ? Math.round(Number(overrideRaw) * 100) : undefined,
-    actorClerkId: session.userId!,
+    actorClerkId: session.userId,
   });
   revalidatePath(`/rentals/${rentalId}`);
 }
@@ -61,7 +55,7 @@ export async function addLineAction(formData: FormData): Promise<void> {
 export async function removeLineAction(formData: FormData): Promise<void> {
   const session = await requireStaff();
   const rentalId = Number(formData.get('rentalId'));
-  await removeRentalLine(Number(formData.get('lineId')), session.userId!);
+  await removeRentalLine(Number(formData.get('lineId')), session.userId);
   revalidatePath(`/rentals/${rentalId}`);
 }
 
@@ -73,7 +67,7 @@ export async function addAddonAction(formData: FormData): Promise<void> {
     addonId: Number(formData.get('addonId')),
     lineId: formData.get('lineId') ? Number(formData.get('lineId')) : null,
     qty: Number(formData.get('qty')) || 1,
-    actorClerkId: session.userId!,
+    actorClerkId: session.userId,
   });
   revalidatePath(`/rentals/${rentalId}`);
 }
@@ -88,7 +82,7 @@ export async function removeAddonAction(formData: FormData): Promise<void> {
 export async function emailQuoteAction(formData: FormData): Promise<void> {
   const session = await requireStaff();
   const rentalId = Number(formData.get('rentalId'));
-  await emailQuoteLink(rentalId, session.userId!);
+  await emailQuoteLink(rentalId, session.userId);
   revalidatePath(`/rentals/${rentalId}`);
 }
 
@@ -96,7 +90,7 @@ export async function markBookedAction(formData: FormData): Promise<void> {
   const session = await requireStaff();
   const rentalId = Number(formData.get('rentalId'));
   const { markRentalBooked } = await import('@/lib/rentals/payments');
-  await markRentalBooked(rentalId, session.userId!);
+  await markRentalBooked(rentalId, session.userId);
   revalidatePath(`/rentals/${rentalId}`);
 }
 
@@ -104,7 +98,7 @@ export async function recordPaymentAction(formData: FormData): Promise<void> {
   const session = await requireStaff();
   const rentalId = Number(formData.get('rentalId'));
   const { recordManualPayment } = await import('@/lib/rentals/payments');
-  await recordManualPayment(Number(formData.get('installmentId')), session.userId!);
+  await recordManualPayment(Number(formData.get('installmentId')), session.userId);
   revalidatePath(`/rentals/${rentalId}`);
 }
 
@@ -112,7 +106,7 @@ export async function chargeInstallmentAction(formData: FormData): Promise<void>
   const session = await requireStaff();
   const rentalId = Number(formData.get('rentalId'));
   const { processInstallment } = await import('@/lib/rentals/payments');
-  await processInstallment(Number(formData.get('installmentId')), session.userId!);
+  await processInstallment(Number(formData.get('installmentId')), session.userId);
   revalidatePath(`/rentals/${rentalId}`);
 }
 
@@ -121,7 +115,7 @@ export async function attachWaiverAction(formData: FormData): Promise<void> {
   const rentalId = Number(formData.get('rentalId'));
   const { attachWaiverToRental } = await import('@/lib/waivers');
   const wid = formData.get('waiverId') ? Number(formData.get('waiverId')) : null;
-  await attachWaiverToRental(rentalId, wid, session.userId!);
+  await attachWaiverToRental(rentalId, wid, session.userId);
   revalidatePath(`/rentals/${rentalId}`);
 }
 
@@ -129,7 +123,7 @@ export async function cancelRentalAction(formData: FormData): Promise<void> {
   const session = await requireStaff();
   const rentalId = Number(formData.get('rentalId'));
   const { cancelRental } = await import('@/lib/rentals/payments');
-  await cancelRental(rentalId, session.userId!, String(formData.get('reason') ?? '') || undefined);
+  await cancelRental(rentalId, session.userId, String(formData.get('reason') ?? '') || undefined);
   revalidatePath(`/rentals/${rentalId}`);
 }
 
@@ -155,7 +149,7 @@ export async function updateRentalDetailsAction(formData: FormData): Promise<voi
       notes: String(formData.get('notes') ?? ''),
       depositPct: Number(formData.get('depositPct')),
     },
-    session.userId!,
+    session.userId,
   );
 
   revalidatePath(`/rentals/${rentalId}`);

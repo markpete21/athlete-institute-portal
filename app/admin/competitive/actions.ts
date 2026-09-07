@@ -4,15 +4,8 @@ import { redirect } from 'next/navigation';
 import { revalidatePath } from 'next/cache';
 import { audit, type BalanceAttribute, type Sport } from '@ai/foundation';
 import { supabaseAdmin } from '@ai/foundation/supabase';
-import { getPortalSession } from '@/lib/auth';
-import { profileCan } from '@/lib/staff/staff';
+import { requireStaff, requireStaffCapability } from '@/lib/auth';
 import { buildLeagueSchedule, createDivision, generatePlayoffRound, runTeamBuilder, saveScore, setSkillRating, updateTiebreaks } from '@/lib/competitive/competitive';
-
-async function requireStaff() {
-  const session = await getPortalSession();
-  if (!session.isStaff) throw new Error('Staff only.');
-  return session;
-}
 
 export async function createDivisionAction(formData: FormData): Promise<void> {
   const session = await requireStaff();
@@ -23,7 +16,7 @@ export async function createDivisionAction(formData: FormData): Promise<void> {
     maxTeams: formData.get('maxTeams') ? Number(formData.get('maxTeams')) : null,
     minPlayers: formData.get('minPlayers') ? Number(formData.get('minPlayers')) : null,
     maxPlayers: formData.get('maxPlayers') ? Number(formData.get('maxPlayers')) : null,
-  }, session.userId!);
+  }, session.userId);
   redirect(`/competitive/${id}`);
 }
 
@@ -31,7 +24,7 @@ export async function runBuilderAction(formData: FormData): Promise<void> {
   const session = await requireStaff();
   const divisionId = Number(formData.get('divisionId'));
   const attributes = formData.getAll('attributes').map(String) as BalanceAttribute[];
-  await runTeamBuilder({ divisionId, numTeams: Number(formData.get('numTeams')) || 2, attributes, actorClerkId: session.userId! });
+  await runTeamBuilder({ divisionId, numTeams: Number(formData.get('numTeams')) || 2, attributes, actorClerkId: session.userId });
   revalidatePath(`/competitive/${divisionId}`);
 }
 
@@ -47,17 +40,14 @@ export async function buildScheduleAction(formData: FormData): Promise<void> {
     gameMinutes: Number(formData.get('gameMinutes')) || 60,
     numCourts: Number(formData.get('numCourts')) || 1,
     doubleRound: formData.get('doubleRound') === 'on',
-    actorClerkId: session.userId!,
+    actorClerkId: session.userId,
   });
   revalidatePath(`/competitive/${divisionId}`);
 }
 
 export async function saveScoreAction(formData: FormData): Promise<void> {
-  const session = await requireStaff();
   // Score entry gated by the Module 5 capability matrix (convenor/coach on-site).
-  if (session.profileId && !(await profileCan(session.profileId, 'score_entry', 'edit'))) {
-    throw new Error('You do not have the score-entry capability.');
-  }
+  const session = await requireStaffCapability('score_entry', 'edit', 'You do not have the score-entry capability.');
   const divisionId = Number(formData.get('divisionId'));
   await saveScore({
     gameId: Number(formData.get('gameId')),
@@ -65,7 +55,7 @@ export async function saveScoreAction(formData: FormData): Promise<void> {
     awayScore: Number(formData.get('awayScore')),
     overtime: formData.get('overtime') === 'on',
     liveStreamRef: String(formData.get('liveStreamRef') ?? '').trim() || null,
-    actorClerkId: session.userId!,
+    actorClerkId: session.userId,
   });
   revalidatePath(`/competitive/${divisionId}`);
 }
@@ -81,7 +71,7 @@ export async function setSkillRatingAction(formData: FormData): Promise<void> {
   await setSkillRating(
     Number(formData.get('familyMemberId')),
     raw === '' ? null : Number(raw),
-    session.userId!,
+    session.userId,
   );
   revalidatePath(`/competitive/${Number(formData.get('divisionId'))}`);
 }
@@ -93,7 +83,7 @@ export async function saveTiebreaksAction(formData: FormData): Promise<void> {
   const ordered = [1, 2, 3, 4, 5]
     .map((i) => String(formData.get(`tb${i}`) ?? ''))
     .filter(Boolean);
-  await updateTiebreaks(divisionId, ordered, session.userId!);
+  await updateTiebreaks(divisionId, ordered, session.userId);
   revalidatePath(`/competitive/${divisionId}`);
 }
 
@@ -101,7 +91,7 @@ export async function saveTiebreaksAction(formData: FormData): Promise<void> {
 export async function generatePlayoffsAction(formData: FormData): Promise<void> {
   const session = await requireStaff();
   const divisionId = Number(formData.get('divisionId'));
-  await generatePlayoffRound(divisionId, Number(formData.get('numTeams')) || 4, session.userId!);
+  await generatePlayoffRound(divisionId, Number(formData.get('numTeams')) || 4, session.userId);
   revalidatePath(`/competitive/${divisionId}`);
 }
 
@@ -112,8 +102,7 @@ export async function generatePlayoffsAction(formData: FormData): Promise<void> 
  * tournaments/rep -> full names; Academy -> never public) and overridden here.
  */
 export async function saveCompeteSettingsAction(formData: FormData): Promise<void> {
-  const s = await getPortalSession();
-  if (!s.isStaff) throw new Error('Staff only.');
+  const s = await requireStaff();
   const divisionId = Number(formData.get('divisionId'));
   const { error } = await supabaseAdmin()
     .from('divisions')
@@ -124,7 +113,7 @@ export async function saveCompeteSettingsAction(formData: FormData): Promise<voi
     .eq('id', divisionId);
   if (error) throw new Error(error.message);
   await audit({
-    actorId: s.userId!,
+    actorId: s.userId,
     action: 'division.compete-settings',
     target: `division:${divisionId}`,
     meta: { showOnCompete: formData.get('showOnCompete') === 'on', showFullNames: formData.get('showFullNames') === 'on' },
@@ -138,8 +127,7 @@ export async function saveCompeteSettingsAction(formData: FormData): Promise<voi
  * profiles and the Stats tab exist at all.
  */
 export async function saveStatsSettingsAction(formData: FormData): Promise<void> {
-  const s = await getPortalSession();
-  if (!s.isStaff) throw new Error('Staff only.');
+  const s = await requireStaff();
   const divisionId = Number(formData.get('divisionId'));
   const show = {
     averages: formData.get('showAverages') === 'on',
@@ -153,7 +141,7 @@ export async function saveStatsSettingsAction(formData: FormData): Promise<void>
     .eq('id', divisionId);
   if (error) throw new Error(error.message);
   await audit({
-    actorId: s.userId!,
+    actorId: s.userId,
     action: 'division.stats-settings',
     target: `division:${divisionId}`,
     meta: { enabled, ...show },
@@ -168,10 +156,7 @@ export async function saveStatsSettingsAction(formData: FormData): Promise<void>
  * Same capability gate as score entry.
  */
 export async function saveBoxScoreAction(formData: FormData): Promise<void> {
-  const session = await requireStaff();
-  if (session.profileId && !(await profileCan(session.profileId, 'score_entry', 'edit'))) {
-    throw new Error('You do not have the score-entry capability.');
-  }
+  const session = await requireStaffCapability('score_entry', 'edit', 'You do not have the score-entry capability.');
   const divisionId = Number(formData.get('divisionId'));
   const gameId = Number(formData.get('gameId'));
   const db = supabaseAdmin();
@@ -215,7 +200,7 @@ export async function saveBoxScoreAction(formData: FormData): Promise<void> {
     if (error) throw new Error(error.message);
   }
   await audit({
-    actorId: session.userId!,
+    actorId: session.userId,
     action: 'game.box-score',
     target: `game:${gameId}`,
     meta: { divisionId, saved: upserts.length, cleared: deletes.length },
@@ -235,7 +220,7 @@ export async function createStandaloneEventAction(formData: FormData): Promise<v
       seasonKey: String(formData.get('seasonKey') ?? '').trim() || null,
       brandKey: String(formData.get('brandKey') ?? 'athlete-institute'),
     },
-    session.userId!,
+    session.userId,
   );
   redirect(`/programs/${id}`);
 }
@@ -243,7 +228,7 @@ export async function createStandaloneEventAction(formData: FormData): Promise<v
 export async function duplicateStandaloneEventAction(formData: FormData): Promise<void> {
   const session = await requireStaff();
   const { duplicateStandaloneEvent } = await import('@/lib/competitive/competitive');
-  await duplicateStandaloneEvent(Number(formData.get('programId')), session.userId!);
+  await duplicateStandaloneEvent(Number(formData.get('programId')), session.userId);
   revalidatePath('/competitive');
 }
 
@@ -256,7 +241,7 @@ export async function setTeamCoachAction(formData: FormData): Promise<void> {
   const session = await requireStaff();
   const { setTeamCoach } = await import('@/lib/competitive/coachConfirmations');
   const raw = String(formData.get('staffId') ?? '');
-  await setTeamCoach(Number(formData.get('teamId')), raw ? Number(raw) : null, session.userId!);
+  await setTeamCoach(Number(formData.get('teamId')), raw ? Number(raw) : null, session.userId);
   revalidatePath(`/competitive/${Number(formData.get('divisionId'))}`);
 }
 
@@ -265,7 +250,7 @@ export async function saveCoachQuestionsAction(formData: FormData): Promise<void
   const { saveCoachQuestions } = await import('@/lib/competitive/coachConfirmations');
   const divisionId = Number(formData.get('divisionId'));
   const questions = String(formData.get('questions') ?? '').split('\n');
-  await saveCoachQuestions(divisionId, questions, session.userId!);
+  await saveCoachQuestions(divisionId, questions, session.userId);
   revalidatePath(`/competitive/${divisionId}`);
 }
 
@@ -273,7 +258,7 @@ export async function sendCoachConfirmsAction(formData: FormData): Promise<void>
   const session = await requireStaff();
   const { sendCoachConfirmations } = await import('@/lib/competitive/coachConfirmations');
   const divisionId = Number(formData.get('divisionId'));
-  await sendCoachConfirmations(divisionId, session.userId!);
+  await sendCoachConfirmations(divisionId, session.userId);
   revalidatePath(`/competitive/${divisionId}`);
 }
 
@@ -281,7 +266,7 @@ export async function remindCoachesAction(formData: FormData): Promise<void> {
   const session = await requireStaff();
   const { remindPendingCoaches } = await import('@/lib/competitive/coachConfirmations');
   const divisionId = Number(formData.get('divisionId'));
-  await remindPendingCoaches(divisionId, session.userId!);
+  await remindPendingCoaches(divisionId, session.userId);
   revalidatePath(`/competitive/${divisionId}`);
 }
 
@@ -291,21 +276,21 @@ export async function proposeDraftAction(formData: FormData): Promise<void> {
   const { proposeDraft } = await import('@/lib/competitive/draftProposals');
   const divisionId = Number(formData.get('divisionId'));
   const attributes = formData.getAll('attributes').map(String) as BalanceAttribute[];
-  await proposeDraft({ divisionId, numTeams: Number(formData.get('numTeams')) || 2, attributes, actorClerkId: session.userId! });
+  await proposeDraft({ divisionId, numTeams: Number(formData.get('numTeams')) || 2, attributes, actorClerkId: session.userId });
   revalidatePath(`/competitive/${divisionId}`);
 }
 
 export async function applyDraftAction(formData: FormData): Promise<void> {
   const session = await requireStaff();
   const { applyDraft } = await import('@/lib/competitive/draftProposals');
-  const { divisionId } = await applyDraft(Number(formData.get('proposalId')), session.userId!);
+  const { divisionId } = await applyDraft(Number(formData.get('proposalId')), session.userId);
   revalidatePath(`/competitive/${divisionId}`);
 }
 
 export async function discardDraftAction(formData: FormData): Promise<void> {
   const session = await requireStaff();
   const { discardProposal } = await import('@/lib/competitive/draftProposals');
-  await discardProposal(Number(formData.get('proposalId')), session.userId!);
+  await discardProposal(Number(formData.get('proposalId')), session.userId);
   revalidatePath(`/competitive/${Number(formData.get('divisionId'))}`);
 }
 
@@ -327,7 +312,7 @@ export async function upsertOfficialAction(formData: FormData): Promise<void> {
     staffId: staffRaw ? Number(staffRaw) : null,
     notes: String(formData.get('notes') ?? ''),
     active: formData.get('active') !== 'off' && formData.get('active') !== '0',
-  }, session.userId!);
+  }, session.userId);
   revalidatePath('/competitive/officials');
 }
 
@@ -338,7 +323,7 @@ export async function toggleOfficialAction(formData: FormData): Promise<void> {
     .update({ active: formData.get('active') === 'on' })
     .eq('id', Number(formData.get('officialId')));
   if (error) throw new Error(error.message);
-  await audit({ actorId: session.userId!, action: 'official.toggled', target: `official:${Number(formData.get('officialId'))}` });
+  await audit({ actorId: session.userId, action: 'official.toggled', target: `official:${Number(formData.get('officialId'))}` });
   revalidatePath('/competitive/officials');
 }
 
@@ -346,7 +331,7 @@ export async function bookOfficialsAction(formData: FormData): Promise<void> {
   const session = await requireStaff();
   const { assignOfficials } = await import('@/lib/competitive/officials');
   const divisionId = Number(formData.get('divisionId'));
-  await assignOfficials({ divisionId, perGame: Number(formData.get('perGame')) || 2, actorClerkId: session.userId! });
+  await assignOfficials({ divisionId, perGame: Number(formData.get('perGame')) || 2, actorClerkId: session.userId });
   revalidatePath(`/competitive/${divisionId}`);
   revalidatePath(`/competitive/${divisionId}/officials`);
 }
@@ -355,7 +340,7 @@ export async function emailOfficialSchedulesAction(formData: FormData): Promise<
   const session = await requireStaff();
   const { emailOfficialSchedules } = await import('@/lib/competitive/officials');
   const divisionId = Number(formData.get('divisionId'));
-  await emailOfficialSchedules(divisionId, session.userId!);
+  await emailOfficialSchedules(divisionId, session.userId);
   revalidatePath(`/competitive/${divisionId}/officials`);
 }
 
@@ -373,7 +358,7 @@ export async function planMediaDayAction(formData: FormData): Promise<void> {
     bufferMinutes: Number(formData.get('bufferMinutes')) || 10,
     includePortraits: formData.get('includePortraits') === 'on',
     includeCoach: formData.get('includeCoach') === 'on',
-    actorClerkId: session.userId!,
+    actorClerkId: session.userId,
   });
   revalidatePath(`/competitive/${divisionId}/media-day`);
 }
@@ -382,15 +367,14 @@ export async function notifyMediaDayAction(formData: FormData): Promise<void> {
   const session = await requireStaff();
   const { notifyMediaDayFamilies } = await import('@/lib/competitive/mediaDay');
   const divisionId = Number(formData.get('divisionId'));
-  await notifyMediaDayFamilies(divisionId, session.userId!);
+  await notifyMediaDayFamilies(divisionId, session.userId);
   revalidatePath(`/competitive/${divisionId}/media-day`);
 }
 
 /** Per-location Compete display settings (migration 0057): layout mode +
  *  welcome banner. Auto renders simple under 8 published divisions. */
 export async function saveLocationDisplayAction(formData: FormData): Promise<void> {
-  const s = await getPortalSession();
-  if (!s.isStaff) throw new Error('Staff only.');
+  const s = await requireStaff();
   const locationId = Number(formData.get('locationId'));
   const layout = String(formData.get('layoutMode') ?? 'auto');
   const welcome = String(formData.get('welcome') ?? '').trim() || null;
@@ -398,6 +382,6 @@ export async function saveLocationDisplayAction(formData: FormData): Promise<voi
     .from('compete_location_settings')
     .upsert({ location_id: locationId, layout_mode: layout, welcome }, { onConflict: 'location_id' });
   if (error) throw new Error(error.message);
-  await audit({ actorId: s.userId!, action: 'compete.location-display', target: `location:${locationId}`, meta: { layout, hasWelcome: !!welcome } });
+  await audit({ actorId: s.userId, action: 'compete.location-display', target: `location:${locationId}`, meta: { layout, hasWelcome: !!welcome } });
   revalidatePath('/competitive');
 }

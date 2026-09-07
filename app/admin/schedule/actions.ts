@@ -2,13 +2,7 @@
 
 import { revalidatePath } from 'next/cache';
 import { supabaseAdmin } from '@ai/foundation/supabase';
-import { getPortalSession } from '@/lib/auth';
-
-async function requireStaff() {
-  const session = await getPortalSession();
-  if (!session.isStaff) throw new Error('Staff only.');
-  return session;
-}
+import { requireStaff } from '@/lib/auth';
 
 /**
  * Save the current filter state as a named view. Two submit buttons post the
@@ -33,7 +27,7 @@ export async function saveViewAction(formData: FormData): Promise<void> {
   const { error } = await supabaseAdmin()
     .from('saved_schedule_views')
     .upsert(
-      { name, facility_ids: facilityIds, filters, shared, created_by: session.userId! },
+      { name, facility_ids: facilityIds, filters, shared, created_by: session.userId },
       { onConflict: 'created_by,name' },
     );
   if (error) throw new Error(`save view failed: ${error.message}`);

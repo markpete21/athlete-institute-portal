@@ -1,14 +1,8 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
-import { getPortalSession } from '@/lib/auth';
+import { requireStaff } from '@/lib/auth';
 import { createWaiver, updateWaiver } from '@/lib/waivers';
-
-async function requireStaff() {
-  const session = await getPortalSession();
-  if (!session.isStaff) throw new Error('Staff only.');
-  return session;
-}
 
 export async function createWaiverAction(formData: FormData): Promise<void> {
   const session = await requireStaff();
@@ -17,7 +11,7 @@ export async function createWaiverAction(formData: FormData): Promise<void> {
   if (!name || !body) throw new Error('Name and body are required.');
   await createWaiver(
     { name, body, defaultForBookingType: String(formData.get('defaultForBookingType') ?? '') || null },
-    session.userId!,
+    session.userId,
   );
   revalidatePath('/waivers');
 }
@@ -33,7 +27,7 @@ export async function updateWaiverAction(formData: FormData): Promise<void> {
       active: formData.get('active') === 'on',
       defaultForBookingType: String(formData.get('defaultForBookingType') ?? '') || null,
     },
-    session.userId!,
+    session.userId,
   );
   revalidatePath('/waivers');
 }

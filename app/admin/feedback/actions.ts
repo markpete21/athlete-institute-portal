@@ -2,14 +2,8 @@
 
 import { revalidatePath } from 'next/cache';
 import { supabaseAdmin } from '@ai/foundation/supabase';
-import { getPortalSession } from '@/lib/auth';
+import { requireStaff } from '@/lib/auth';
 import { configureRounds, summarizeFeedback } from '@/lib/feedback/feedback';
-
-async function requireStaff() {
-  const s = await getPortalSession();
-  if (!s.isStaff) throw new Error('Staff only.');
-  return s;
-}
 
 export async function configureRoundsAction(formData: FormData): Promise<void> {
   await requireStaff();

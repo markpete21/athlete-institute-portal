@@ -1,14 +1,8 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
-import { getPortalSession } from '@/lib/auth';
+import { requireStaff } from '@/lib/auth';
 import { createQuestion, setMarketingSourceOptions, updateQuestion, type QType } from '@/lib/programs/questions';
-
-async function requireStaff() {
-  const session = await getPortalSession();
-  if (!session.isStaff) throw new Error('Staff only.');
-  return session;
-}
 
 const parseOptions = (v: FormDataEntryValue | null): string[] =>
   String(v ?? '').split('\n').map((s) => s.trim()).filter(Boolean);
@@ -24,7 +18,7 @@ export async function createQuestionAction(formData: FormData): Promise<void> {
       required: formData.get('required') === 'on',
       defaultForTypeId: formData.get('defaultForTypeId') ? Number(formData.get('defaultForTypeId')) : null,
     },
-    session.userId!,
+    session.userId,
   );
   revalidatePath('/programs/questions');
 }
@@ -42,13 +36,13 @@ export async function updateQuestionAction(formData: FormData): Promise<void> {
       default_for_type_id: formData.get('defaultForTypeId') ? Number(formData.get('defaultForTypeId')) : null,
       archived: formData.get('archived') === 'on',
     },
-    session.userId!,
+    session.userId,
   );
   revalidatePath('/programs/questions');
 }
 
 export async function saveMarketingSourcesAction(formData: FormData): Promise<void> {
   const session = await requireStaff();
-  await setMarketingSourceOptions(parseOptions(formData.get('options')), session.userId!);
+  await setMarketingSourceOptions(parseOptions(formData.get('options')), session.userId);
   revalidatePath('/programs/questions');
 }

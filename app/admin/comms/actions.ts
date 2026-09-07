@@ -3,17 +3,11 @@
 import { revalidatePath } from 'next/cache';
 import type { EmailBlock } from '@ai/foundation';
 import type { NotifyChannel } from '@ai/foundation/notify';
-import { getPortalSession } from '@/lib/auth';
+import { requireStaff } from '@/lib/auth';
 import { cancelScheduled, createCampaign, scheduleCampaign, sendCampaign } from '@/lib/comms/campaigns';
 import { draftEmail } from '@/lib/comms/draft';
 import { updateTrigger } from '@/lib/comms/notifications';
 import type { SegmentDefinition } from '@/lib/comms/segments';
-
-async function requireStaff() {
-  const s = await getPortalSession();
-  if (!s.isStaff) throw new Error('Staff only.');
-  return s;
-}
 
 /** Build a simple campaign from subject + body text (one text block) + a program-id audience. */
 export async function createCampaignAction(formData: FormData): Promise<void> {
@@ -28,7 +22,7 @@ export async function createCampaignAction(formData: FormData): Promise<void> {
     blocks,
     audience,
     isMarketing: formData.get('isMarketing') !== 'off',
-  }, s.userId!);
+  }, s.userId);
   revalidatePath('/comms');
 }
 
@@ -37,25 +31,25 @@ export async function draftCampaignAction(formData: FormData): Promise<void> {
   const s = await requireStaff();
   const brandKey = String(formData.get('brandKey') ?? '') || null;
   const draft = await draftEmail(String(formData.get('prompt') ?? ''), brandKey);
-  await createCampaign({ name: `Draft: ${draft.subject}`.slice(0, 60), brandKey, subject: draft.subject, blocks: draft.blocks, isMarketing: true }, s.userId!);
+  await createCampaign({ name: `Draft: ${draft.subject}`.slice(0, 60), brandKey, subject: draft.subject, blocks: draft.blocks, isMarketing: true }, s.userId);
   revalidatePath('/comms');
 }
 
 export async function scheduleAction(formData: FormData): Promise<void> {
   const s = await requireStaff();
-  await scheduleCampaign(Number(formData.get('campaignId')), new Date(String(formData.get('when'))).toISOString(), s.userId!);
+  await scheduleCampaign(Number(formData.get('campaignId')), new Date(String(formData.get('when'))).toISOString(), s.userId);
   revalidatePath(`/comms/${formData.get('campaignId')}`);
 }
 
 export async function cancelScheduleAction(formData: FormData): Promise<void> {
   const s = await requireStaff();
-  await cancelScheduled(Number(formData.get('campaignId')), s.userId!);
+  await cancelScheduled(Number(formData.get('campaignId')), s.userId);
   revalidatePath(`/comms/${formData.get('campaignId')}`);
 }
 
 export async function sendAction(formData: FormData): Promise<void> {
   const s = await requireStaff();
-  await sendCampaign(Number(formData.get('campaignId')), s.userId!);
+  await sendCampaign(Number(formData.get('campaignId')), s.userId);
   revalidatePath(`/comms/${formData.get('campaignId')}`);
 }
 
@@ -70,9 +64,9 @@ export async function announceAction(formData: FormData): Promise<void> {
     channels: channels.length ? channels : ['email', 'sms', 'push'],
     audience: programIds.length ? { include: [{ programIds }] } : { include: [] },
     isMarketing: false,
-  }, s.userId!);
-  if (formData.get('when')) await scheduleCampaign(id, new Date(String(formData.get('when'))).toISOString(), s.userId!);
-  else await sendCampaign(id, s.userId!);
+  }, s.userId);
+  if (formData.get('when')) await scheduleCampaign(id, new Date(String(formData.get('when'))).toISOString(), s.userId);
+  else await sendCampaign(id, s.userId);
   revalidatePath('/comms');
 }
 
@@ -84,6 +78,6 @@ export async function updateTriggerAction(formData: FormData): Promise<void> {
     channels,
     subject: String(formData.get('subject') ?? ''),
     body_template: String(formData.get('body') ?? ''),
-  }, s.userId!);
+  }, s.userId);
   revalidatePath('/comms/notifications');
 }

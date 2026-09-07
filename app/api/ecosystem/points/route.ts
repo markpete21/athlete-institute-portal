@@ -1,5 +1,6 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@ai/foundation/supabase';
+import { jsonError, readJson, secretRoute } from '@/lib/api/handlers';
 import { applyPlayPoints } from '@/lib/credits';
 
 export const dynamic = 'force-dynamic';
@@ -23,11 +24,8 @@ export const dynamic = 'force-dynamic';
  * remain enforced by the M1 pricing function inside the portal.
  */
 
-function authorized(req: NextRequest): boolean {
-  const key = process.env.ECOSYSTEM_API_KEY;
-  if (!key) return false; // closed until the shared secret is configured
-  return req.headers.get('x-ecosystem-key') === key;
-}
+/** Shared-secret guard: closed until ECOSYSTEM_API_KEY is configured. */
+const ecosystem = (fn: Parameters<typeof secretRoute>[2]) => secretRoute('x-ecosystem-key', 'ECOSYSTEM_API_KEY', fn);
 
 async function familyForClerkUser(clerkUserId: string): Promise<number | null> {
   const db = supabaseAdmin();
@@ -39,30 +37,32 @@ async function familyForClerkUser(clerkUserId: string): Promise<number | null> {
   return fam?.id ?? null;
 }
 
-export async function GET(req: NextRequest) {
-  if (!authorized(req)) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+export const GET = ecosystem(async (req) => {
   const clerkUserId = req.nextUrl.searchParams.get('clerkUserId');
-  if (!clerkUserId) return NextResponse.json({ error: 'clerkUserId required' }, { status: 400 });
+  if (!clerkUserId) return jsonError('clerkUserId required', 400);
 
   const familyId = await familyForClerkUser(clerkUserId);
-  if (!familyId) return NextResponse.json({ error: 'No household for that user' }, { status: 404 });
-  const { data: fam } = await supabaseAdmin().from('families').select('play_points_balance').eq('id', familyId).single();
+  if (!familyId) return jsonError('No household for that user', 404);
+  const { data: fam } = await supabaseAdmin().from('families').select('play_points_balance').eq('id', familyId).maybeSingle();
   return NextResponse.json({ familyId, balance: fam?.play_points_balance ?? 0 });
-}
+});
 
-export async function POST(req: NextRequest) {
-  if (!authorized(req)) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  const body = (await req.json()) as { clerkUserId?: string; action?: 'earn' | 'redeem'; points?: number; reason?: string; ref?: string };
+interface PointsBody { clerkUserId?: string; action?: 'earn' | 'redeem'; points?: number; reason?: string; ref?: string }
+
+export const POST = ecosystem(async (req) => {
+  const body = await readJson<PointsBody>(req);
+  if (!body) return jsonError('JSON body required', 400);
   const { clerkUserId, action, points, reason } = body;
   if (!clerkUserId || !action || !points || !reason) {
-    return NextResponse.json({ error: 'clerkUserId, action, points, reason required' }, { status: 400 });
+    return jsonError('clerkUserId, action, points, reason required', 400);
   }
+  if (action !== 'earn' && action !== 'redeem') return jsonError("action must be 'earn' or 'redeem'", 400);
   if (!Number.isInteger(points) || points <= 0 || points > 1_000_000) {
-    return NextResponse.json({ error: 'points must be a positive integer' }, { status: 400 });
+    return jsonError('points must be a positive integer', 400);
   }
 
   const familyId = await familyForClerkUser(clerkUserId);
-  if (!familyId) return NextResponse.json({ error: 'No household for that user' }, { status: 404 });
+  if (!familyId) return jsonError('No household for that user', 404);
 
   try {
     const delta = action === 'redeem' ? -points : points;
@@ -71,6 +71,6 @@ export async function POST(req: NextRequest) {
   } catch (err) {
     // Insufficient balance surfaces as a 409 the caller can show the user.
     const msg = err instanceof Error ? err.message : 'apply failed';
-    return NextResponse.json({ error: msg }, { status: /insufficient/i.test(msg) ? 409 : 500 });
+    return jsonError(msg, /insufficient/i.test(msg) ? 409 : 500);
   }
-}
+});

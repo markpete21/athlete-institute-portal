@@ -4,7 +4,7 @@ import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { torontoInstant } from '@ai/foundation';
 import { BUCKETS, deleteFile, getPublicUrl, uploadFile } from '@ai/foundation/storage';
-import { getPortalSession } from '@/lib/auth';
+import { requireStaff } from '@/lib/auth';
 import { cancelBooking, getBooking, updateBooking } from '@/lib/bookings';
 
 /**
@@ -18,12 +18,6 @@ const DATE = /^\d{4}-\d{2}-\d{2}$/;
 const HHMM = /^([01]\d|2[0-3]):[0-5]\d$/;
 const MAX_LOGO_BYTES = 2 * 1024 * 1024;
 const LOGO_TYPES = ['image/png', 'image/jpeg', 'image/webp', 'image/svg+xml'];
-
-async function requireStaff() {
-  const session = await getPortalSession();
-  if (!session.isStaff) throw new Error('Staff only.');
-  return session;
-}
 
 /** Revalidate every surface a booking edit can be visible on. */
 function revalidateBooking(id: number): void {
@@ -75,7 +69,7 @@ export async function saveBookingAction(formData: FormData): Promise<void> {
       cleanupMinutes: minutes(formData, 'cleanupMinutes'),
       showOnPublicSchedule: formData.get('showPublic') === 'on',
     },
-    session.userId!,
+    session.userId,
   );
 
   revalidateBooking(id);
@@ -107,7 +101,7 @@ export async function uploadBookingLogoAction(formData: FormData): Promise<void>
   });
 
   const previous = await getBooking(id);
-  await updateBooking(id, { logoUrl: getPublicUrl(BUCKETS.eventLogos, path) }, session.userId!);
+  await updateBooking(id, { logoUrl: getPublicUrl(BUCKETS.eventLogos, path) }, session.userId);
 
   // Best-effort cleanup of the superseded object; a failure here must not
   // roll back a logo that is already live on the boards.
@@ -129,7 +123,7 @@ export async function removeBookingLogoAction(formData: FormData): Promise<void>
   if (!id) throw new Error('Booking id required.');
 
   const current = await getBooking(id);
-  await updateBooking(id, { logoUrl: null }, session.userId!);
+  await updateBooking(id, { logoUrl: null }, session.userId);
 
   const path = objectPathOf(current?.logo_url ?? null);
   if (path) {
@@ -149,7 +143,7 @@ export async function cancelBookingAction(formData: FormData): Promise<void> {
   if (!id) throw new Error('Booking id required.');
   const reason = String(formData.get('reason') ?? '').trim() || undefined;
 
-  await cancelBooking(id, session.userId!, reason);
+  await cancelBooking(id, session.userId, reason);
   revalidateBooking(id);
   redirect('/schedule');
 }

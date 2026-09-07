@@ -3,14 +3,7 @@
 import { revalidatePath } from 'next/cache';
 import { audit } from '@ai/foundation';
 import { supabaseAdmin } from '@ai/foundation/supabase';
-import { getPortalSession } from '@/lib/auth';
-
-/** Staff-only guard (the admin layout already blocks, this defends the action). */
-async function requireStaff() {
-  const session = await getPortalSession();
-  if (!session.isStaff) throw new Error('Staff only.');
-  return session;
-}
+import { requireStaff } from '@/lib/auth';
 
 export async function createRoleAction(formData: FormData): Promise<void> {
   const session = await requireStaff();
@@ -25,7 +18,7 @@ export async function createRoleAction(formData: FormData): Promise<void> {
     .single();
   if (error) throw new Error(`Role create failed: ${error.message}`);
   await audit({
-    actorId: session.userId!,
+    actorId: session.userId,
     action: 'role.created',
     target: `role:${data.id}`,
     meta: { name },
@@ -46,7 +39,7 @@ export async function updateRoleAction(formData: FormData): Promise<void> {
     .eq('id', id);
   if (error) throw new Error(`Role update failed: ${error.message}`);
   await audit({
-    actorId: session.userId!,
+    actorId: session.userId,
     action: 'role.updated',
     target: `role:${id}`,
     meta: { name },
@@ -76,7 +69,7 @@ export async function assignRoleAction(formData: FormData): Promise<void> {
     .insert({ profile_id: profile.id, role_id: roleId, granted_by: session.userId });
   if (e2 && !e2.message.includes('duplicate')) throw new Error(`Assignment failed: ${e2.message}`);
   await audit({
-    actorId: session.userId!,
+    actorId: session.userId,
     action: 'role.granted',
     target: `profile:${profile.id}`,
     meta: { role_id: roleId, email },
@@ -92,7 +85,7 @@ export async function unassignRoleAction(formData: FormData): Promise<void> {
   const { error } = await supabaseAdmin().from('role_assignments').delete().eq('id', assignmentId);
   if (error) throw new Error(`Unassign failed: ${error.message}`);
   await audit({
-    actorId: session.userId!,
+    actorId: session.userId,
     action: 'role.revoked',
     target: `role_assignment:${assignmentId}`,
   });

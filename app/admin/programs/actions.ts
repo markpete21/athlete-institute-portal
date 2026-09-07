@@ -6,14 +6,8 @@ import type { ProgramCategory, ProrationMethod } from '@ai/foundation';
 import { audit } from '@ai/foundation';
 import { supabaseAdmin } from '@ai/foundation/supabase';
 import { BUCKETS, getPublicUrl, uploadFile } from '@ai/foundation/storage';
-import { getPortalSession } from '@/lib/auth';
+import { requireStaff } from '@/lib/auth';
 import { assignStaff, createProgram, generateSessions, setProgramStatus, unassignStaff, updateProgram, upsertProgramType } from '@/lib/programs/programs';
-
-async function requireStaff() {
-  const session = await getPortalSession();
-  if (!session.isStaff) throw new Error('Staff only.');
-  return session;
-}
 
 /** Module 22: "Draft with AI" - generates an on-brand description from the
  * program's structured fields; the draft lands in the description field for
@@ -22,8 +16,8 @@ export async function draftDescriptionAction(formData: FormData): Promise<void> 
   const session = await requireStaff();
   const programId = Number(formData.get('programId'));
   const { draftProgramDescription } = await import('@/lib/ai/enhancements');
-  const { draft } = await draftProgramDescription(programId, session.userId!);
-  await updateProgram(programId, { description: draft }, session.userId!);
+  const { draft } = await draftProgramDescription(programId, session.userId);
+  await updateProgram(programId, { description: draft }, session.userId);
   revalidatePath(`/programs/${programId}`);
 }
 
@@ -47,7 +41,7 @@ export async function saveTypeAction(formData: FormData): Promise<void> {
       defaultProration: String(formData.get('defaultProration') ?? 'none') as ProrationMethod,
       active: formData.get('active') === 'on',
     },
-    session.userId!,
+    session.userId,
   );
   revalidatePath('/programs/types');
 }
@@ -64,7 +58,7 @@ export async function createProgramAction(formData: FormData): Promise<void> {
     minAge: num(formData.get('minAge')),
     maxAge: num(formData.get('maxAge')),
     capacity: num(formData.get('capacity')),
-    actorClerkId: session.userId!,
+    actorClerkId: session.userId,
   });
   redirect(`/programs/${program.id}`);
 }
@@ -95,7 +89,7 @@ export async function updateProgramAction(formData: FormData): Promise<void> {
       season_key: String(formData.get('seasonKey') ?? '').trim() || null,
       proration_method: String(formData.get('prorationMethod') ?? 'none'),
     },
-    session.userId!,
+    session.userId,
   );
   revalidatePath(`/programs/${id}`);
 }
@@ -103,7 +97,7 @@ export async function updateProgramAction(formData: FormData): Promise<void> {
 export async function setStatusAction(formData: FormData): Promise<void> {
   const session = await requireStaff();
   const id = Number(formData.get('programId'));
-  await setProgramStatus(id, String(formData.get('status')), session.userId!);
+  await setProgramStatus(id, String(formData.get('status')), session.userId);
   revalidatePath(`/programs/${id}`);
 }
 
@@ -114,14 +108,14 @@ export async function assignStaffAction(formData: FormData): Promise<void> {
   const { supabaseAdmin } = await import('@ai/foundation/supabase');
   const { data: prof } = await supabaseAdmin().from('profiles').select('id').eq('email', email).maybeSingle();
   if (!prof) throw new Error(`No account for ${email} - they must sign in once first.`);
-  await assignStaff(id, prof.id, String(formData.get('roleLabel') ?? '').trim() || null, session.userId!);
+  await assignStaff(id, prof.id, String(formData.get('roleLabel') ?? '').trim() || null, session.userId);
   revalidatePath(`/programs/${id}`);
 }
 
 export async function unassignStaffAction(formData: FormData): Promise<void> {
   const session = await requireStaff();
   const id = Number(formData.get('programId'));
-  await unassignStaff(id, Number(formData.get('profileId')), session.userId!);
+  await unassignStaff(id, Number(formData.get('profileId')), session.userId);
   revalidatePath(`/programs/${id}`);
 }
 
@@ -130,7 +124,7 @@ export async function configureLeagueAction(formData: FormData): Promise<void> {
   const id = Number(formData.get('programId'));
   const { configureLeague } = await import('@/lib/leagues/leagues');
   const paths = ['captain', 'member', 'small_group', 'free_agent'].filter((p) => formData.get(`path_${p}`) === 'on') as ('captain' | 'member' | 'small_group' | 'free_agent')[];
-  await configureLeague({ programId: id, pricing: String(formData.get('pricing') ?? 'player') as 'player' | 'team' | 'both', teamRateCents: Math.round(Number(formData.get('teamRate') ?? 0) * 100) || 0, paths: paths.length ? paths : undefined }, session.userId!);
+  await configureLeague({ programId: id, pricing: String(formData.get('pricing') ?? 'player') as 'player' | 'team' | 'both', teamRateCents: Math.round(Number(formData.get('teamRate') ?? 0) * 100) || 0, paths: paths.length ? paths : undefined }, session.userId);
   revalidatePath(`/programs/${id}`);
 }
 
@@ -138,7 +132,7 @@ export async function attachProgramWaiverAction(formData: FormData): Promise<voi
   const session = await requireStaff();
   const id = Number(formData.get('programId'));
   const { attachWaiverToProgram } = await import('@/lib/waivers');
-  await attachWaiverToProgram(id, formData.get('waiverId') ? Number(formData.get('waiverId')) : null, session.userId!);
+  await attachWaiverToProgram(id, formData.get('waiverId') ? Number(formData.get('waiverId')) : null, session.userId);
   revalidatePath(`/programs/${id}`);
 }
 
@@ -146,7 +140,7 @@ export async function attachQuestionAction(formData: FormData): Promise<void> {
   const session = await requireStaff();
   const id = Number(formData.get('programId'));
   const { attachQuestion } = await import('@/lib/programs/questions');
-  await attachQuestion(id, Number(formData.get('questionId')), session.userId!);
+  await attachQuestion(id, Number(formData.get('questionId')), session.userId);
   revalidatePath(`/programs/${id}`);
 }
 
@@ -154,7 +148,7 @@ export async function detachQuestionAction(formData: FormData): Promise<void> {
   const session = await requireStaff();
   const id = Number(formData.get('programId'));
   const { detachQuestion } = await import('@/lib/programs/questions');
-  await detachQuestion(id, Number(formData.get('questionId')), session.userId!);
+  await detachQuestion(id, Number(formData.get('questionId')), session.userId);
   revalidatePath(`/programs/${id}`);
 }
 
@@ -171,7 +165,7 @@ export async function generateSessionsAction(formData: FormData): Promise<void> 
     endTime: String(formData.get('endTime')),
     until: String(formData.get('until') ?? '') || undefined,
     count: formData.get('count') ? Number(formData.get('count')) : undefined,
-    actorClerkId: session.userId!,
+    actorClerkId: session.userId,
   });
   revalidatePath(`/programs/${id}`);
 }
@@ -234,7 +228,7 @@ export async function saveCompeteBrandAction(formData: FormData): Promise<void> 
     .eq('id', programId);
   if (error) throw new Error(error.message);
   await audit({
-    actorId: session.userId!,
+    actorId: session.userId,
     action: 'program.compete-brand',
     target: `program:${programId}`,
     meta: { primary: brand.primary, accent: brand.accent, hasLogo: !!brand.logoUrl, hasHero: !!brand.heroUrl, tickets: ticketsOn && !!ticketsUrl },
@@ -256,7 +250,7 @@ export async function addSponsorAction(formData: FormData): Promise<void> {
   const { data: last } = await db.from('compete_sponsors').select('sort').eq('program_id', programId).order('sort', { ascending: false }).limit(1);
   const { error } = await db.from('compete_sponsors').insert({ program_id: programId, name, logo_url: logoUrl, sort: (last?.[0]?.sort ?? 0) + 1 });
   if (error) throw new Error(error.message);
-  await audit({ actorId: session.userId!, action: 'program.sponsor-add', target: `program:${programId}`, meta: { name } });
+  await audit({ actorId: session.userId, action: 'program.sponsor-add', target: `program:${programId}`, meta: { name } });
   revalidatePath(`/programs/${programId}`);
 }
 
@@ -266,6 +260,6 @@ export async function removeSponsorAction(formData: FormData): Promise<void> {
   const programId = Number(formData.get('programId'));
   const { error } = await supabaseAdmin().from('compete_sponsors').delete().eq('id', id).eq('program_id', programId);
   if (error) throw new Error(error.message);
-  await audit({ actorId: session.userId!, action: 'program.sponsor-remove', target: `program:${programId}`, meta: { sponsorId: id } });
+  await audit({ actorId: session.userId, action: 'program.sponsor-remove', target: `program:${programId}`, meta: { sponsorId: id } });
   revalidatePath(`/programs/${programId}`);
 }

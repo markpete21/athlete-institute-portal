@@ -1,14 +1,8 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
-import { getPortalSession } from '@/lib/auth';
+import { requireStaff } from '@/lib/auth';
 import { setPublicOpen, upsertAddon, upsertRate } from '@/lib/rentals/rates';
-
-async function requireStaff() {
-  const session = await getPortalSession();
-  if (!session.isStaff) throw new Error('Staff only.');
-  return session;
-}
 
 const centsOf = (v: FormDataEntryValue | null): number | null => {
   const s = String(v ?? '').trim();
@@ -27,7 +21,7 @@ export async function saveRateAction(formData: FormData): Promise<void> {
       full_day_cents: centsOf(formData.get('fullDay')),
       flat_cents: centsOf(formData.get('flat')),
     },
-    session.userId!,
+    session.userId,
   );
   revalidatePath('/rentals/settings');
 }
@@ -44,7 +38,7 @@ export async function saveAddonAction(formData: FormData): Promise<void> {
       default_price_cents: centsOf(formData.get('price')) ?? 0,
       active: formData.get('active') === 'on',
     },
-    session.userId!,
+    session.userId,
   );
   revalidatePath('/rentals/settings');
 }
@@ -55,7 +49,7 @@ export async function savePublicOpenAction(formData: FormData): Promise<void> {
     Number(formData.get('facilityId')),
     formData.get('publicOpen') === 'on',
     null, // weekly windows arrive with the self-serve booking page
-    session.userId!,
+    session.userId,
   );
   revalidatePath('/rentals/settings');
 }
@@ -70,7 +64,7 @@ export async function saveBusinessUnitAction(formData: FormData): Promise<void> 
       name: String(formData.get('name') ?? ''),
       active: idRaw ? formData.get('active') === 'on' : undefined,
     },
-    session.userId!,
+    session.userId,
   );
   revalidatePath('/rentals/settings');
 }
@@ -89,7 +83,7 @@ export async function saveBookingTypeAction(formData: FormData): Promise<void> {
       active: idRaw ? formData.get('active') === 'on' : undefined,
       sortOrder: String(formData.get('sortOrder') ?? '') !== '' ? Number(formData.get('sortOrder')) : undefined,
     },
-    session.userId!,
+    session.userId,
   );
   revalidatePath('/rentals/settings');
 }

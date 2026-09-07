@@ -6,17 +6,10 @@ import { audit } from '@ai/foundation';
 import { notify } from '@ai/foundation/notify';
 import { supabaseAdmin } from '@ai/foundation/supabase';
 import { mergeAccounts } from '@/lib/accounts/merge';
-import { getPortalSession, type PortalSession } from '@/lib/auth';
+import { requireStaff, requireStaffCapability } from '@/lib/auth';
 import { applyPlayPoints, ensureSeasonCredit, setCreditCapOverride } from '@/lib/credits';
 import { shareDependent } from '@/lib/family';
-import { profileCan } from '@/lib/staff/staff';
 import { updateTypeSettings } from '@/lib/type-settings';
-
-async function requireStaff(): Promise<PortalSession> {
-  const session = await getPortalSession();
-  if (!session.isStaff) throw new Error('Staff only.');
-  return session;
-}
 
 const back = (profileId: number) => revalidatePath(`/accounts/${profileId}`);
 
@@ -29,7 +22,7 @@ export async function setAccountStatusAction(formData: FormData): Promise<void> 
   const { error } = await supabaseAdmin().from('profiles').update({ status }).eq('id', profileId);
   if (error) throw new Error(`status change failed: ${error.message}`);
   await audit({
-    actorId: session.userId!,
+    actorId: session.userId,
     action: 'account.status-changed',
     target: `profile:${profileId}`,
     meta: { status },
@@ -47,7 +40,7 @@ export async function setStaffCreditCapAction(formData: FormData): Promise<void>
   await ensureSeasonCredit(profileId); // account row must exist to hold the override
   await setCreditCapOverride(profileId, capCents);
   await audit({
-    actorId: session.userId!,
+    actorId: session.userId,
     action: 'staff_credit.cap-overridden',
     target: `profile:${profileId}`,
     meta: { cap_cents: capCents },
@@ -64,7 +57,7 @@ export async function setDefaultCreditCapAction(formData: FormData): Promise<voi
     .from('portal_settings')
     .upsert({ key: 'staff_credit_default_cap_cents', value: String(capCents) }, { onConflict: 'key' });
   if (error) throw new Error(`default cap save failed: ${error.message}`);
-  await audit({ actorId: session.userId!, action: 'portal_settings.updated', target: 'portal_settings:staff_credit_default_cap_cents', meta: { cap_cents: capCents } });
+  await audit({ actorId: session.userId, action: 'portal_settings.updated', target: 'portal_settings:staff_credit_default_cap_cents', meta: { cap_cents: capCents } });
   revalidatePath('/accounts');
 }
 
@@ -85,7 +78,7 @@ export async function updateAccountSettingsAction(formData: FormData): Promise<v
     const areas = String(formData.get('scheduleAreas') ?? '').split(',').map((s) => s.trim()).filter(Boolean);
     await updateTypeSettings<'tenant'>(profileId, { scheduleAreas: areas });
   }
-  await audit({ actorId: session.userId!, action: 'account.settings-updated', target: `profile:${profileId}`, meta: { userType } });
+  await audit({ actorId: session.userId, action: 'account.settings-updated', target: `profile:${profileId}`, meta: { userType } });
   back(profileId);
 }
 
@@ -103,7 +96,7 @@ export async function adjustCreditAction(formData: FormData): Promise<void> {
     p_delta: deltaCents,
     p_reason: `staff:${reason}`,
     p_ref: `profile:${profileId}`,
-    p_created_by: session.userId!,
+    p_created_by: session.userId,
   });
   if (error) throw new Error(`credit adjust failed: ${error.message}`);
   back(profileId);
@@ -118,7 +111,7 @@ export async function adjustPointsAction(formData: FormData): Promise<void> {
   const reason = String(formData.get('reason') ?? '').trim();
   if (!familyId || !Number.isFinite(delta) || delta === 0) throw new Error('Enter a non-zero amount.');
   if (!reason) throw new Error('A reason is required.');
-  await applyPlayPoints(familyId, delta, `staff:${reason}`, session.userId!, `profile:${profileId}`);
+  await applyPlayPoints(familyId, delta, `staff:${reason}`, session.userId, `profile:${profileId}`);
   back(profileId);
 }
 
@@ -130,7 +123,7 @@ export async function adminShareDependentAction(formData: FormData): Promise<voi
   const targetEmail = String(formData.get('targetEmail') ?? '').trim();
   const { data: m } = await supabaseAdmin().from('family_members').select('family_id').eq('id', memberId).single();
   if (!m) throw new Error('Member not found.');
-  await shareDependent({ memberId, actorFamilyId: m.family_id, targetEmail, actorClerkId: session.userId! });
+  await shareDependent({ memberId, actorFamilyId: m.family_id, targetEmail, actorClerkId: session.userId });
   back(profileId);
 }
 
@@ -153,22 +146,19 @@ export async function resendClaimAction(formData: FormData): Promise<void> {
       ctaUrl: `${appUrl}/sign-up?claim=${p.claim_token}`,
     },
   });
-  await audit({ actorId: session.userId!, action: 'profile.claim-email-resent', target: `profile:${profileId}`, meta: { ok: res.ok } });
+  await audit({ actorId: session.userId, action: 'profile.claim-email-resent', target: `profile:${profileId}`, meta: { ok: res.ok } });
   back(profileId);
 }
 
 /** Merge another (duplicate) account INTO this one. */
 export async function mergeIntoThisAction(formData: FormData): Promise<void> {
-  const session = await requireStaff();
   // A merge re-points a whole household's PII + money history — gated by the
   // Module 5 sensitive-data capability (edit).
-  if (session.profileId && !(await profileCan(session.profileId, 'roster_sensitive', 'edit'))) {
-    throw new Error('You lack the sensitive-data capability required to merge accounts.');
-  }
+  const session = await requireStaffCapability('roster_sensitive', 'edit', 'You lack the sensitive-data capability required to merge accounts.');
   const targetProfileId = Number(formData.get('profileId'));
   const sourceProfileId = Number(formData.get('sourceProfileId'));
   if (!sourceProfileId) throw new Error('Pick the duplicate account to merge in.');
-  await mergeAccounts(sourceProfileId, targetProfileId, session.userId!);
+  await mergeAccounts(sourceProfileId, targetProfileId, session.userId);
   back(targetProfileId);
   redirect(`/accounts/${targetProfileId}?merged=${sourceProfileId}`);
 }

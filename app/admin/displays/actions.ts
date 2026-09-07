@@ -1,14 +1,8 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
-import { getPortalSession } from '@/lib/auth';
+import { requireStaff } from '@/lib/auth';
 import { createDisplay, deleteDisplay, upsertTemplate } from '@/lib/displays';
-
-async function requireStaff() {
-  const session = await getPortalSession();
-  if (!session.isStaff) throw new Error('Staff only.');
-  return session;
-}
 
 export async function saveTemplateAction(formData: FormData): Promise<void> {
   const session = await requireStaff();
@@ -26,7 +20,7 @@ export async function saveTemplateAction(formData: FormData): Promise<void> {
       show_upcoming: formData.get('showUpcoming') === 'on',
       slide_seconds: Math.max(3, Math.min(120, Number(formData.get('slideSeconds')) || 8)),
     },
-    session.userId!,
+    session.userId,
   );
   revalidatePath('/displays');
 }
@@ -42,13 +36,13 @@ export async function createDisplayAction(formData: FormData): Promise<void> {
     .filter(Boolean);
   await createDisplay(
     { name, templateId: templateRaw ? Number(templateRaw) : null, facilityIds },
-    session.userId!,
+    session.userId,
   );
   revalidatePath('/displays');
 }
 
 export async function deleteDisplayAction(formData: FormData): Promise<void> {
   const session = await requireStaff();
-  await deleteDisplay(Number(formData.get('displayId')), session.userId!);
+  await deleteDisplay(Number(formData.get('displayId')), session.userId);
   revalidatePath('/displays');
 }

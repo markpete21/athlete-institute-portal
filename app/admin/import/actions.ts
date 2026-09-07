@@ -1,14 +1,8 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
-import { getPortalSession } from '@/lib/auth';
+import { requireStaff } from '@/lib/auth';
 import { abandonImportJob, commitImportJob, createImportJob, resolveRow, sendClaimEmails } from '@/lib/import/playbook';
-
-async function requireStaff() {
-  const session = await getPortalSession();
-  if (!session.isStaff) throw new Error('Staff only.');
-  return session;
-}
 
 export async function uploadCsvAction(formData: FormData): Promise<void> {
   const session = await requireStaff();
@@ -16,7 +10,7 @@ export async function uploadCsvAction(formData: FormData): Promise<void> {
   if (!file || file.size === 0) throw new Error('Choose a CSV file first.');
   if (file.size > 10 * 1024 * 1024) throw new Error('CSV too large (10MB max).');
   const text = await file.text();
-  await createImportJob(file.name, text, session.userId!);
+  await createImportJob(file.name, text, session.userId);
   revalidatePath('/import');
 }
 
@@ -32,14 +26,14 @@ export async function resolveRowAction(formData: FormData): Promise<void> {
 export async function commitJobAction(formData: FormData): Promise<void> {
   const session = await requireStaff();
   const jobId = Number(formData.get('jobId'));
-  await commitImportJob(jobId, session.userId!);
+  await commitImportJob(jobId, session.userId);
   revalidatePath('/import');
 }
 
 export async function abandonJobAction(formData: FormData): Promise<void> {
   const session = await requireStaff();
   const jobId = Number(formData.get('jobId'));
-  await abandonImportJob(jobId, session.userId!);
+  await abandonImportJob(jobId, session.userId);
   revalidatePath('/import');
 }
 

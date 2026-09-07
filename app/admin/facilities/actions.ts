@@ -1,7 +1,7 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
-import { getPortalSession } from '@/lib/auth';
+import { requireStaff } from '@/lib/auth';
 import {
   createClosure,
   createFacility,
@@ -15,12 +15,6 @@ import {
 import { createLocation } from '@/lib/locations';
 import type { HoursWindow } from '@ai/foundation';
 
-async function requireStaff() {
-  const session = await getPortalSession();
-  if (!session.isStaff) throw new Error('Staff only.');
-  return session;
-}
-
 export async function createFacilityAction(formData: FormData): Promise<void> {
   const session = await requireStaff();
   const name = String(formData.get('name') ?? '').trim();
@@ -33,7 +27,7 @@ export async function createFacilityAction(formData: FormData): Promise<void> {
       parentId: parentRaw ? Number(parentRaw) : null,
       bookable: formData.get('bookable') === 'on',
     },
-    session.userId!,
+    session.userId,
   );
   revalidatePath('/facilities');
 }
@@ -48,7 +42,7 @@ export async function updateFacilityAction(formData: FormData): Promise<void> {
       label: String(formData.get('label') ?? '').trim() || null,
       bookable: formData.get('bookable') === 'on',
     },
-    session.userId!,
+    session.userId,
   );
   revalidatePath('/facilities');
 }
@@ -63,7 +57,7 @@ export async function updateHoursAction(formData: FormData): Promise<void> {
   const id = Number(formData.get('id'));
 
   if (formData.get('inherit') === 'on') {
-    await updateFacility(id, { hoursWindows: null }, session.userId!);
+    await updateFacility(id, { hoursWindows: null }, session.userId);
     revalidatePath('/facilities');
     return;
   }
@@ -74,7 +68,7 @@ export async function updateHoursAction(formData: FormData): Promise<void> {
     const close = String(formData.get(`close-${weekday}`) ?? '').trim();
     if (open && close) windows.push({ weekday, open, close });
   }
-  await updateFacility(id, { hoursWindows: windows }, session.userId!);
+  await updateFacility(id, { hoursWindows: windows }, session.userId);
   revalidatePath('/facilities');
 }
 
@@ -84,7 +78,7 @@ export async function updateLocationBindingAction(formData: FormData): Promise<v
   await updateFacility(
     Number(formData.get('id')),
     { locationId: raw ? Number(raw) : null },
-    session.userId!,
+    session.userId,
   );
   revalidatePath('/facilities');
 }
@@ -93,7 +87,7 @@ export async function createLocationAction(formData: FormData): Promise<void> {
   const session = await requireStaff();
   const name = String(formData.get('name') ?? '').trim();
   if (!name) throw new Error('Name is required.');
-  await createLocation({ name, city: String(formData.get('city') ?? '').trim() || null }, session.userId!);
+  await createLocation({ name, city: String(formData.get('city') ?? '').trim() || null }, session.userId);
   revalidatePath('/facilities');
 }
 
@@ -109,14 +103,14 @@ export async function createClosureAction(formData: FormData): Promise<void> {
       endsOn,
       reason: String(formData.get('reason') ?? '').trim() || null,
     },
-    session.userId!,
+    session.userId,
   );
   revalidatePath('/facilities');
 }
 
 export async function deleteClosureAction(formData: FormData): Promise<void> {
   const session = await requireStaff();
-  await deleteClosure(Number(formData.get('id')), session.userId!);
+  await deleteClosure(Number(formData.get('id')), session.userId);
   revalidatePath('/facilities');
 }
 
@@ -124,7 +118,7 @@ export async function moveFacilityAction(formData: FormData): Promise<void> {
   const session = await requireStaff();
   const id = Number(formData.get('id'));
   const parentRaw = String(formData.get('parentId') ?? '');
-  await moveFacility(id, parentRaw ? Number(parentRaw) : null, session.userId!);
+  await moveFacility(id, parentRaw ? Number(parentRaw) : null, session.userId);
   revalidatePath('/facilities');
 }
 
@@ -133,19 +127,19 @@ export async function reorderFacilityAction(formData: FormData): Promise<void> {
   await reorderFacility(
     Number(formData.get('id')),
     String(formData.get('direction')) === 'up' ? 'up' : 'down',
-    session.userId!,
+    session.userId,
   );
   revalidatePath('/facilities');
 }
 
 export async function softDeleteFacilityAction(formData: FormData): Promise<void> {
   const session = await requireStaff();
-  await softDeleteFacility(Number(formData.get('id')), session.userId!);
+  await softDeleteFacility(Number(formData.get('id')), session.userId);
   revalidatePath('/facilities');
 }
 
 export async function restoreFacilityAction(formData: FormData): Promise<void> {
   const session = await requireStaff();
-  await restoreFacility(Number(formData.get('id')), session.userId!);
+  await restoreFacility(Number(formData.get('id')), session.userId);
   revalidatePath('/facilities');
 }

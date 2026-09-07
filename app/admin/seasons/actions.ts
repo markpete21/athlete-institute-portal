@@ -1,14 +1,8 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
-import { getPortalSession } from '@/lib/auth';
+import { requireStaff } from '@/lib/auth';
 import { createSeason, setSeasonArchived, updateSeason } from '@/lib/seasons/seasons';
-
-async function requireStaff() {
-  const session = await getPortalSession();
-  if (!session.isStaff) throw new Error('Staff only.');
-  return session;
-}
 
 const dateOrNull = (v: FormDataEntryValue | null) => {
   const s = String(v ?? '').trim();
@@ -24,7 +18,7 @@ export async function createSeasonAction(formData: FormData): Promise<void> {
   if (!name || !key) throw new Error('Name is required.');
   await createSeason(
     { key, name, startsOn: dateOrNull(formData.get('startsOn')), endsOn: dateOrNull(formData.get('endsOn')) },
-    session.userId!,
+    session.userId,
   );
   revalidatePath('/seasons');
 }
@@ -38,13 +32,13 @@ export async function updateSeasonAction(formData: FormData): Promise<void> {
       startsOn: dateOrNull(formData.get('startsOn')),
       endsOn: dateOrNull(formData.get('endsOn')),
     },
-    session.userId!,
+    session.userId,
   );
   revalidatePath('/seasons');
 }
 
 export async function setSeasonArchivedAction(formData: FormData): Promise<void> {
   const session = await requireStaff();
-  await setSeasonArchived(Number(formData.get('id')), formData.get('archived') === 'true', session.userId!);
+  await setSeasonArchived(Number(formData.get('id')), formData.get('archived') === 'true', session.userId);
   revalidatePath('/seasons');
 }

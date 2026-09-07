@@ -1,20 +1,14 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
+import { cronRoute } from '@/lib/api/handlers';
 import { processConflictReminders } from '@/lib/conflicts';
 
 export const dynamic = 'force-dynamic';
 
 /**
- * Cron endpoint: sends due keep-both double-booking reminders (Module 2
- * Stage 3). Wire in Vercel as a scheduled job (e.g. hourly):
- *   vercel.json -> { "crons": [{ "path": "/api/cron/conflict-reminders", "schedule": "0 * * * *" }] }
- * Vercel sends Authorization: Bearer $CRON_SECRET when the env var is set.
+ * Cron: sends due keep-both double-booking reminders (Module 2 Stage 3).
+ * Scheduled in vercel.json; guarded by CRON_SECRET via cronRoute().
  */
-export async function GET(req: NextRequest) {
-  const secret = process.env.CRON_SECRET;
-  if (secret && req.headers.get('authorization') !== `Bearer ${secret}`) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
+export const GET = cronRoute(async () => {
   const operator = process.env.OPERATIONS_EMAIL ?? 'mark.peterson@athleteinstitute.ca';
-  const result = await processConflictReminders(operator);
-  return NextResponse.json(result);
-}
+  return NextResponse.json(await processConflictReminders(operator));
+});

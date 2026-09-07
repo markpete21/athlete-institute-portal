@@ -1,21 +1,15 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
-import { getPortalSession } from '@/lib/auth';
+import { requireStaff } from '@/lib/auth';
 import {
   addTryoutSession, cancelOffer, createClub, createTeam, saveEvaluation, sendOffer, setFlag, syncTryoutRoster,
   type Gender,
 } from '@/lib/club/club';
 
-async function requireStaff() {
-  const s = await getPortalSession();
-  if (!s.isStaff) throw new Error('Staff only.');
-  return s;
-}
-
 export async function createClubAction(formData: FormData): Promise<void> {
   const s = await requireStaff();
-  await createClub({ name: String(formData.get('name') ?? ''), sport: String(formData.get('sport') ?? '') || null }, s.userId!);
+  await createClub({ name: String(formData.get('name') ?? ''), sport: String(formData.get('sport') ?? '') || null }, s.userId);
   revalidatePath('/club');
 }
 
@@ -30,7 +24,7 @@ export async function createTeamAction(formData: FormData): Promise<void> {
     dobMin: String(formData.get('dobMin') ?? '') || null,
     dobMax: String(formData.get('dobMax') ?? '') || null,
     seasonFeeCents: Math.round(Number(formData.get('seasonFee') ?? 0) * 100) || 0,
-  }, s.userId!);
+  }, s.userId);
   revalidatePath(`/club/${clubId}`);
 }
 
@@ -44,13 +38,13 @@ export async function syncRosterAction(formData: FormData): Promise<void> {
 export async function addTryoutSessionAction(formData: FormData): Promise<void> {
   const s = await requireStaff();
   const clubId = Number(formData.get('clubId'));
-  await addTryoutSession({ clubId, programId: Number(formData.get('programId')), levelLabel: String(formData.get('levelLabel')), gender: String(formData.get('gender')) as Gender }, s.userId!);
+  await addTryoutSession({ clubId, programId: Number(formData.get('programId')), levelLabel: String(formData.get('levelLabel')), gender: String(formData.get('gender')) as Gender }, s.userId);
   revalidatePath(`/club/${clubId}`);
 }
 
 export async function flagAction(formData: FormData): Promise<void> {
   const s = await requireStaff();
-  await setFlag(Number(formData.get('playerId')), String(formData.get('flag')) as 'selected' | 'considering' | 'out', s.userId!, formData.get('teamId') ? Number(formData.get('teamId')) : null);
+  await setFlag(Number(formData.get('playerId')), String(formData.get('flag')) as 'selected' | 'considering' | 'out', s.userId, formData.get('teamId') ? Number(formData.get('teamId')) : null);
   revalidatePath(`/club/${formData.get('clubId')}`);
 }
 
@@ -69,12 +63,12 @@ export async function sendOfferAction(formData: FormData): Promise<void> {
     mode,
     depositCents: mode === 'deposit' && formData.get('depositAmount') ? Math.round(Number(formData.get('depositAmount')) * 100) : null,
     depositPct: mode === 'deposit' && formData.get('depositPct') ? Number(formData.get('depositPct')) : null,
-  }, s.userId!);
+  }, s.userId);
   revalidatePath(`/club/${formData.get('clubId')}`);
 }
 
 export async function cancelOfferAction(formData: FormData): Promise<void> {
   const s = await requireStaff();
-  await cancelOffer(Number(formData.get('offerId')), s.userId!);
+  await cancelOffer(Number(formData.get('offerId')), s.userId);
   revalidatePath(`/club/${formData.get('clubId')}`);
 }

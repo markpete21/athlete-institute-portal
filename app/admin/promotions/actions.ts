@@ -1,14 +1,8 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
-import { getPortalSession } from '@/lib/auth';
+import { requireStaff } from '@/lib/auth';
 import { closeContest, createChallenge, createContest, type ChallengeRule, type GameKey } from '@/lib/promotions/promotions';
-
-async function requireStaff() {
-  const s = await getPortalSession();
-  if (!s.isStaff) throw new Error('Staff only.');
-  return s;
-}
 
 export async function createContestAction(formData: FormData): Promise<void> {
   const s = await requireStaff();
@@ -20,13 +14,13 @@ export async function createContestAction(formData: FormData): Promise<void> {
     rewardTopN: Number(formData.get('topN') ?? 5),
     rewardPoints: Number(formData.get('points') ?? 2500),
     announce: formData.get('announce') === 'on',
-  }, s.userId!);
+  }, s.userId);
   revalidatePath('/promotions');
 }
 
 export async function closeContestAction(formData: FormData): Promise<void> {
   const s = await requireStaff();
-  await closeContest(Number(formData.get('contestId')), s.userId!);
+  await closeContest(Number(formData.get('contestId')), s.userId);
   revalidatePath('/promotions');
 }
 
@@ -43,6 +37,6 @@ export async function createChallengeAction(formData: FormData): Promise<void> {
     points: Number(formData.get('points') ?? 500),
     endsAt: formData.get('endsAt') ? new Date(String(formData.get('endsAt'))).toISOString() : null,
     announce: formData.get('announce') === 'on',
-  }, s.userId!);
+  }, s.userId);
   revalidatePath('/promotions');
 }
