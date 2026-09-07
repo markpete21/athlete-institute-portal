@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import { supabaseAdmin } from '@ai/foundation/supabase';
 import { getPortalSession } from '@/lib/auth';
-import { familyBadges, lifetimeEarned, seasonStreak, wheelConfig } from '@/lib/promotions/promotions';
+import { familyBadges, seasonStreak, wheelStatus, type WheelStatus } from '@/lib/promotions/promotions';
 import SportGame from './game';
 import SpinWheel from './wheel';
 
@@ -14,13 +14,11 @@ export default async function ArcadePage() {
   const now = new Date().toISOString();
   const { data: contests } = await db.from('contests').select('id, name, game_key, ends_at, reward_top_n, reward_points').eq('status', 'open').lte('starts_at', now).gte('ends_at', now).order('ends_at');
 
-  let wheel: { locked: boolean; needed: number } = { locked: true, needed: 0 };
+  let wheel: WheelStatus = { locked: true, needed: 0, spinsAvailable: 0, tiersReached: 0 };
   let streak = 0;
   let badges: Array<{ key: string; label: string; description: string | null }> = [];
   if (session.familyId) {
-    const [cfg, earned] = await Promise.all([wheelConfig(), lifetimeEarned(session.familyId)]);
-    wheel = { locked: earned < cfg.unlockLifetimePoints, needed: Math.max(0, cfg.unlockLifetimePoints - earned) };
-    [streak, badges] = await Promise.all([seasonStreak(session.familyId), familyBadges(session.familyId)]);
+    [wheel, streak, badges] = await Promise.all([wheelStatus(session.familyId), seasonStreak(session.familyId), familyBadges(session.familyId)]);
   }
 
   return (
@@ -54,7 +52,7 @@ export default async function ArcadePage() {
 
           <section className="flex flex-col gap-2">
             <h2 className="text-xl">Spin to win</h2>
-            <SpinWheel locked={wheel.locked} needed={wheel.needed} />
+            <SpinWheel locked={wheel.locked} needed={wheel.needed} spinsAvailable={wheel.spinsAvailable} />
           </section>
 
           {badges.length > 0 && (

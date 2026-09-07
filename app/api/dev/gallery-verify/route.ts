@@ -66,7 +66,7 @@ export async function GET() {
     record('video = streaming URL, never raw storage', !!videoItem.streamUrl && videoItem.streamUrl.includes('verify-stream-123') && !videoItem.streamUrl.includes('supabase'), videoItem.streamUrl ?? 'none');
 
     // 4. download = full-res original (plain object path, no transform)
-    const dl = await downloadUrls([photoId, photo2]);
+    const dl = await downloadUrls(galleryId, [photoId, photo2]);
     record('download = original signed URLs (multi-select)', dl.length === 2 && dl.every((d) => !d.url.includes('/render/image/')), `${dl.length} urls`);
 
     // 5. zip build from the originals

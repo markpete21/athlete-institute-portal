@@ -1,6 +1,6 @@
 import 'server-only';
 import { audit } from '@ai/foundation';
-import { supabaseAdmin } from '@ai/foundation/supabase';
+import { ok, supabaseAdmin } from '@ai/foundation/supabase';
 import { applyPlayPoints } from '@/lib/credits';
 import { fireTrigger } from '@/lib/comms/notifications';
 
@@ -47,35 +47,60 @@ export async function announceToActiveFamilies(title: string, message: string): 
   return sent;
 }
 
-/** Record a game score - enforced to the contest window; best score counts. */
-export async function recordScore(contestId: number, familyId: number, score: number): Promise<{ recorded: boolean; reason?: string }> {
+/** Minimum seconds between two score submissions from one family — a real game takes longer than this. */
+export const SCORE_MIN_INTERVAL_S = 8;
+
+/**
+ * Record a game score. Scores are client-reported (the game runs in the
+ * browser), so this is a plausibility filter rather than proof: window
+ * enforced, capped at the contest's max_score, rate-limited per family, and
+ * only the family's BEST score is kept (one row per family). Awards are still
+ * a staff decision (closeContest) so a suspicious board can be eyeballed first.
+ */
+export async function recordScore(contestId: number, familyId: number, score: number): Promise<{ recorded: boolean; best?: number; reason?: string }> {
   const db = supabaseAdmin();
-  const { data: contest } = await db.from('contests').select('starts_at, ends_at, status').eq('id', contestId).single();
+  const { data: contest } = await db.from('contests').select('starts_at, ends_at, status, max_score').eq('id', contestId).maybeSingle();
   if (!contest) return { recorded: false, reason: 'contest not found' };
   const now = Date.now();
   if (contest.status !== 'open' || now < Date.parse(contest.starts_at) || now > Date.parse(contest.ends_at)) {
     return { recorded: false, reason: 'outside contest window' };
   }
-  if (!Number.isInteger(score) || score < 0 || score > 1_000_000) return { recorded: false, reason: 'invalid score' };
-  const { error } = await db.from('contest_scores').insert({ contest_id: contestId, family_id: familyId, score });
+  if (!Number.isInteger(score) || score < 0 || score > contest.max_score) return { recorded: false, reason: 'invalid score' };
+
+  const { data: existing } = await db.from('contest_scores').select('id, score, attempts, updated_at').eq('contest_id', contestId).eq('family_id', familyId).maybeSingle();
+  if (existing && now - Date.parse(existing.updated_at) < SCORE_MIN_INTERVAL_S * 1000) {
+    return { recorded: false, best: existing.score, reason: 'too fast — finish a game before submitting again' };
+  }
+  const best = Math.max(existing?.score ?? 0, score);
+  const { error } = await db.from('contest_scores').upsert(
+    { contest_id: contestId, family_id: familyId, score: best, attempts: (existing?.attempts ?? 0) + 1, updated_at: new Date(now).toISOString() },
+    { onConflict: 'contest_id,family_id' },
+  );
   if (error) return { recorded: false, reason: error.message };
-  return { recorded: true };
+  return { recorded: true, best };
 }
 
-/** Scoreboard: each family's BEST score, ranked. (Participant-facing during the window.) */
-export async function scoreboard(contestId: number): Promise<Array<{ familyId: number; best: number }>> {
-  const { data } = await supabaseAdmin().from('contest_scores').select('family_id, score').eq('contest_id', contestId);
-  const best = new Map<number, number>();
-  for (const s of data ?? []) best.set(s.family_id, Math.max(best.get(s.family_id) ?? 0, s.score));
-  return [...best.entries()].map(([familyId, bestScore]) => ({ familyId, best: bestScore })).sort((a, b) => b.best - a.best);
+/** Scoreboard: each family's best score, ranked (one row per family since 0065). */
+export async function scoreboard(contestId: number): Promise<Array<{ familyId: number; best: number; attempts: number }>> {
+  const { data } = await supabaseAdmin().from('contest_scores').select('family_id, score, attempts').eq('contest_id', contestId).order('score', { ascending: false });
+  return (data ?? []).map((s) => ({ familyId: s.family_id, best: s.score, attempts: s.attempts ?? 1 }));
 }
 
 /** Close a contest: top-N families auto-awarded via the ledger + notified. */
 export async function closeContest(contestId: number, actorClerkId: string): Promise<{ winners: number[] }> {
   const db = supabaseAdmin();
-  const { data: contest } = await db.from('contests').select('name, reward_top_n, reward_points, status').eq('id', contestId).single();
+  const { data: contest } = await db.from('contests').select('name, reward_top_n, reward_points, status').eq('id', contestId).maybeSingle();
   if (!contest) throw new Error('Contest not found.');
   if (contest.status === 'awarded') throw new Error('Contest already awarded.');
+
+  // Claim the award atomically: whoever flips open/closed → awarded pays out.
+  // A second click (or a parallel request) finds no row and stops here, so
+  // winners can never be credited twice.
+  const claimed = ok(
+    await db.from('contests').update({ status: 'awarded' }).eq('id', contestId).neq('status', 'awarded').select('id'),
+    'contest.award',
+  );
+  if (!claimed?.length) throw new Error('Contest already awarded.');
 
   const board = await scoreboard(contestId);
   const winners = board.slice(0, contest.reward_top_n).map((b) => b.familyId);
@@ -87,7 +112,6 @@ export async function closeContest(contestId: number, actorClerkId: string): Pro
       if (prof?.email) await fireTrigger('promo.winner', { email: prof.email }, { points: contest.reward_points, message: `You placed in the top ${contest.reward_top_n} of ${contest.name}!` });
     }
   }
-  await db.from('contests').update({ status: 'awarded' }).eq('id', contestId);
   await audit({ actorId: actorClerkId, action: 'contest.awarded', target: `contest:${contestId}`, meta: { winners: winners.length, points: contest.reward_points } });
   return { winners };
 }
@@ -101,24 +125,72 @@ export async function wheelConfig(): Promise<{ prizes: WheelPrize[]; unlockLifet
   return { prizes: (data?.prizes ?? []) as WheelPrize[], unlockLifetimePoints: data?.unlock_lifetime_points ?? 1000 };
 }
 
-/** Lifetime points EARNED (positive ledger entries) - the wheel unlock metric. */
+/**
+ * Lifetime points EARNED — the wheel unlock metric. Positive ledger entries
+ * excluding the wheel's own prizes, so a spin can never fund the next spin.
+ */
 export async function lifetimeEarned(familyId: number): Promise<number> {
-  const { data } = await supabaseAdmin().from('play_points_ledger').select('delta_points').eq('family_id', familyId).gt('delta_points', 0);
+  const { data } = await supabaseAdmin()
+    .from('play_points_ledger')
+    .select('delta_points')
+    .eq('family_id', familyId)
+    .gt('delta_points', 0)
+    .not('reason', 'like', 'wheel:%');
   return (data ?? []).reduce((a, l) => a + l.delta_points, 0);
+}
+
+export interface WheelStatus {
+  /** No spin available right now. */
+  locked: boolean;
+  /** Lifetime points still needed for the next spin. */
+  needed: number;
+  /** Milestone spins earned but not yet used. */
+  spinsAvailable: number;
+  /** Highest tier already reached (tier = floor(earned / unlock)). */
+  tiersReached: number;
+}
+
+/**
+ * Spins are entitlements: every `unlockLifetimePoints` of lifetime earning
+ * grants ONE milestone spin (tier 1 at 1000, tier 2 at 2000, …). Available =
+ * tiers reached − milestone spins already taken.
+ */
+export async function wheelStatus(familyId: number): Promise<WheelStatus> {
+  const db = supabaseAdmin();
+  const [cfg, earned, { count }] = await Promise.all([
+    wheelConfig(),
+    lifetimeEarned(familyId),
+    db.from('wheel_spins').select('id', { count: 'exact', head: true }).eq('family_id', familyId).eq('source', 'milestone'),
+  ]);
+  const unlock = Math.max(1, cfg.unlockLifetimePoints);
+  const tiersReached = Math.floor(earned / unlock);
+  const used = count ?? 0;
+  const spinsAvailable = Math.max(0, tiersReached - used);
+  const nextTier = spinsAvailable > 0 ? tiersReached : used + 1;
+  return { locked: spinsAvailable === 0, needed: Math.max(0, nextTier * unlock - earned), spinsAvailable, tiersReached };
 }
 
 /**
  * Spin the wheel: weighted random prize, logged, points credited via the M19
- * ledger. Unlocked at the configured lifetime-earned milestone (or via a
- * contest/grant source that bypasses the check). rng injectable for tests.
+ * ledger. A milestone spin consumes one entitlement (see wheelStatus); the
+ * spin row is written BEFORE the credit under a unique (family, tier) index,
+ * so two concurrent spins of the same tier cannot both pay. `contest`/`grant`
+ * sources are staff-initiated and bypass the entitlement. rng injectable.
  */
-export async function spinWheel(familyId: number, opts: { source?: 'milestone' | 'contest' | 'grant'; rng?: () => number } = {}): Promise<{ prize: WheelPrize } | { locked: true; needed: number }> {
+export async function spinWheel(
+  familyId: number,
+  opts: { source?: 'milestone' | 'contest' | 'grant'; rng?: () => number } = {},
+): Promise<{ prize: WheelPrize; spinsLeft: number } | { locked: true; needed: number }> {
   const db = supabaseAdmin();
   const cfg = await wheelConfig();
   const source = opts.source ?? 'milestone';
+  let tier: number | null = null;
+  let spinsLeft = 0;
   if (source === 'milestone') {
-    const earned = await lifetimeEarned(familyId);
-    if (earned < cfg.unlockLifetimePoints) return { locked: true, needed: cfg.unlockLifetimePoints - earned };
+    const status = await wheelStatus(familyId);
+    if (status.locked) return { locked: true, needed: status.needed };
+    tier = status.tiersReached - status.spinsAvailable + 1; // the lowest unused tier
+    spinsLeft = status.spinsAvailable - 1;
   }
 
   const totalWeight = cfg.prizes.reduce((a, p) => a + p.weight, 0);
@@ -129,10 +201,14 @@ export async function spinWheel(familyId: number, opts: { source?: 'milestone' |
     if (roll <= 0) { prize = p; break; }
   }
 
-  await db.from('wheel_spins').insert({ family_id: familyId, prize_label: prize.label, points: prize.points, source });
-  if (prize.points > 0) await applyPlayPoints(familyId, prize.points, `wheel: ${prize.label}`, 'system:promotions');
-  await audit({ actorId: 'system:promotions', action: 'wheel.spun', target: `family:${familyId}`, meta: { prize: prize.label, source } });
-  return { prize };
+  const { error } = await db.from('wheel_spins').insert({ family_id: familyId, prize_label: prize.label, points: prize.points, source, tier });
+  if (error) {
+    if (error.code === '23505') return { locked: true, needed: cfg.unlockLifetimePoints }; // that tier was just spent by a parallel request
+    throw new Error(`wheel spin failed: ${error.message}`);
+  }
+  if (prize.points > 0) await applyPlayPoints(familyId, prize.points, `wheel: ${prize.label}`, 'system:promotions', tier !== null ? `wheel:${familyId}:${tier}` : undefined);
+  await audit({ actorId: 'system:promotions', action: 'wheel.spun', target: `family:${familyId}`, meta: { prize: prize.label, source, tier } });
+  return { prize, spinsLeft };
 }
 
 // --- challenges ----------------------------------------------------------------------
@@ -166,8 +242,8 @@ export async function recordChallengeAction(challengeId: number, familyId: numbe
   const { data: existing } = await db.from('challenge_progress').select('id, actions, awarded').eq('challenge_id', challengeId).eq('family_id', familyId).maybeSingle();
   if (existing?.awarded) return { awarded: false, reason: 'already awarded' };
   const actions = (existing?.actions ?? 0) + 1;
-  if (existing) await db.from('challenge_progress').update({ actions }).eq('id', existing.id);
-  else await db.from('challenge_progress').insert({ challenge_id: challengeId, family_id: familyId, actions });
+  if (existing) ok(await db.from('challenge_progress').update({ actions }).eq('id', existing.id), 'challenge.progress');
+  else ok(await db.from('challenge_progress').insert({ challenge_id: challengeId, family_id: familyId, actions }), 'challenge.progress');
 
   const rule = (ch.rule ?? {}) as ChallengeRule;
   let complete = false;
@@ -183,7 +259,13 @@ export async function recordChallengeAction(challengeId: number, familyId: numbe
     complete = true;
   }
 
-  await db.from('challenge_progress').update({ awarded: true, completed_at: new Date().toISOString() }).eq('challenge_id', challengeId).eq('family_id', familyId);
+  // Flip awarded with a precondition so a concurrent duplicate cannot pay twice.
+  const claimed = ok(
+    await db.from('challenge_progress').update({ awarded: true, completed_at: new Date().toISOString() })
+      .eq('challenge_id', challengeId).eq('family_id', familyId).eq('awarded', false).select('id'),
+    'challenge.award',
+  );
+  if (!claimed?.length) return { awarded: false, reason: 'already awarded' };
   await applyPlayPoints(familyId, ch.points, `challenge: ${ch.name}`, 'system:promotions', `challenge:${challengeId}`);
   return { awarded: true };
 }

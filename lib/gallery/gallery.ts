@@ -153,16 +153,26 @@ export async function browseGallery(galleryId: number): Promise<MediaBrowseItem[
   return out;
 }
 
-/** Explicit download: full-res original signed URLs (single or multi-select). */
-export async function downloadUrls(mediaIds: number[]): Promise<Array<{ id: number; name: string; url: string }>> {
+/**
+ * Explicit download: full-res original signed URLs (single or multi-select).
+ * Scoped to ONE gallery — the caller's enrollment check covers `galleryId`,
+ * so media ids from any other gallery are silently dropped here rather than
+ * served.
+ */
+export async function downloadUrls(galleryId: number, mediaIds: number[]): Promise<Array<{ id: number; name: string; url: string }>> {
+  const ids = [...new Set(mediaIds.filter((n) => Number.isInteger(n) && n > 0))];
+  if (ids.length === 0) return [];
   const db = supabaseAdmin();
-  const { data: media } = await db.from('gallery_media').select('id, kind, storage_path').in('id', mediaIds).eq('kind', 'photo');
-  const out: Array<{ id: number; name: string; url: string }> = [];
-  for (const m of media ?? []) {
-    if (!m.storage_path) continue;
-    out.push({ id: m.id, name: m.storage_path.split('/').pop()!, url: await getSignedUrl(BUCKET, m.storage_path, 900) });
-  }
-  return out;
+  const { data: media, error } = await db
+    .from('gallery_media')
+    .select('id, kind, storage_path')
+    .eq('gallery_id', galleryId)
+    .in('id', ids)
+    .eq('kind', 'photo');
+  if (error) throw new Error(`gallery media read failed: ${error.message}`);
+  const withPath = (media ?? []).filter((m): m is typeof m & { storage_path: string } => !!m.storage_path);
+  const urls = await Promise.all(withPath.map((m) => getSignedUrl(BUCKET, m.storage_path, 900)));
+  return withPath.map((m, i) => ({ id: m.id, name: m.storage_path.split('/').pop() ?? `photo-${m.id}`, url: urls[i] }));
 }
 
 // --- lifecycle archiving ------------------------------------------------------

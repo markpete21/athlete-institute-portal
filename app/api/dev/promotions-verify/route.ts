@@ -32,17 +32,25 @@ export async function GET() {
     // 1. contest: window enforcement + best-score board + top-N award
     contestId = await createContest({ name: 'Verify Hoops', gameKey: 'basketball', startsAt: new Date(Date.now() - 3_600_000).toISOString(), endsAt: new Date(Date.now() + 3_600_000).toISOString(), rewardTopN: 2, rewardPoints: 1000 }, 'system:verify');
     await recordScore(contestId, f1, 50);
+    const tooFast = await recordScore(contestId, f1, 80); // rate-limited: same family within the interval
+    // Back-date the first submission so the best-score upsert path is exercised.
+    await db.from('contest_scores').update({ updated_at: new Date(Date.now() - 60_000).toISOString() }).eq('contest_id', contestId).eq('family_id', f1);
     await recordScore(contestId, f1, 80); // best counts
     await recordScore(contestId, f2, 70);
     await recordScore(contestId, f3, 10);
     const bad = await recordScore(contestId, f1, -5 as unknown as number);
+    const implausible = await recordScore(contestId, f2, 100_000);
     const board = await scoreboard(contestId);
-    record('scores: best-per-family board, invalid rejected', board.length === 3 && board[0].familyId === f1 && board[0].best === 80 && !bad.recorded, JSON.stringify(board.slice(0, 2)));
+    record('scores: rate-limited, best-per-family board, invalid + implausible rejected',
+      !tooFast.recorded && board.length === 3 && board[0].familyId === f1 && board[0].best === 80 && !bad.recorded && !implausible.recorded,
+      JSON.stringify(board.slice(0, 2)));
 
     const closed = await closeContest(contestId, 'system:verify');
+    let doubleAward = false;
+    try { await closeContest(contestId, 'system:verify'); } catch { doubleAward = true; }
     const b1 = (await db.from('families').select('play_points_balance').eq('id', f1).single()).data!.play_points_balance;
     const b3 = (await db.from('families').select('play_points_balance').eq('id', f3).single()).data!.play_points_balance;
-    record('top-N auto-award (top 2 of 3 win 1000)', closed.winners.length === 2 && b1 === 1000 && b3 === 0, `winners ${closed.winners.length}, f1=${b1}, f3=${b3}`);
+    record('top-N auto-award (top 2 of 3 win 1000), second close refused', closed.winners.length === 2 && b1 === 1000 && b3 === 0 && doubleAward, `winners ${closed.winners.length}, f1=${b1}, f3=${b3}`);
 
     // window enforcement after close
     const late = await recordScore(contestId, f2, 999);
@@ -57,7 +65,8 @@ export async function GET() {
     const afterSpin = (await db.from('families').select('play_points_balance').eq('id', f1).single()).data!.play_points_balance;
     record('wheel spin: rng->prize + points credited + logged', 'prize' in forced && forced.prize.label === cfg.prizes[0].label && afterSpin === 1000 + cfg.prizes[0].points, `${'prize' in forced ? forced.prize.label : ''}, bal ${afterSpin}`);
     const { count: spins } = await db.from('wheel_spins').select('id', { count: 'exact', head: true }).eq('family_id', f1);
-    record('spin logged', (spins ?? 0) === 1, `${spins}`);
+    const secondSpin = await spinWheel(f1, { rng: () => 0 });
+    record('spin logged; the entitlement is consumed (second spin locked)', (spins ?? 0) === 1 && 'locked' in secondSpin, `${spins} / ${JSON.stringify(secondSpin)}`);
 
     // 3. challenge: first_n caps winners
     const firstN = await createChallenge({ name: 'First 2 win', kind: 'first_n', rule: { n: 2 }, points: 300 }, 'system:verify');

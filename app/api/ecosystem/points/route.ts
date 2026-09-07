@@ -61,12 +61,33 @@ export const POST = ecosystem(async (req) => {
     return jsonError('points must be a positive integer', 400);
   }
 
+  if (reason.length > 200) return jsonError('reason too long (200 chars max)', 400);
+  const ref = typeof body.ref === 'string' && body.ref.trim() ? body.ref.trim().slice(0, 120) : null;
+
   const familyId = await familyForClerkUser(clerkUserId);
   if (!familyId) return jsonError('No household for that user', 404);
 
+  // Idempotent on `ref`: a retried request (network blip, at-least-once
+  // queue) for the same household + ref returns the current balance instead
+  // of crediting twice. Callers should always send a stable ref per event.
+  if (ref) {
+    const { data: dup } = await supabaseAdmin()
+      .from('play_points_ledger')
+      .select('id')
+      .eq('family_id', familyId)
+      .eq('ref', ref)
+      .like('created_by', 'ecosystem:%')
+      .limit(1)
+      .maybeSingle();
+    if (dup) {
+      const { data: fam } = await supabaseAdmin().from('families').select('play_points_balance').eq('id', familyId).maybeSingle();
+      return NextResponse.json({ familyId, balance: fam?.play_points_balance ?? 0, duplicate: true });
+    }
+  }
+
   try {
     const delta = action === 'redeem' ? -points : points;
-    const balance = await applyPlayPoints(familyId, delta, `ecosystem: ${reason}`, `ecosystem:${reason.slice(0, 40)}`, body.ref);
+    const balance = await applyPlayPoints(familyId, delta, `ecosystem: ${reason}`, `ecosystem:${reason.slice(0, 40)}`, ref ?? undefined);
     return NextResponse.json({ familyId, balance });
   } catch (err) {
     // Insufficient balance surfaces as a 409 the caller can show the user.
