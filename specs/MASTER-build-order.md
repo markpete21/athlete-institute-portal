@@ -39,6 +39,7 @@ Module 19 Play Points & Referrals ───► M1 ledger + pricing fn
 Module 20 Promotions & Engagement ───► M19 + M13
 Module 21 AI Assistant Platform ─────► reads catalog/account/admin data (built after data exists)
 Module 22 AI Enhancements ───────────► enhances M4/6/13/14/16/17 (after those work)
+Module 23 Brand Sites ───────────────► M0 brands/hosts + M4 programs + M6 Compete + M14 reports + M17 gallery
 ```
 
 ---
@@ -95,6 +96,11 @@ Then the program-type front-ends (each extends M4; competitive ones plug into M6
 22. **Module 21 — AI Assistant Platform ("Assist").** Shared grounded-retrieval core; public assistant first, then customer concierge + admin copilot (read-only first).
 23. **Module 22 — AI Enhancements.** Ambient AI folded into home modules: auto-draft descriptions (M4), AI scheduling + roster gen (M6), auto-galleries + auto-highlights (M17 — highlights likely via a **third-party sports-video app** fed by M6 scoreboard timestamps), pricing intelligence (M14), AI-timed nudges (M13/16).
 
+### PHASE 7 — Brand Websites (Compete built into each brand's own site)
+24. **Module 23 — Brand Sites.** Each top-level brand (ALL CAN first, at `allcansport.ca`) gets its own root-domain website served from this repo as a fourth host-routed tree beside play/admin/compete. Compete pages are built in (shared components, brand-filtered), program pages update live from M4 data and register/pay on the brand domain, Clerk satellite domains give full sign-in per domain, and staff run each site from admin with a block-based page builder, mega-menu nav editor, draft/publish + launch switch, scoped Site Editor permissions, and a per-site dashboard (Vercel Web Analytics, M14 registrations/revenue by brand, content status, Compete activity). `compete.athleteinstitute.ca` stays as the cross-brand index with canonicals pointing at brand sites; emails and TV displays link to the brand site; Live/Tickets/Gear link out only. *(Reads M0 brands/hosts, M4, M6/7/9, M14, M17. The ALL CAN theme pack waits for the finalised ALL CAN brand system.)*
+
+**Gate:** ALL CAN is live on its domain with standings, programs, registration, SSO and the admin dashboard working; a second brand can be launched on the shared theme without code changes beyond its theme pack.
+
 ---
 
 ## Notes for the Builder
@@ -136,3 +142,4 @@ Then the program-type front-ends (each extends M4; competitive ones plug into M6
 | 20 | Promotions & Engagement | `promotions-engagement-module-prompt.md` |
 | 21 | AI Assistant Platform | `ai-assistant-platform-module-prompt.md` |
 | 22 | AI Enhancements | `ai-enhancements-module-prompt.md` |
+| 23 | Brand Sites (Compete built into each brand's website) | `brand-sites-module-prompt.md` |
