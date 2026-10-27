@@ -49,7 +49,8 @@ Implement the brand as the Module 23 **theme pack** `packages/foundation/src/the
 
 ```
 /                                   Home
-/locations                          Finder: every location grouped by city, with status; request-a-location form
+/locations                          Finder: every location grouped by city, with status; request a location or host a program
+/my-teams                           Signed in: teams you follow, their next games, recent results, notification settings
 /[location]                         Location hub, e.g. /toronto-midtown, /orangeville
 /[location]/[sport]                 Sport at a location, e.g. /toronto-midtown/basketball
 /[location]/[sport]/[program]       Program page (later, with registration), e.g. /toronto-midtown/basketball/league
@@ -74,9 +75,11 @@ Location slugs are unique site-wide. Toronto areas are separate locations with a
 
 Desktop header, left to right: **shield** (links home) · **Locations ▾ · Sports ▾ · Scores & Standings ▾ · Families ▾** · Sign in · **Ask ALL CAN** (outline pill).
 
+**Signed in (desktop):** a round white chip with the person's initials replaces the Sign in link, in the same place, left of Ask ALL CAN. Clicking it opens a white dropdown under the header: name and email, then **My teams and schedule** (`/my-teams`), **My account on Play** (play.athleteinstitute.ca/account), **Site editor** (only for people with a Site Editor or admin role on this site), and **Sign out**. Escape or a click outside closes it.
+
 | Root | Type | Mega menu columns |
 |---|---|---|
-| Locations | folder | **Browse:** All locations, Request a location. **Toronto:** Toronto Midtown · De La Salle College. **Orangeville:** Orangeville · Athlete Institute. Featured: the newest location. |
+| Locations | folder | **Browse:** All locations, Request a location, Host a program. **Toronto:** Toronto Midtown · De La Salle College. **Orangeville:** Orangeville · Athlete Institute. Featured: the newest location. |
 | Sports | folder | **Basketball:** League, Skills, Circuit. **Volleyball:** League, Skills (soon). **Soccer:** League, Skills (soon). **Flag Football:** League (soon). Featured: Basketball. |
 | Scores & Standings | folder | **Compete:** Scores and schedule, Standings. **Teams and players:** Teams, Players. Featured: this week's games. |
 | Training | page | Hidden from the header for now. The page stays live, linked from Sports → Basketball → Skills. |
@@ -86,9 +89,9 @@ Desktop header, left to right: **shield** (links home) · **Locations ▾ · Spo
 
 The menu is the Module 23 `site_nav_items` tree: root → folder → folder → page/link at most. In the mega panel, a root folder's child folders become columns; loose pages form a "Browse" column; a featured slot shows one promo with its line. Opens on hover with a pointer and on click or Enter for keyboard; Escape closes; focus returns to the trigger.
 
-Phones: black bar with Menu (hamburger + word) on the left and the shield centred. Menu opens the white left drawer. At the top, two side-by-side buttons: **Ask ALL CAN** (filled Ink) and **Sign in** (outline). Below them, root items as large rows and folders as accordions with their columns as subheads.
+Phones: black bar with Menu (hamburger + word) on the left and the shield centred. Menu opens the white left drawer. At the top, two side-by-side buttons: **Ask ALL CAN** (filled Ink) and **Sign in** (outline). When signed in, the Sign in button becomes a profile button (initials and first name); tapping it opens the same account links as the desktop dropdown in place, under the two buttons. The phone header never shows a profile icon; it stays Menu and logo only. Below them, root items as large rows and folders as accordions with their columns as subheads.
 
-Footer (black): ALL CAN Sport horizontal logo and "Operated by Athlete Institute." on the left; two columns on the right (ALL CAN Sport links; Families links; then Watch, Tickets and Shop link-outs); legal line in micro caps with the photo credit.
+Footer (black): ALL CAN Sport horizontal logo (max width 336px) and "Operated by Athlete Institute." on the left; two columns on the right (ALL CAN Sport links; Families links; then Watch, Tickets and Shop link-outs); legal line in micro caps with the photo credit.
 
 ---
 
@@ -103,7 +106,11 @@ Footer (black): ALL CAN Sport horizontal logo and "Operated by Athlete Institute
 6. **Families**: Parent guide, Financial assistance, Ask ALL CAN.
 
 ### 4.2 Locations finder
-Grouped by city, then location rows with venue, address, sports and status. A **Request a location** form: area or city, sport, email, consent checkbox. Requests feed the dashboard and a `notify()` list.
+Grouped by city, then location rows with venue, address, sports and status. Then one section, **Request a location · Host a program** ("Bring ALL CAN to your area."):
+- **Left:** a short line for each audience, then **Hosting a program** as a fact block: what the host provides (gym time, a suitable court), what ALL CAN provides (coaching, program plan, registration, scheduling), sports, insurance, rental or revenue terms, and the next step (a call and a site visit). Terms are `[TBC]` until confirmed.
+- **Right:** one form with a choice at the top: **Request ALL CAN near me** (families and players) or **Host a program** (schools, community centres, facilities). Shared fields: area or city, sport (or "More than one"), name, email, consent. Host adds organization, role, facility type, facility address, courts or fields available, when the space is available, and an optional phone. The consent line and submit label change with the choice ("Send request" / "Send hosting enquiry").
+- `/locations#host` (and the menu's Host a program link) opens the section with Host selected.
+- Requests feed a `notify()` list and the dashboard. Hosting enquiries also go to the operations contact as a lead with the facility details.
 
 ### 4.3 Location hub (`/toronto-midtown`)
 Page head with status. Sections: **Venue** (name, address, parking, arrival, contact, local social link) · **Sports here** (each sport offered, plus the others as "not offered here yet") · **Season calendar** (registration opens, placement, jerseys, first session, last session) · **Coaches** (names and roles from `program_staff`, screening statement) · **Scores** at this location (Compete, filtered).
@@ -152,7 +159,8 @@ Everything here reuses Module 23 §3.2: shared Compete components, `brandKey` fi
 - **Teams** (`/teams`): location and division filters; hairline rows with name, location, record, coach. **Team page**: record in the lede, **Follow this team**, roster grid, schedule and results.
 - **Players** (`/players`): search by display name, filters for division and team; portrait grid (panel-coloured 4:5 tiles, initials when there's no consented portrait, jersey number top right). Only players with guardian permission appear; masked players show as "Team member" on rosters and never get a profile.
 - **Player profile**: portrait, number, team, division, location, a short player-approved introduction; stats only where the division records them (`statsEnabled`).
-- **Follow this team**: signed-in families (Clerk satellite on allcansport.ca) follow a team; schedule changes, postponements and final scores go out through `notify()` using the family's channel preferences. Store follows in a new `team_follows (profile_id, team_id)` table.
+- **My teams** (`/my-teams`, signed in): followed teams as rows, their next games and recent results, and notification settings with a link to change channels on Play. Signed out, it asks the visitor to sign in.
+- **Follow this team**: signed-out visitors are asked to sign in first. Signed-in families (Clerk satellite on allcansport.ca) follow a team; schedule changes, postponements and final scores go out through `notify()` using the family's channel preferences. Store follows in a new `team_follows (profile_id, team_id)` table.
 - Privacy is unchanged from Compete: no birth dates, schools, contact details or private evaluations on any public page.
 
 ---
