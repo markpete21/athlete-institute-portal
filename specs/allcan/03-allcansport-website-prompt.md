@@ -72,15 +72,15 @@ Location slugs are unique site-wide. Toronto areas are separate locations with a
 
 ## 3. Navigation
 
-Desktop header, left to right: **shield** (links home) · **Locations ▾ · Sports ▾ · Scores & Standings ▾ · Training · Stories · Families ▾ · Shop** · Sign in · **Ask ALL CAN** (outline pill).
+Desktop header, left to right: **shield** (links home) · **Locations ▾ · Sports ▾ · Scores & Standings ▾ · Families ▾ · Shop** · Sign in · **Ask ALL CAN** (outline pill).
 
 | Root | Type | Mega menu columns |
 |---|---|---|
 | Locations | folder | **Browse:** All locations, Request a location. **Toronto:** Toronto Midtown · De La Salle College. **Orangeville:** Orangeville · Athlete Institute. Featured: the newest location. |
 | Sports | folder | **Basketball:** League, Skills, Circuit. **Volleyball:** League, Skills (soon). **Soccer:** League, Skills (soon). **Flag Football:** League (soon). Featured: Basketball. |
 | Scores & Standings | folder | **Compete:** Scores and schedule, Standings. **Teams and players:** Teams, Players. Featured: this week's games. |
-| Training | page | – |
-| Stories | page | – |
+| Training | page | Hidden from the header for now. The page stays live, linked from Sports → Basketball → Skills. |
+| Stories | page | Hidden from the header for now. The page stays live, linked from the footer. |
 | Families | folder | Parent guide, Financial assistance, About ALL CAN Sport, Contact. Featured: Parent guide. |
 | Shop | link | gear.athleteinstitute.ca, new tab |
 
