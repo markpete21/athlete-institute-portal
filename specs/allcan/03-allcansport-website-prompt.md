@@ -86,7 +86,7 @@ Desktop header, left to right: **shield** (links home) · **Locations ▾ · Spo
 
 The menu is the Module 23 `site_nav_items` tree: root → folder → folder → page/link at most. In the mega panel, a root folder's child folders become columns; loose pages form a "Browse" column; a featured slot shows one promo with its line. Opens on hover with a pointer and on click or Enter for keyboard; Escape closes; focus returns to the trigger.
 
-Phones: black bar with Menu (hamburger + word) on the left and the shield centred. Menu opens the white left drawer: root items as large rows, folders as accordions with their columns as subheads, then Ask ALL CAN and Sign in.
+Phones: black bar with Menu (hamburger + word) on the left and the shield centred. Menu opens the white left drawer. At the top, two side-by-side buttons: **Ask ALL CAN** (filled Ink) and **Sign in** (outline). Below them, root items as large rows and folders as accordions with their columns as subheads.
 
 Footer (black): ALL CAN Sport horizontal logo and "Operated by Athlete Institute." on the left; two columns on the right (ALL CAN Sport links; Families links; then Watch, Tickets and Shop link-outs); legal line in micro caps with the photo credit.
 
