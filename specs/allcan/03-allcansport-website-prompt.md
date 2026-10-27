@@ -17,6 +17,7 @@
 | Header | **Mega menu on desktop**, in brand style (hairline columns, white panel, no cards, no shadows). Phones keep the brand header: Menu left, logo centred, white left drawer. |
 | Logos | **ALL CAN Sport shield** in the header. **ALL CAN Sport horizontal** in the footer. Circuit lockup on Circuit pages only. |
 | Fonts | **System stack, no hosted fonts.** Apple devices render SF Pro natively; others fall back to Helvetica Neue, Helvetica, Arial. Do not serve the SF Pro or Helvetica Neue files from the brand zip; their licences don't cover web hosting. |
+| Pillars display face | **"Play. Compete. Grow." is set in Futura Condensed ExtraBold.** Owner-approved exception to the rulebook's SF Pro-only web rule, for this line only. Load it from the visitor's device (`local()`; Apple platforms ship it), fall back to Barlow Condensed ExtraBold from Google Fonts. To show Futura on every device, license a Futura webfont (for example Futura PT through Adobe Fonts) before hosting it. |
 | Live / Tickets / Gear | **Link out only.** Shop goes to gear.athleteinstitute.ca. |
 | Claude | Three features: **Write with Claude** block, **Build a page with Claude**, and **Ask ALL CAN** for visitors (answers only from published facts, hands off to staff). |
 | Editor | Site dashboard, page builder with the Claude block, navigation and mega-menu editor, site settings. All from Module 23. |
@@ -29,6 +30,7 @@ The rulebook (`design-system/guidelines/ALL-CAN-Design-System.md`) and tokens wi
 
 - **Colour.** Red `#CE112D` is the one accent and appears **once per view**: one red pill, one red word on light, or the leaf inside a logo. Ink `#212322` for dark surfaces and type on light. Paper `#EAEAEA` is the default page ground; White for editorial pages and the mega panel and drawer. Cool Gray 11 `#53565A` for secondary text on light. Red text only on light surfaces; on dark, red is a fill.
 - **Header and footer on black.** The ALL CAN Sport shield and horizontal files exist only as `-on-black` and `-on-red` versions, and the rulebook says a logo file sits only on the background its filename names. So the header and footer are `#000000`. Everything else follows the surface rules.
+- **Pillars line.** "Play. Compete. Grow." uses the display face from §0 (Futura Condensed ExtraBold, weight 800, leading about 0.86, no negative tracking). Nothing else on the site uses it.
 - **Type.** Semibold (600) headlines with tight leading; at most four sizes per layout; tabular lining numerals everywhere; body lines no wider than about 60 characters. Every headline ends with a period ("Locations." "This week.").
 - **Grid.** 12 columns, 1440 max, margins `clamp(20px, 4.4vw, 64px)`. Labels and stacked titles in the left half; content from column 7.
 - **No cards, no shadows, no rounded corners** except pill buttons and status pills. Structure comes from 1px hairlines: standard at 28% Ink, strong at 70%. Tables have no vertical rules and no zebra stripes.
@@ -93,7 +95,7 @@ Footer (black): ALL CAN Sport horizontal logo and "Operated by Athlete Institute
 ## 4. Pages
 
 ### 4.1 Home
-1. **Hero** (Ink, full-bleed photo when available): kicker "ALL CAN Sport · Toronto · Orangeville", lane rule, H1 "Play. / Compete. / Grow.", line "Sport that belongs to everyone.", one red pill **Find your location** → `/locations`. Vertical photo credit on the right edge.
+1. **Hero** (Ink, full-bleed photo when available): kicker "ALL CAN Sport · Toronto · Orangeville", lane rule, H1 "Play. / Compete. / Grow." in the pillars display face, line "Sport that belongs to everyone.", one red pill **Find your location** → `/locations`. Vertical photo credit on the right edge.
 2. **Locations**: "Choose where you play." Hairline rows, one per location: name, venue and address, status pill, chevron. Last row: "Your area" → request a location.
 3. **Sports**: four columns in hairline rows; each lists its leagues; status "Now playing" or "Coming soon".
 4. **Scores** (Compete): "This week." Last results and next games for every published division. Link to full schedule.
