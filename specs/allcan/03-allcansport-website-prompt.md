@@ -72,7 +72,7 @@ Location slugs are unique site-wide. Toronto areas are separate locations with a
 
 ## 3. Navigation
 
-Desktop header, left to right: **shield** (links home) · **Locations ▾ · Sports ▾ · Scores & Standings ▾ · Families ▾ · Shop** · Sign in · **Ask ALL CAN** (outline pill).
+Desktop header, left to right: **shield** (links home) · **Locations ▾ · Sports ▾ · Scores & Standings ▾ · Families ▾** · Sign in · **Ask ALL CAN** (outline pill).
 
 | Root | Type | Mega menu columns |
 |---|---|---|
@@ -82,7 +82,7 @@ Desktop header, left to right: **shield** (links home) · **Locations ▾ · Spo
 | Training | page | Hidden from the header for now. The page stays live, linked from Sports → Basketball → Skills. |
 | Stories | page | Hidden from the header for now. The page stays live, linked from the footer. |
 | Families | folder | Parent guide, Financial assistance, About ALL CAN Sport, Contact. Featured: Parent guide. |
-| Shop | link | gear.athleteinstitute.ca, new tab |
+| Shop | link | gear.athleteinstitute.ca, new tab. Hidden from the header for now; the footer keeps its Shop link. |
 
 The menu is the Module 23 `site_nav_items` tree: root → folder → folder → page/link at most. In the mega panel, a root folder's child folders become columns; loose pages form a "Browse" column; a featured slot shows one promo with its line. Opens on hover with a pointer and on click or Enter for keyboard; Escape closes; focus returns to the trigger.
 
