@@ -1,0 +1,50 @@
+/* ALL CAN — split from all-can-tokens.css v1.0. Values verbatim. Rulebook: guidelines/ALL-CAN-Design-System.md */
+/* ---------------------------------------------------------------------
+   8. WEB (SF Pro) — tokens + roles
+   12-col, max 1440. Left half = labels/titles. Content starts at col 7.
+   --------------------------------------------------------------------- */
+:root {
+  --web-max: 1440px; /* @kind other */
+  --web-margin: clamp(20px, 4.4vw, 64px);
+  --web-gutter: clamp(16px, 2vw, 24px); /* @kind spacing */
+  --web-section-gap: clamp(96px, 11vw, 160px);
+
+  --web-fs-h1: clamp(40px, 4.6vw, 66px); /* @kind font */    /* 66/66 Semibold, 0 tracking */
+  --web-fs-h2: clamp(26px, 2.3vw, 32px); /* @kind font */    /* stacked "Our / History." */
+  --web-fs-h3: 20px;
+  --web-fs-body: 17px;  --web-lh-body: 1.41; /* @kind other */
+  --web-fs-list: 15px;
+  --web-fs-label: 13px;
+  --web-fs-micro: 11px; /* kickers, coordinates, vertical credits — tabular */
+  --web-fs-footer-mark: clamp(36px, 3.4vw, 48px); /* @kind font */
+}
+.ac-web { font-family: var(--font-web); font-variant-numeric: var(--numerals); -webkit-font-smoothing: antialiased; }
+.ac-web h1 { font-weight: var(--fw-web-semibold); font-size: var(--web-fs-h1); line-height: 1; letter-spacing: 0; margin: 0; }
+.ac-web h2 { font-weight: var(--fw-web-semibold); font-size: var(--web-fs-h2); line-height: 1; letter-spacing: 0; margin: 0; }
+.ac-web h3 { font-weight: var(--fw-web-semibold); font-size: var(--web-fs-h3); line-height: 1.2; margin: 0; }
+.ac-web p  { font-size: var(--web-fs-body); line-height: var(--web-lh-body); max-width: 60ch; }
+.ac-web .kicker { font-size: var(--web-fs-micro); font-weight: 400; letter-spacing: 0.02em; }
+.ac-web .label  { font-size: var(--web-fs-label); font-weight: var(--fw-web-semibold); }
+.ac-web-container { max-width: var(--web-max); margin: 0 auto; padding: 0 var(--web-margin); }
+.ac-web-grid { display: grid; grid-template-columns: repeat(12, 1fr); column-gap: var(--web-gutter); }
+.ac-web-left  { grid-column: 1 / span 6; }
+.ac-web-right { grid-column: 7 / span 6; }
+@media (max-width: 800px) { .ac-web-left, .ac-web-right { grid-column: 1 / -1; } }
+
+/* Web surfaces */
+.ac-web.page-light { background: var(--ac-paper); color: var(--ac-ink); }
+.ac-web.page-dark  { background: var(--ac-cg11);  color: var(--ac-white); }  /* lists/text pages */
+/* Cool Gray 9 C: hero overlays, cards, dividers only — never behind body text (4.44:1). */
+
+/* Pills — web only */
+.ac-pill { display: inline-flex; align-items: center; justify-content: center; min-height: 44px; padding: 0 28px;
+  border-radius: var(--radius-pill); font: var(--fw-web-semibold) 15px/1 var(--font-web); text-decoration: none; }
+.ac-pill--primary { background: var(--ac-red); color: var(--ac-white); }
+.ac-pill--outline { border: 1px solid currentColor; color: inherit; background: transparent; }
+
+/* Motion — restrained */
+:root {
+  --ease-out: cubic-bezier(0.22, 0.61, 0.36, 1); /* @kind other */
+  --dur-fast: 180ms; /* @kind other */ --dur-base: 320ms; /* @kind other */ --dur-slow: 600ms; /* @kind other */
+}
+@media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }

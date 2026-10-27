@@ -1,0 +1,14 @@
+/* ALL CAN — split from all-can-tokens.css v1.0. Values verbatim. Rulebook: guidelines/ALL-CAN-Design-System.md */
+/* Helvetica Neue — extracted from uploads/HelveticaNeue.ttc. Regular 400, Medium 500, Bold 700 only. No italics, no Light/Thin. */
+@font-face{font-family:"Helvetica Neue";src:url("../fonts/HelveticaNeue-Regular.ttf") format("truetype");font-weight:400;font-style:normal;font-display:swap}
+@font-face{font-family:"Helvetica Neue";src:url("../fonts/HelveticaNeue-Medium.ttf") format("truetype");font-weight:500;font-style:normal;font-display:swap}
+@font-face{font-family:"Helvetica Neue";src:url("../fonts/HelveticaNeue-Bold.ttf") format("truetype");font-weight:700;font-style:normal;font-display:swap}
+/* Alias so the literal "HelveticaNeue" in --font-graphic resolves too */
+@font-face{font-family:"HelveticaNeue";src:url("../fonts/HelveticaNeue-Regular.ttf") format("truetype");font-weight:400;font-style:normal;font-display:swap}
+@font-face{font-family:"HelveticaNeue";src:url("../fonts/HelveticaNeue-Medium.ttf") format("truetype");font-weight:500;font-style:normal;font-display:swap}
+@font-face{font-family:"HelveticaNeue";src:url("../fonts/HelveticaNeue-Bold.ttf") format("truetype");font-weight:700;font-style:normal;font-display:swap}
+/* SF Pro Display — user-uploaded. Upright Regular/Medium/Bold only; italics uploaded but banned by the rulebook, so not wired.
+   No upright Semibold file supplied: --fw-web-semibold (590) currently resolves to Bold 700. */
+@font-face{font-family:"SF Pro Display";src:url("../fonts/SFPRODISPLAYREGULAR.OTF") format("opentype");font-weight:400;font-style:normal;font-display:swap}
+@font-face{font-family:"SF Pro Display";src:url("../fonts/SFPRODISPLAYMEDIUM.OTF") format("opentype");font-weight:500;font-style:normal;font-display:swap}
+@font-face{font-family:"SF Pro Display";src:url("../fonts/SFPRODISPLAYBOLD.OTF") format("opentype");font-weight:700;font-style:normal;font-display:swap}

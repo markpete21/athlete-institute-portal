@@ -1,0 +1,13 @@
+/* ALL CAN — split from all-can-tokens.css v1.0. Values verbatim. Rulebook: guidelines/ALL-CAN-Design-System.md */
+/* ---------------------------------------------------------------------
+   5. SPACING — 8px base
+   --------------------------------------------------------------------- */
+:root {
+  --sp-1: 4px;  --sp-2: 8px;   --sp-3: 16px;  --sp-4: 24px;
+  --sp-5: 32px; --sp-6: 48px;  --sp-7: 64px;  --sp-8: 96px;
+  --sp-9: 128px; --sp-10: 192px;
+
+  --hairline: 1px;       /* graphics at 1080 wide: 2px for print/large screens */
+  --radius-pill: 999px;  /* web buttons ONLY — the only rounded thing */
+  --radius-0: 0;         /* everything else: hard corners */
+}

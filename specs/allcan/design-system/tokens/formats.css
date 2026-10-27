@@ -1,0 +1,73 @@
+/* ALL CAN — split from all-can-tokens.css v1.0. Values verbatim. Rulebook: guidelines/ALL-CAN-Design-System.md */
+/* ---------------------------------------------------------------------
+   4. FORMATS — canvas, grid, type scale
+   Apply ONE format class to the artboard root:
+     .ac-landscape  1920×1080  (YouTube, slides, venue screens, broadcast)
+     .ac-portrait   1080×1440  (IG feed 3:4, carousels)
+     .ac-story      1080×1920  (Stories, Reels covers, TikTok)
+   All grids: 12 columns. Baseline unit 8px.
+   --------------------------------------------------------------------- */
+
+/* 1920 × 1080 — margins 120 / 96, gutter 24, column 118 */
+.ac-landscape {
+  --canvas-w: 1920px; /* @kind other */  --canvas-h: 1080px; /* @kind other */
+  --margin-x: 120px;   --margin-top: 96px;  --margin-bottom: 96px;
+  --gutter: 24px;      --col: 118px;        --cols: 12; /* @kind other */
+
+  --fs-stat: 220px;  --fs-display: 160px; --fs-headline: 88px;
+  --fs-rail: 36px;   --fs-list: 30px;     --fs-list-dense: 20px;
+  --fs-body: 26px;   --fs-label: 18px;    --fs-micro: 13px;
+  --fs-stat-unit: 20px;
+}
+
+/* 1080 × 1440 — margins 72 / 96, gutter 24, column 56
+   Feed-safe: keep all type inside y 45–1395 (centre 4:5 crop). Margins already guarantee this. */
+.ac-portrait {
+  --canvas-w: 1080px; /* @kind other */  --canvas-h: 1440px; /* @kind other */
+  --margin-x: 72px;    --margin-top: 96px;  --margin-bottom: 96px;
+  --gutter: 24px;      --col: 56px;         --cols: 12; /* @kind other */
+
+  --fs-stat: 176px;  --fs-display: 120px; --fs-headline: 72px;
+  --fs-rail: 32px;   --fs-list: 26px;     --fs-list-dense: 18px;
+  --fs-body: 22px;   --fs-label: 16px;    --fs-micro: 12px;
+  --fs-stat-unit: 18px;
+}
+
+/* 1080 × 1920 — margins 72, gutter 24, column 56
+   UI-safe: no type above y 250 or below y 1580 (bottom 340 reserved).
+   Reels covers/video: also keep type clear of the right 120px. */
+.ac-story {
+  --canvas-w: 1080px; /* @kind other */  --canvas-h: 1920px; /* @kind other */
+  --margin-x: 72px;    --margin-top: 250px; --margin-bottom: 340px;
+  --gutter: 24px;      --col: 56px;         --cols: 12; /* @kind other */
+  --reels-ui-right: 120px; /* @kind other */
+
+  --fs-stat: 200px;  --fs-display: 136px; --fs-headline: 80px;
+  --fs-rail: 36px;   --fs-list: 30px;     --fs-list-dense: 22px;
+  --fs-body: 26px;   --fs-label: 18px;    --fs-micro: 13px;
+  --fs-stat-unit: 20px;
+}
+
+/* Artboard base */
+.ac-landscape, .ac-portrait, .ac-story {
+  position: relative;
+  width: var(--canvas-w);
+  height: var(--canvas-h);
+  overflow: hidden;
+  box-sizing: border-box;
+  padding: var(--margin-top) var(--margin-x) var(--margin-bottom);
+  font-family: var(--font-graphic);
+  font-variant-numeric: var(--numerals);
+  -webkit-font-smoothing: antialiased;
+  color: var(--text-on-dark);
+  background: var(--surface-dark);
+}
+.ac-on-light { color: var(--text-on-light); background: var(--surface-light); }
+.ac-on-editorial { color: var(--text-on-light); background: var(--surface-editorial); }
+
+/* The grid — every block is placed with grid-column spans */
+.ac-grid {
+  display: grid;
+  grid-template-columns: repeat(12, var(--col));
+  column-gap: var(--gutter);
+}

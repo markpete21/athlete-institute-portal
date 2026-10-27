@@ -260,6 +260,8 @@ Brands with no finished design system use `vanguard` plus the DB brand accent/lo
 
 **Sequencing rule from the owner:** the ALL CAN theme pack is coded **after** the ALL CAN brand system (Claude Design) and the site design derived from it are finalised. Build Stages 1–6 do not depend on it: ALL CAN runs on `vanguard` + its accent until Stage 7 lands the real theme.
 
+**Update (Oct 27 2026):** the ALL CAN brand system has been delivered and the site is specified. Build ALL CAN from `specs/allcan/03-allcansport-website-prompt.md`; brand rules and tokens are in `specs/allcan/design-system/`.
+
 ---
 
 ## 5. Page builder — block schema

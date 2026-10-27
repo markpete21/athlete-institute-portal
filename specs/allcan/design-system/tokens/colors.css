@@ -1,0 +1,50 @@
+/* ALL CAN — split from all-can-tokens.css v1.0. Values verbatim. Rulebook: guidelines/ALL-CAN-Design-System.md */
+/* ---------------------------------------------------------------------
+   1. COLOUR — primitives
+   Source: ACG26 Brand Identity Assets (spot inks, Lab → sRGB).
+   Hex values match existing ACG artwork on screen.
+   --------------------------------------------------------------------- */
+:root {
+  /* Core inks */
+  --ac-red:        #CE112D; /* PANTONE 186 C — the one accent. Once per composition. */
+  --ac-ink:        #212322; /* PANTONE 419 C — dark surfaces, type on light. */
+  --ac-silver:     #9FA1A2; /* PANTONE 422 C — marks, labels, secondary type. */
+  --ac-panel:      #C7C8C8; /* Process C21 M17 Y17 K0 — light panel. */
+  --ac-paper:      #EAEAEA; /* Process C7 M5 Y5 K0 — off-white panel, default light surface. */
+  --ac-white:      #FFFFFF;
+  --ac-black:      #000000; /* Rich black C70 M50 Y30 K100 — print full-bleeds + photo scrims ONLY. */
+
+  /* Web-only mid-tones (from current web build) */
+  --ac-cg11:       #53565A; /* PANTONE Cool Gray 11 C — web dark page surface. */
+  --ac-cg9:        #75787B; /* PANTONE Cool Gray 9 C — web non-text surfaces only (fails AA for body text). */
+
+  /* Logo-only inks — never use as layout colours */
+  --ac-logo-roundel: #02050A; /* Nike Flat Black spot, inside Circuit roundel only. */
+  --ac-logo-offwhite:#FCFCF9; /* CIRCUIT wordmark fill only. */
+
+  /* Hairlines */
+  --ac-rule-on-dark:  rgba(255, 255, 255, 0.28);
+  --ac-rule-on-light: rgba(33, 35, 34, 0.28);
+  --ac-rule-strong-on-dark:  rgba(255, 255, 255, 0.60); /* section-head rules */
+  --ac-rule-strong-on-light: rgba(33, 35, 34, 0.70);
+}
+
+/* ---------------------------------------------------------------------
+   2. COLOUR — semantic roles (use these in layouts, not primitives)
+   --------------------------------------------------------------------- */
+:root {
+  --surface-dark:    var(--ac-ink);    /* default graphic surface (with grain) */
+  --surface-light:   var(--ac-paper);  /* default light surface */
+  --surface-panel:   var(--ac-panel);
+  --surface-editorial: var(--ac-white);/* editorial / photo-essay pages */
+  --surface-scrim:   var(--ac-black);
+
+  --text-on-dark:            var(--ac-white);
+  --text-on-dark-secondary:  var(--ac-silver);  /* 6.09:1 on ink */
+  --text-on-light:           var(--ac-ink);     /* 13.14:1 on paper */
+  --text-on-light-secondary: var(--ac-cg11);    /* 6.13:1 on paper */
+
+  --accent:          var(--ac-red);
+  /* Red TEXT only on light surfaces (4.66:1 on paper).
+     On dark surfaces red is a FILL only (dot, pill, bar) — red text on ink is 2.82:1. */
+}

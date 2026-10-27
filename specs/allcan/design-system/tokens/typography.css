@@ -1,0 +1,40 @@
+/* ALL CAN — split from all-can-tokens.css v1.0. Values verbatim. Rulebook: guidelines/ALL-CAN-Design-System.md */
+/* ---------------------------------------------------------------------
+   3. TYPE — families & weights
+   Graphics / print / video: Helvetica Neue ONLY.
+   Web: SF Pro via system stack (SF Pro cannot be self-hosted — Apple licence).
+   The Circuit logo lettering is artwork, never a font.
+   --------------------------------------------------------------------- */
+:root {
+  --font-graphic: "Helvetica Neue", "HelveticaNeue", Helvetica, Arial, sans-serif;
+  --font-web: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text",
+              "Helvetica Neue", Helvetica, Arial, sans-serif;
+
+  --fw-regular:  400; /* @kind font */ /* body, affiliations, stat units */
+  --fw-medium:   500; /* @kind font */ /* sub-heads under rails, table data, UI */
+  --fw-bold:     700; /* @kind font */ /* display, headlines, rails, names, labels, credits */
+  --fw-web-semibold: 590; /* @kind font */ /* SF Pro Semibold — web headlines */
+
+  /* Leading (line-height) */
+  --lh-stat:     0.85; /* @kind font */
+  --lh-display:  0.90; /* @kind font */
+  --lh-headline: 0.92; /* @kind font */
+  --lh-rail:     0.92; /* @kind font */ /* stacked rail blocks: "The / All Canadian / Games." */
+  --lh-list:     1.20; /* @kind font */
+  --lh-body:     1.25; /* @kind font */
+  --lh-label:    1.20; /* @kind font */
+  --lh-micro:    1.30; /* @kind font */
+
+  /* Tracking */
+  --tr-stat:     -0.04em; /* @kind font */
+  --tr-display:  -0.035em; /* @kind font */
+  --tr-headline: -0.03em; /* @kind font */
+  --tr-rail:     -0.02em; /* @kind font */
+  --tr-list:     -0.01em; /* @kind font */
+  --tr-body:      0em; /* @kind font */
+  --tr-label:     0em; /* @kind font */
+  --tr-micro:     0.04em; /* @kind font */  /* UPPERCASE credits + captions only */
+
+  --measure-body: 46ch; /* @kind other */    /* max line length for body copy */
+  --numerals: tabular-nums lining-nums; /* @kind other */ /* every number, every time */
+}

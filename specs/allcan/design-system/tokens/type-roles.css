@@ -1,0 +1,18 @@
+/* ALL CAN — split from all-can-tokens.css v1.0. Values verbatim. Rulebook: guidelines/ALL-CAN-Design-System.md */
+/* ---------------------------------------------------------------------
+   6. TYPE ROLES — graphic (Helvetica Neue)
+   --------------------------------------------------------------------- */
+.ac-stat      { font: var(--fw-bold) var(--fs-stat)/var(--lh-stat) var(--font-graphic); letter-spacing: var(--tr-stat); }
+.ac-stat-unit { font: var(--fw-regular) var(--fs-stat-unit)/1 var(--font-graphic); letter-spacing: 0; }
+.ac-display   { font: var(--fw-bold) var(--fs-display)/var(--lh-display) var(--font-graphic); letter-spacing: var(--tr-display); }
+.ac-headline  { font: var(--fw-bold) var(--fs-headline)/var(--lh-headline) var(--font-graphic); letter-spacing: var(--tr-headline); }
+.ac-rail      { font: var(--fw-bold) var(--fs-rail)/var(--lh-rail) var(--font-graphic); letter-spacing: var(--tr-rail); }
+.ac-list      { font: var(--fw-regular) var(--fs-list)/var(--lh-list) var(--font-graphic); letter-spacing: var(--tr-list); }
+.ac-list b, .ac-list strong { font-weight: var(--fw-bold); }
+.ac-list-dense{ font: var(--fw-regular) var(--fs-list-dense)/var(--lh-list) var(--font-graphic); }
+.ac-body      { font: var(--fw-regular) var(--fs-body)/var(--lh-body) var(--font-graphic); max-width: var(--measure-body); }
+.ac-label     { font: var(--fw-bold) var(--fs-label)/var(--lh-label) var(--font-graphic); }
+.ac-sub       { font: var(--fw-medium) var(--fs-rail)/var(--lh-rail) var(--font-graphic); letter-spacing: var(--tr-rail); }
+.ac-micro     { font: var(--fw-bold) var(--fs-micro)/var(--lh-micro) var(--font-graphic); letter-spacing: var(--tr-micro); text-transform: uppercase; }
+.ac-secondary { color: var(--text-on-dark-secondary); }
+.ac-on-light .ac-secondary, .ac-on-editorial .ac-secondary { color: var(--text-on-light-secondary); }
