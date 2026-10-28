@@ -82,7 +82,7 @@ Desktop header, left to right: **shield** (links home) · **Locations ▾ · Pla
 
 | Root | Type | Mega menu columns |
 |---|---|---|
-| Locations | folder | **Location cards** on the left under the panel title "Locations.": one card per location (two today), each with a venue photo (4:3), city, location name, facility and status pill, linking to the location hub; cards come from the location records, not the menu tree. Then a **More** column: All locations, Request a location, Host a program. Featured: the newest location. |
+| Locations | folder | **Location cards** on the left under the panel title "Locations.": one card per location (two today), each with a venue photo (4:3), location name, facility and status pill (no separate city label), linking to the location hub; cards come from the location records, not the menu tree. Then a **More** column on the right: All locations, Request a location, Host a program. No featured box in this dropdown. |
 | Play | folder | **Basketball:** League, Skills, Circuit. **Volleyball:** League, Skills (soon). **Soccer:** League, Skills (soon). **Flag Football:** League (soon). Featured: Basketball. |
 | Compete | folder | No column headings: **Schedules & Results** (`/scores`), **Standings**, **Rosters**. Featured: Schedules & results. (Any dropdown made only of pages shows no column heading.) |
 | Training | page | Hidden from the header for now. The page stays live, linked from Sports → Basketball → Skills. |
