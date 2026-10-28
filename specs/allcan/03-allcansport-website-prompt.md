@@ -105,8 +105,7 @@ Footer (black): ALL CAN Sport horizontal logo (max width 336px) and "Operated by
 2. **Locations**: no heading or intro line, just the section label. Full-width hairline rows, one per location: name, venue and address, status pill, chevron. Last row: "Your area" → request a location.
 3. **Sports**: four columns, each with its sport mark on top, then status ("Now playing" or "Coming soon") and the sport name. For now, Basketball lists **Youth League** and **Rep Circuit** only. Volleyball, Soccer and Flag Football list no programs; each shows a **Request** link that opens the Request a location form with that sport selected (`/locations?sport=<sport>#request`).
 4. **Schedules, results and standings**: two large Ink pill buttons side by side (stacked on phones): **Schedules & Results** → `/scores` (upcoming games and finals together) and **Standings** → `/standings`. No game list on the home page for now.
-5. **How it works**: skills block → gameplay → progress, three hairline rows. Link to the parent guide.
-6. **Families**: Parent guide (red pill), Financial assistance, Ask ALL CAN.
+5. **Families**: Parent guide (red pill), Financial assistance, Ask ALL CAN.
 
 ### 4.2 Locations finder
 Grouped by city, then location rows with venue, address, sports and status. Then one section, **Request a location · Host a program** ("Bring ALL CAN to your area."):
