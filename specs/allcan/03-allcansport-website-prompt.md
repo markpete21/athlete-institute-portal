@@ -28,7 +28,7 @@
 
 The rulebook (`design-system/guidelines/ALL-CAN-Design-System.md`) and tokens win every conflict. Web behaviour follows `design-system/guidelines/web/WEB-UIUX.md`, which applies the Athlete Institute UI/UX prompt with the ALL CAN translation table. The key rules for this site:
 
-- **Colour.** Red `#CE112D` is the one accent and appears **once per view**: one red pill, one red word on light, or the leaf inside a logo. Ink `#212322` for dark surfaces and type on light. Paper `#EAEAEA` is the default page ground; White for editorial pages and the mega panel and drawer. Cool Gray 11 `#53565A` for secondary text on light. Red text only on light surfaces; on dark, red is a fill.
+- **Colour.** Red `#CE112D` is the one accent and appears **once per view**: one red pill, one red word on light, or the leaf inside a logo. Ink `#212322` for dark surfaces and type on light. **White `#FFFFFF` is the page ground** (owner decision; replaces the rulebook's Paper default). Paper `#EAEAEA` stays for small fills such as hover and selected states. Cool Gray 11 `#53565A` for secondary text on light. Red text only on light surfaces; on dark, red is a fill.
 - **Header and footer on black.** The ALL CAN Sport shield and horizontal files exist only as `-on-black` and `-on-red` versions, and the rulebook says a logo file sits only on the background its filename names. So the header and footer are `#000000`. Everything else follows the surface rules.
 - **Pillars line.** "Play. Compete. Grow." uses the display face from §0 (Futura Bold, weight 700, leading about 0.94). Nothing else on the site uses it.
 - **Type.** Semibold (600) headlines with tight leading; at most four sizes per layout; tabular lining numerals everywhere; body lines no wider than about 60 characters. Every headline ends with a period ("Locations." "This week.").
@@ -36,6 +36,7 @@ The rulebook (`design-system/guidelines/ALL-CAN-Design-System.md`) and tokens wi
 - **No cards, no shadows, no rounded corners** except pill buttons and status pills. Structure comes from 1px hairlines: standard at 28% Ink, strong at 70%. Tables have no vertical rules and no zebra stripes.
 - **Motif and texture.** The lane rule (three 1px hairlines 8px apart) is the only motif. Ink surfaces carry a ~7% grain. No gradients except photo scrims, no patterns, no illustrations.
 - **Glyphs.** Hamburger, close and chevron only, drawn from CSS hairlines. No icon set, no emoji.
+- **Sport marks.** Each sport has a supplied line mark (basketball snowflake ball, volleyball maple leaf, soccer star shield, flag football field). Files: `design-system/logos/sports/`. Black on white, about 72px tall, above the sport name. They are logos, not icons: never recolour, outline or redraw them, and don't use them as UI glyphs.
 - **Photography.** Full-bleed, one treatment per composition, faces never covered by type, every photo credited. Until real photos exist, use Ink with grain and a "Photo [TBC]" credit. Never use stock or another brand's images.
 - **Copy formats.** Dates stacked: `Saturday / April 4th / 2026.` Times: `7:30pm ET`. Scores and records with an en dash: `84–79`, `12–3`. Inline meta with middle dots: `De La Salle College · Court 2 · 7:30pm ET`. Brand name always `ALL CAN` / `ALL CAN Sport`.
 - **Accuracy.** Never state a date, price, age group, coach, partner or stat that wasn't supplied. Show `[TBC]` in admin and hide unconfirmed rows from the public page once the site is live (see §6.4).
@@ -100,7 +101,7 @@ Footer (black): ALL CAN Sport horizontal logo (max width 336px) and "Operated by
 ### 4.1 Home
 1. **Hero** (Ink, full-bleed photo when available): no kicker and no lane rule above the headline. H1 "Play. / Compete. / Grow." in the pillars display face, line "Sport that belongs to everyone.", one red pill **Find your location** → `/locations`. Vertical photo credit on the right edge.
 2. **Locations**: "Choose where you play." Hairline rows, one per location: name, venue and address, status pill, chevron. Last row: "Your area" → request a location.
-3. **Sports**: four columns in hairline rows; each lists its leagues; status "Now playing" or "Coming soon".
+3. **Sports**: four columns, each with its sport mark on top, then status ("Now playing" or "Coming soon"), the sport name and its leagues.
 4. **Scores** (Compete): "This week." Last results and next games for every published division. Link to full schedule.
 5. **How it works**: skills block → gameplay → progress, three hairline rows. Link to the parent guide.
 6. **Families**: Parent guide, Financial assistance, Ask ALL CAN.
