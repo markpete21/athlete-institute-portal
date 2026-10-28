@@ -28,7 +28,7 @@
 
 The rulebook (`design-system/guidelines/ALL-CAN-Design-System.md`) and tokens win every conflict. Web behaviour follows `design-system/guidelines/web/WEB-UIUX.md`, which applies the Athlete Institute UI/UX prompt with the ALL CAN translation table. The key rules for this site:
 
-- **Colour.** Red `#CE112D` is the one accent and appears **once per view**: one red pill, one red word on light, or the leaf inside a logo. Ink `#212322` for dark surfaces and type on light. **White `#FFFFFF` is the page ground** (owner decision; replaces the rulebook's Paper default). Paper `#EAEAEA` stays for small fills such as hover and selected states. Cool Gray 11 `#53565A` for secondary text on light. Red text only on light surfaces; on dark, red is a fill.
+- **Colour.** Red `#CE112D` is the accent. **Owner decision:** red marks live and open status pills ("Open", "Now playing", "Following") and the main action in a section (for example Parent guide on the home page), so a view can carry more than one red moment; the rulebook's once-per-view rule is relaxed for the website. Keep red for those jobs only. Ink `#212322` for dark surfaces and type on light. **White `#FFFFFF` is the page ground** (owner decision; replaces the rulebook's Paper default). Paper `#EAEAEA` stays for small fills such as hover and selected states. Cool Gray 11 `#53565A` for secondary text on light. Red text only on light surfaces; on dark, red is a fill.
 - **Header and footer on black.** The ALL CAN Sport shield and horizontal files exist only as `-on-black` and `-on-red` versions, and the rulebook says a logo file sits only on the background its filename names. So the header and footer are `#000000`. Everything else follows the surface rules.
 - **Pillars line.** "Play. Compete. Grow." uses the display face from §0 (Futura Bold, weight 700, leading about 0.94). Nothing else on the site uses it.
 - **Type.** Semibold (600) headlines with tight leading; at most four sizes per layout; tabular lining numerals everywhere; body lines no wider than about 60 characters. Every headline ends with a period ("Locations." "This week.").
@@ -57,7 +57,9 @@ Implement the brand as the Module 23 **theme pack** `packages/foundation/src/the
 /[location]/[sport]/[program]       Program page (later, with registration), e.g. /toronto-midtown/basketball/league
 /[sport]                            Sport overview, e.g. /basketball, /volleyball (coming soon)
 /circuit                            ALL CAN Circuit (rep)
-/scores                             Compete: schedule and results
+/schedule                           Compete: upcoming games
+/results                            Compete: final scores, newest first
+/scores                             Compete: schedule and results together (kept for links from Compete)
 /standings, /standings/[division]   Compete: standings
 /teams, /teams/[team]               Compete: teams and team pages
 /players, /players/[player]         Compete: player directory and profiles
@@ -82,7 +84,7 @@ Desktop header, left to right: **shield** (links home) · **Locations ▾ · Spo
 |---|---|---|
 | Locations | folder | **Browse:** All locations, Request a location, Host a program. **Toronto:** Toronto Midtown · De La Salle College. **Orangeville:** Orangeville · Athlete Institute. Featured: the newest location. |
 | Sports | folder | **Basketball:** League, Skills, Circuit. **Volleyball:** League, Skills (soon). **Soccer:** League, Skills (soon). **Flag Football:** League (soon). Featured: Basketball. |
-| Scores & Standings | folder | **Compete:** Scores and schedule, Standings. **Teams and players:** Teams, Players. Featured: this week's games. |
+| Scores & Standings | folder | **Compete:** Schedules, Results, Standings. **Teams and players:** Teams, Players. Featured: this week's games. |
 | Training | page | Hidden from the header for now. The page stays live, linked from Sports → Basketball → Skills. |
 | Stories | page | Hidden from the header for now. The page stays live, linked from the footer. |
 | Families | folder | Parent guide, Financial assistance, About ALL CAN Sport, Contact. Featured: Parent guide. |
@@ -102,9 +104,9 @@ Footer (black): ALL CAN Sport horizontal logo (max width 336px) and "Operated by
 1. **Hero** (Ink, full-bleed photo when available): no kicker and no lane rule above the headline. H1 "Play. / Compete. / Grow." in the pillars display face, line "Sport that belongs to everyone.", one red pill **Find your location** → `/locations`. Vertical photo credit on the right edge.
 2. **Locations**: "Choose where you play." Hairline rows, one per location: name, venue and address, status pill, chevron. Last row: "Your area" → request a location.
 3. **Sports**: four columns, each with its sport mark on top, then status ("Now playing" or "Coming soon") and the sport name. For now, Basketball lists **Youth League** and **Rep Circuit** only. Volleyball, Soccer and Flag Football list no programs; each shows a **Request** link that opens the Request a location form with that sport selected (`/locations?sport=<sport>#request`).
-4. **Scores** (Compete): "This week." Last results and next games for every published division. Link to full schedule.
+4. **Schedules, results and standings**: three large Ink pill buttons in a row (stacked on phones): **Schedules** → `/schedule`, **Results** → `/results`, **Standings** → `/standings`. No game list on the home page for now.
 5. **How it works**: skills block → gameplay → progress, three hairline rows. Link to the parent guide.
-6. **Families**: Parent guide, Financial assistance, Ask ALL CAN.
+6. **Families**: Parent guide (red pill), Financial assistance, Ask ALL CAN.
 
 ### 4.2 Locations finder
 Grouped by city, then location rows with venue, address, sports and status. Then one section, **Request a location · Host a program** ("Bring ALL CAN to your area."):
@@ -155,7 +157,8 @@ Structure (four sports and their leagues), operator ("Operated by Athlete Instit
 Everything here reuses Module 23 §3.2: shared Compete components, `brandKey` filters in `lib/compete`, name masking and `show_on_compete` untouched, Compete's own site stays the cross-brand index with canonical links pointing here.
 
 - **Filters everywhere: location first, then division.** Add a `locationSlug` filter to `listDivisions`, `upcomingGames` and the standings query (division → program → venue → location).
-- **Scores** (`/scores`): grouped by date heading in the brand date format, venue under the heading, then game rows: time and court · home team, score or "vs", away team (winner in semibold) · status pill (Final, Upcoming, Postponed). Team names link to team pages.
+- **Schedules** (`/schedule`) and **Results** (`/results`): the same layout, filtered to upcoming games (soonest first) or finals (newest first), with an empty state per division. `/scores` shows both.
+- **Game lists**: grouped by date heading in the brand date format, venue under the heading, then game rows: time and court · home team, score or "vs", away team (winner in semibold) · status pill (Final, Upcoming, Postponed). Team names link to team pages.
 - **Standings** (`/standings`): division tabs as pills; table with #, Team, GP, W, L, PF, PA, Diff, Streak; tie-break note under the table.
 - **Teams** (`/teams`): location and division filters; hairline rows with name, location, record, coach. **Team page**: record in the lede, **Follow this team**, roster grid, schedule and results.
 - **Players** (`/players`): search by display name, filters for division and team; portrait grid (panel-coloured 4:5 tiles, initials when there's no consented portrait, jersey number top right). Only players with guardian permission appear; masked players show as "Team member" on rosters and never get a profile.
