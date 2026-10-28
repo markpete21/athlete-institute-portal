@@ -82,7 +82,7 @@ Desktop header, left to right: **shield** (links home) · **Locations ▾ · Pla
 
 | Root | Type | Mega menu columns |
 |---|---|---|
-| Locations | folder | **Browse:** All locations, Request a location, Host a program. **Toronto:** Toronto Midtown · De La Salle College. **Orangeville:** Orangeville · Athlete Institute. Featured: the newest location. |
+| Locations | folder | **Location cards** on the left under the panel title "Locations.": one card per location (two today), each with a venue photo (4:3), city, location name, facility and status pill, linking to the location hub; cards come from the location records, not the menu tree. Then a **More** column: All locations, Request a location, Host a program. Featured: the newest location. |
 | Play | folder | **Basketball:** League, Skills, Circuit. **Volleyball:** League, Skills (soon). **Soccer:** League, Skills (soon). **Flag Football:** League (soon). Featured: Basketball. |
 | Compete | folder | No column headings: **Schedules & Results** (`/scores`), **Standings**, **Rosters**. Featured: Schedules & results. (Any dropdown made only of pages shows no column heading.) |
 | Training | page | Hidden from the header for now. The page stays live, linked from Sports → Basketball → Skills. |
@@ -90,7 +90,7 @@ Desktop header, left to right: **shield** (links home) · **Locations ▾ · Pla
 | Families | folder | About ALL CAN Sport, Contact, **Rowan's Law (concussion safety)** (link, new tab: https://www.ontario.ca/page/rowans-law-concussion-safety), **Safe Sport** (link, new tab: https://abuse-free-sport.ca, Canada's independent safe sport program and helpline). Both links also appear in the footer's Families column. Featured: About. Parent guide and Financial assistance are hidden from the menu for now; both pages stay live and linked from the home page and footer. |
 | Shop | link | gear.athleteinstitute.ca, new tab. Hidden from the header for now; the footer keeps its Shop link. |
 
-The menu is the Module 23 `site_nav_items` tree: root → folder → folder → page/link at most. In the mega panel, a root folder's child folders become columns; loose pages form a "Browse" column; a featured slot shows one promo with its line. Opens on hover with a pointer and on click or Enter for keyboard; Escape closes; focus returns to the trigger.
+The menu is the Module 23 `site_nav_items` tree: root → folder → folder → page/link at most. In the mega panel the title is just the menu name with a period (no kicker, no description line); a root folder's child folders become columns; loose pages form a "More" column; a featured slot shows one promo with its line. Opens on hover with a pointer and on click or Enter for keyboard; Escape closes; focus returns to the trigger.
 
 Phones: black bar with Menu (hamburger + word) on the left and the shield centred. Menu opens the white left drawer. At the top, two side-by-side buttons: **Ask ALL CAN** (filled Ink) and **Sign in** (outline). When signed in, the Sign in button becomes a profile button (initials and first name); tapping it opens the same account links as the desktop dropdown in place, under the two buttons. The phone header never shows a profile icon; it stays Menu and logo only. Below them, root items as large rows and folders as accordions with their columns as subheads.
 
