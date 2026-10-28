@@ -87,7 +87,7 @@ Desktop header, left to right: **shield** (links home) · **Locations ▾ · Spo
 | Scores & Standings | folder | **Compete:** Schedules, Results, Standings. **Teams and players:** Teams, Players. Featured: this week's games. |
 | Training | page | Hidden from the header for now. The page stays live, linked from Sports → Basketball → Skills. |
 | Stories | page | Hidden from the header for now. The page stays live, linked from the footer. |
-| Families | folder | Parent guide, Financial assistance, About ALL CAN Sport, Contact. Featured: Parent guide. |
+| Families | folder | About ALL CAN Sport, Contact. Featured: About. Parent guide and Financial assistance are hidden from the menu for now; both pages stay live and linked from the home page and footer. |
 | Shop | link | gear.athleteinstitute.ca, new tab. Hidden from the header for now; the footer keeps its Shop link. |
 
 The menu is the Module 23 `site_nav_items` tree: root → folder → folder → page/link at most. In the mega panel, a root folder's child folders become columns; loose pages form a "Browse" column; a featured slot shows one promo with its line. Opens on hover with a pointer and on click or Enter for keyboard; Escape closes; focus returns to the trigger.
@@ -101,7 +101,7 @@ Footer (black): ALL CAN Sport horizontal logo (max width 336px) and "Operated by
 ## 4. Pages
 
 ### 4.1 Home
-1. **Hero** (Ink, full-bleed photo when available): no kicker and no lane rule above the headline. H1 "Play. / Compete. / Grow." in the pillars display face, line "Sport that belongs to everyone.", one red pill **Find your location** → `/locations`. Vertical photo credit on the right edge.
+1. **Hero** (full-bleed photo: `design-system/photos/home-hero-allcan-basketball.jpg`, ALL CAN Basketball youth game, anchored to the top so faces stay clear; graded darker with a bottom scrim so white type reads; Ink with grain only if the photo fails to load). The supplied file is 1278px wide; replace it with a 2000px+ original before launch, and confirm guardian media permission for every player shown. No kicker and no lane rule above the headline. H1 "Play. / Compete. / Grow." in the pillars display face, line "Sport that belongs to everyone.", one red pill **Find your location** → `/locations`. Vertical photo credit on the right edge.
 2. **Locations**: no heading or intro line, just the section label. Full-width hairline rows, one per location: name, venue and address, status pill, chevron. Last row: "Your area" → request a location.
 3. **Sports**: four columns, each with its sport mark on top, then status ("Now playing" or "Coming soon") and the sport name. For now, Basketball lists **Youth League** and **Rep Circuit** only. Volleyball, Soccer and Flag Football list no programs; each shows a **Request** link that opens the Request a location form with that sport selected (`/locations?sport=<sport>#request`).
 4. **Schedules, results and standings**: two large Ink pill buttons side by side (stacked on phones): **Schedules & Results** → `/scores` (upcoming games and finals together) and **Standings** → `/standings`. No game list on the home page for now.
