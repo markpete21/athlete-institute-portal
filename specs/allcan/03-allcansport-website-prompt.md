@@ -87,7 +87,7 @@ Desktop header, left to right: **shield** (links home) · **Locations ▾ · Spo
 | Competition | folder | No column headings: **Schedules & Results** (`/scores`), **Standings**, **Rosters**. Featured: Schedules & results. (Any dropdown made only of pages shows no column heading.) |
 | Training | page | Hidden from the header for now. The page stays live, linked from Sports → Basketball → Skills. |
 | Stories | page | Hidden from the header for now. The page stays live, linked from the footer. |
-| Families | folder | About ALL CAN Sport, Contact. Featured: About. Parent guide and Financial assistance are hidden from the menu for now; both pages stay live and linked from the home page and footer. |
+| Families | folder | About ALL CAN Sport, Contact, **Rowan's Law (concussion safety)** (link, new tab: https://www.ontario.ca/page/rowans-law-concussion-safety), **Safe Sport** (link, new tab: https://abuse-free-sport.ca, Canada's independent safe sport program and helpline). Both links also appear in the footer's Families column. Featured: About. Parent guide and Financial assistance are hidden from the menu for now; both pages stay live and linked from the home page and footer. |
 | Shop | link | gear.athleteinstitute.ca, new tab. Hidden from the header for now; the footer keeps its Shop link. |
 
 The menu is the Module 23 `site_nav_items` tree: root → folder → folder → page/link at most. In the mega panel, a root folder's child folders become columns; loose pages form a "Browse" column; a featured slot shows one promo with its line. Opens on hover with a pointer and on click or Enter for keyboard; Escape closes; focus returns to the trigger.
