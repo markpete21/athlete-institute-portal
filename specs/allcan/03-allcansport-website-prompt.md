@@ -61,8 +61,8 @@ Implement the brand as the Module 23 **theme pack** `packages/foundation/src/the
 /results                            Compete: final scores, newest first
 /scores                             Compete: schedule and results together (kept for links from Compete)
 /standings, /standings/[division]   Compete: standings
-/teams, /teams/[team]               Compete: teams and team pages
-/players, /players/[player]         Compete: player directory and profiles
+/rosters                            Compete: Rosters, with a Teams / Players switch
+/teams/[team], /players/[player]    Compete: team pages and player profiles (/teams and /players redirect to /rosters)
 /training                           Skills sessions + private instruction
 /stories, /stories/[slug]           Newsroom
 /parent-guide                       How it works, placement, what to bring, policies
@@ -76,7 +76,7 @@ Location slugs are unique site-wide. Toronto areas are separate locations with a
 
 ## 3. Navigation
 
-Desktop header, left to right: **shield** (links home) · **Locations ▾ · Sports ▾ · Scores & Standings ▾ · Families ▾** · Sign in · **Ask ALL CAN** (outline pill).
+Desktop header, left to right: **shield** (links home) · **Locations ▾ · Sports ▾ · Competition ▾ · Families ▾** · Sign in · **Ask ALL CAN** (outline pill).
 
 **Signed in (desktop):** a round white chip with the person's initials replaces the Sign in link, in the same place, left of Ask ALL CAN. Clicking it opens a white dropdown under the header: name and email, then **My teams and schedule** (`/my-teams`), **My account on Play** (play.athleteinstitute.ca/account), **Site editor** (only for people with a Site Editor or admin role on this site), and **Sign out**. Escape or a click outside closes it.
 
@@ -84,7 +84,7 @@ Desktop header, left to right: **shield** (links home) · **Locations ▾ · Spo
 |---|---|---|
 | Locations | folder | **Browse:** All locations, Request a location, Host a program. **Toronto:** Toronto Midtown · De La Salle College. **Orangeville:** Orangeville · Athlete Institute. Featured: the newest location. |
 | Sports | folder | **Basketball:** League, Skills, Circuit. **Volleyball:** League, Skills (soon). **Soccer:** League, Skills (soon). **Flag Football:** League (soon). Featured: Basketball. |
-| Scores & Standings | folder | **Compete:** Schedules, Results, Standings. **Teams and players:** Teams, Players. Featured: this week's games. |
+| Competition | folder | No column headings: **Schedules & Results** (`/scores`), **Standings**, **Rosters**. Featured: Schedules & results. (Any dropdown made only of pages shows no column heading.) |
 | Training | page | Hidden from the header for now. The page stays live, linked from Sports → Basketball → Skills. |
 | Stories | page | Hidden from the header for now. The page stays live, linked from the footer. |
 | Families | folder | About ALL CAN Sport, Contact. Featured: About. Parent guide and Financial assistance are hidden from the menu for now; both pages stay live and linked from the home page and footer. |
@@ -159,8 +159,9 @@ Everything here reuses Module 23 §3.2: shared Compete components, `brandKey` fi
 - **Schedules** (`/schedule`) and **Results** (`/results`): the same layout, filtered to upcoming games (soonest first) or finals (newest first), with an empty state per division. `/scores` shows both.
 - **Game lists**: grouped by date heading in the brand date format, venue under the heading, then game rows: time and court · home team, score or "vs", away team (winner in semibold) · status pill (Final, Upcoming, Postponed). Team names link to team pages.
 - **Standings** (`/standings`): division tabs as pills; table with #, Team, GP, W, L, PF, PA, Diff, Streak; tie-break note under the table.
-- **Teams** (`/teams`): location and division filters; hairline rows with name, location, record, coach. **Team page**: record in the lede, **Follow this team**, roster grid, schedule and results.
-- **Players** (`/players`): search by display name, filters for division and team; portrait grid (panel-coloured 4:5 tiles, initials when there's no consented portrait, jersey number top right). Only players with guardian permission appear; masked players show as "Team member" on rosters and never get a profile.
+- **Rosters** (`/rosters`): one page with a **Teams / Players** switch. Teams view and Players view are described below; links to the Players view open it directly.
+- **Teams view**: location and division filters; hairline rows with name, location, record, coach. **Team page**: record in the lede, **Follow this team**, roster grid, schedule and results.
+- **Players view**: search by display name, filters for division and team; portrait grid (panel-coloured 4:5 tiles, initials when there's no consented portrait, jersey number top right). Only players with guardian permission appear; masked players show as "Team member" on rosters and never get a profile.
 - **Player profile**: portrait, number, team, division, location, a short player-approved introduction; stats only where the division records them (`statsEnabled`).
 - **My teams** (`/my-teams`, signed in): followed teams as rows, their next games and recent results, and notification settings with a link to change channels on Play. Signed out, it asks the visitor to sign in.
 - **Follow this team**: signed-out visitors are asked to sign in first. Signed-in families (Clerk satellite on allcansport.ca) follow a team; schedule changes, postponements and final scores go out through `notify()` using the family's channel preferences. Store follows in a new `team_follows (profile_id, team_id)` table.
