@@ -150,7 +150,7 @@ One accordion page: how a session works · placement and teams · what to bring 
 ALL CAN's policy as a fact block (covers, award limits, reviewer, response time, appeals). Rows linking **KidSport Ontario** and **Canadian Tire Jumpstart**. A **confidential request form** collecting only name, email, program and an optional note; stored apart from program and coach data with access limited to the reviewer role.
 
 ### 4.12 About
-Structure (four sports and their leagues), operator ("ALL CAN Sport is a division of Athlete Institute, Ltd.", the confirmed legal name; Orangeville Prep and the All Canadian Games keep their own sites), and **Contact** (email **info@athleteinstitute.ca**, phone **519-940-3735**, response time; registration and cancellations always through this contact, never social messages).
+Structure (four sports and their leagues), operator ("ALL CAN Sport is a division of Athlete Institute, Ltd.", the confirmed legal name; Orangeville Prep and the All Canadian Games keep their own sites), and **Contact** (email **info@athleteinstitute.ca**, phone **519-940-3735**, no response-time line; registration and cancellations always through this contact, never social messages).
 
 ### 4.13 Privacy policy (`/privacy-policy`)
 Full text: `policies/privacy-policy.md`. It is Athlete Institute's published policy (athleteinstitute.ca/privacy-policy), cleaned up for ALL CAN Sport. Layout: page head ("Privacy policy."), then on the left a fact block (operator Athlete Institute, Ltd.; applies to allcansport.ca and every ALL CAN program; effective date) and a sticky "On this page" list; on the right the sections, each with an H2. In-page links scroll without changing the route. Linked from the footer (Families column) and from every interest form's consent line.
@@ -333,7 +333,7 @@ Registration and full program pages are a separate later stage, once the registr
 - Location details: the Toronto area name for De La Salle College (working name "Toronto Midtown"), parking, arrival, contact, local social handles.
 - Coaches per location and the screening statement.
 - Policies on the Parent guide: refunds, cancellations, weather, attendance, photos and consent, code of conduct. Financial assistance funding, limits, reviewer and response time.
-- Contact response time. (Phone decided: **519-940-3735**. Main contact email decided: **info@athleteinstitute.ca**, used on the Contact section, in Site settings, as the Ask ALL CAN hand-off and in the privacy policy.)
+- Contact details decided: phone **519-940-3735**, no stated response time (owner decision). (Main contact email: **info@athleteinstitute.ca**, used on the Contact section, in Site settings, as the Ask ALL CAN hand-off and in the privacy policy.)
 - Photos through Media: the hero (2400px+ original), venue photos for De La Salle College and Athlete Institute, credits, and guardian media permission for every player shown.
 
 **Legal and compliance** (Athlete Institute, Ltd. is the operator; have a lawyer confirm this list):
