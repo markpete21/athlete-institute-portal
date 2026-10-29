@@ -76,7 +76,7 @@ Location slugs are unique site-wide. Toronto areas are separate locations with a
 
 ## 3. Navigation
 
-Desktop header, left to right: **shield** (links home) · **Play ▾ · Locations ▾ · Compete ▾ · Families ▾** · Sign in · **Ask ALL CAN** (outline pill).
+Desktop header, left to right: **shield** (links home) · **Play. · Locations. · Compete. · Families.** · Sign in · **Ask ALL CAN** (outline pill). The top-level items have no down arrows. They're set in Futura Medium (the regular weight, not bold) at 18px, loaded from the visitor's device like the display face, with Jost 500 from Google Fonts as the fallback. Each label ends with a period; the header adds it when it draws the menu, so the stored label stays plain ("Play") and the editor, phone drawer and footer are unaffected.
 
 **Signed in (desktop):** a round white chip with the person's initials replaces the Sign in link, in the same place, left of Ask ALL CAN. Clicking it opens a white dropdown under the header: name and email, then **My teams and schedule** (`/my-teams`), **My account on Play** (play.athleteinstitute.ca/account), **Site editor** (only for people with a Site Editor or admin role on this site), and **Sign out**. Escape or a click outside closes it.
 
@@ -94,7 +94,7 @@ The menu is the Module 23 `site_nav_items` tree: root → folder → folder → 
 
 Phones: black bar with Menu (hamburger + word) on the left and the shield centred. Menu opens the white left drawer. At the top, two side-by-side buttons: **Ask ALL CAN** (filled Ink) and **Sign in** (outline). When signed in, the Sign in button becomes a profile button (initials and first name); tapping it opens the same account links as the desktop dropdown in place, under the two buttons. The phone header never shows a profile icon; it stays Menu and logo only. Below them, root items as large rows and folders as accordions with their columns as subheads. In the phone menu, **Locations** opens to a single **Ontario** heading with every location under it (Toronto Midtown, Orangeville), then a hairline and the Request a location and Host a program links.
 
-Footer (black): ALL CAN Sport horizontal logo (max width 336px) and "A division of Athlete Institute." on the left; two columns on the right. **ALL CAN Sport:** Locations, Host a program, Schedules and results, Standings. **Families:** About, Contact. Then **Athlete Institute:** Watch, Tickets, Shop link-outs. (Basketball, ALL CAN Circuit, Rosters, Stories, Parent guide, Financial assistance, Policies, Rowan's Law and Safe Sport are left out of the footer for now.) legal line in micro caps with the photo credit.
+Footer (black): ALL CAN Sport horizontal logo (max width 336px) and "A division of Athlete Institute." on the left; two columns on the right. **ALL CAN Sport:** Locations, Host a program, Schedules and results, Standings. **Families:** About, Contact. Then **Athlete Institute:** Watch, Tickets, Shop link-outs. (Basketball, ALL CAN Circuit, Rosters, Stories, Parent guide, Financial assistance, Policies, Rowan's Law and Safe Sport are left out of the footer for now.) Along the bottom, under a hairline, the four partner logos in a row, small: the same equal-area sizing as the home Partners band (base height about 44px on desktop, 36px on phones, times each logo's factor), left-aligned. No copyright or photo-credit line there for now.
 
 ---
 
@@ -177,13 +177,48 @@ All from Module 23 §7, with these ALL CAN specifics.
 KPIs: visitors, page views (Vercel Web Analytics, filtered to allcansport.ca), registrations (shows "Not connected yet" until registration is live), **interest sign-ups** by location and sport. Panels: traffic sparkline and top pages; **page tree** with Page, Folder and Link tags, publish state and an Edit link per page; content counts (published, unpublished changes, drafts, hidden); Compete activity (divisions, teams, games this week, most-viewed standings).
 
 ### 6.2 Page builder
-Three columns: page list · block stack · block settings. Each block row shows its type and summary with Up, Down, Hide and Delete. **Add block** opens a picker grouped as Claude · Content · Locations & programs · Compete · Media · Layout. ALL CAN-specific block types beyond Module 23's set: **Location list**, **Sport list**, **Fact block** (bound to a program or location record), **Season calendar**, **Interest form**. Header actions: Build a page with Claude, Preview draft (opens the page on allcansport.ca with a "Draft preview" bar), Publish (the one red action).
+Three columns: page list · block stack · block settings. Each block row shows its type and summary with Up, Down, Hide and Delete. **Add block** opens a picker grouped as Claude · Content · Locations & programs · Compete · Media · Layout. ALL CAN-specific block types beyond Module 23's set: **Location list**, **Sport list**, **Fact block** (bound to a program or location record), **Season calendar**, **Interest form**. Header actions: Build a page with Claude, **SEO** (opens that page's search and sharing panel, §6.5; the button shows "· N to fix" when the page has suggestions, or "· hidden" when it's out of search), Preview draft (opens the page on allcansport.ca with a "Draft preview" bar), Publish (the one red action). Publishing a page that still has SEO suggestions says so in the confirmation toast; it never blocks the publish.
 
 ### 6.3 Navigation editor
 Tree with Up, Down, Indent and Outdent. Indent refuses a third folder level with the message "That would make the menu three folders deep. Menus allow a dropdown and one more level inside it." Item settings: label, type (page, folder, link), the linked page or address, the mega menu line for folders, hide from menu. A live desktop preview shows the selected root's mega panel. **Publish menu** applies it to the site.
 
 ### 6.4 Site settings
-Launch switch (Off · Coming soon · Live) with its go-live checks; domains (allcansport.ca verified, www redirects, sign-in ready); search and sharing defaults; contact and link-outs; editors (Site Editor role scoped to ALL CAN); **Ask ALL CAN** on/off and its hand-off contact.
+Launch switch (Off · Coming soon · Live) with its go-live checks; domains (allcansport.ca verified, www redirects, sign-in ready); a **Search and sharing** panel that only points to SEO (§6.5); contact and link-outs; editors (Site Editor role scoped to ALL CAN); **Ask ALL CAN** on/off and its hand-off contact.
+
+### 6.5 SEO (editor rail: Dashboard · Pages · Navigation · **SEO** · Site settings)
+Modelled on the Wix SEO Setup Checklist and Squarespace's page SEO panel, adapted to a multi-location league. Everything here is saved per site (Module 23 §9), so every brand site gets the same tool.
+
+**Banner.** While the site is Off or Coming soon, a notice says search engines see nothing (or only the coming-soon page) and that the settings take effect at launch.
+
+**Setup wizard** ("Set up SEO", red until done, then "Edit setup"). Four steps in a dialog with a step bar:
+1. **About the site:** site name, what you offer (Sports league · Sports club · Training facility), and where families meet you: a checkbox per location, pre-filled from the location records with venue and address (used for local results and structured data).
+2. **Keywords:** up to three phrases of 2 to 4 words. Claude suggests six from the locations and programs (e.g. "youth basketball Toronto", "basketball league Toronto", "kids basketball Orangeville", "rep basketball Ontario", "adult rec league Toronto", "basketball skills Toronto"); tap to add or remove, or type your own. Plain-language errors: "You have three already. Remove one first." · "Use 2 to 4 words, like “youth basketball Toronto”."
+3. **Connect Google:** **Google Search Console** (Connect: verifies allcansport.ca with a DNS TXT record the platform adds through the domain flow, then submits the sitemap) and **Google Business Profile**, optional (link an existing profile; the copy notes Google lists only places that meet customers in person, so start with Orangeville at Athlete Institute). Skippable.
+4. **Your plan:** the open checklist items, in order, naming the chosen keywords. "Start checklist" saves and lands on the SEO page.
+
+**Checklist** with a progress bar and "N of 12 done", each item ticked automatically from the site's real state (never by hand), with one action button:
+- Get set up: Tell us about the site and pick keywords · Connect Google Search Console · Submit your sitemap to Google.
+- Home page: Search title under 60 characters · Description of 120 to 160 characters · Uses one of your keywords.
+- Every page: Location pages have their own title and description · Every page has a description · Every image has alt text (action: **Write with Claude**, a dialog listing each image without alt text with Claude's draft in an editable field and "Use all") · Pages hidden from the menu are hidden from search · Old addresses redirect to new pages.
+- Optional: Link a Google Business Profile for Orangeville.
+
+**Search Console numbers** (once connected): clicks, impressions, average position, pages indexed ("14 of 16", drafts and hidden pages left out), and a Top searches table.
+
+**Pages table:** page · search title (marked "· format" when it comes from a title format) · status (Good · N to fix · Draft, not in search · Hidden from search) · Edit. Suggestions per page: title over 60 characters; duplicate title; no description; description under 110 or over 160; hidden from the menu but still in search; images without alt text.
+
+**Page SEO panel** (from the table, the checklist or the builder's SEO button): search title with a live "n / 60" counter (empty uses the title format, shown as the placeholder); description with "n / 160"; page address (changing it adds a 301 redirect from the old address and repoints any redirect that went to the old one, so there are no chains; the home page has no address field); **Hide this page from search engines** (noindex); **Write with Claude**, which drafts a title and description from the page's records and keywords and says which keyword it used, for review before saving. Live **Google preview** (address breadcrumb, title, description, cut where Google cuts them), **Checks** (Pass/Fix: title length, description length, unique title, uses a keyword, alt text, one main heading) and a **Sharing preview** card. Saving marks a published page as having unpublished changes; it goes live with the next publish.
+
+**Keywords** panel (the chosen keywords as pills, "Change keywords" reopens step 2). **Defaults:** site title; default description with counter; **title formats** for pages without their own title, with fill-ins: Pages `{Page} · ALL CAN Sport`, Locations `{Location} youth sports · ALL CAN Sport`, A sport at a location `{Sport} in {Location} · ALL CAN Sport`, Teams `{Team} · {Division} · ALL CAN Sport`; sharing image.
+
+**Indexing:** player profiles are never in search (youth privacy; locked); schedules, results and standings are in search; drafts, previews and the editor never; the whole site follows the launch status; a "Show team pages in search" checkbox.
+
+**Structured data** (automatic, from records, no editing): SportsOrganization on every page, SportsActivityLocation per location with address, SportsEvent per published game, BreadcrumbList. Copy says rich results aren't guaranteed.
+
+**Redirects:** a table of old address → page (a select of site pages) → why, with an "Add an old address" field. Seeded from the audit's migration list (e.g. `/aibl` needs a destination).
+
+**Sitemap and robots:** sitemap address, page count, "updates when you publish", whether it was sent to Google, and the robots.txt shown read-only (`Disallow: /api/`, `Disallow: /preview/`, `Sitemap:` line). Player profiles carry a noindex tag and stay out of the sitemap but are not blocked in robots.txt, so Google can read the tag.
+
+The Dashboard gains an **SEO** panel: the progress bar, "N of 12 done" and Open SEO / Set up SEO.
 
 **`[TBC]` handling:** in the editor and in previews, unconfirmed facts show as `[TBC]`. On the live site, a fact block row whose value is still `[TBC]` renders as "To be confirmed" in Cool Gray 11, never as raw brackets. The go-live check lists every `[TBC]` left on published pages.
 
