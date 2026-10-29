@@ -11,7 +11,7 @@
 | Brand | **ALL CAN Sport**. Line: "Sport that belongs to everyone." Pillars: "Play. Compete. Grow." Covers youth and adult leagues and skills programs. Site line under the hero: "Inclusive, professionally run leagues and skill development for youth and adults of all abilities." |
 | Sport structure | **Basketball:** ALL CAN Basketball League · ALL CAN Basketball Skills · ALL CAN Circuit (rep). **Volleyball:** League · Skills. **Soccer:** League · Skills. **Flag Football:** League. Only basketball is running at launch; the others show as coming soon. |
 | Hierarchy | **Location first, then sport, then league type** (youth league, adult league, youth skills, rep). |
-| Locations at launch | **Toronto Midtown** at De La Salle College (basketball league + skills). **Orangeville** at Athlete Institute, Mono, ON (ALL CAN Circuit). |
+| Locations at launch | **Toronto Midtown** at De La Salle College (basketball league + skills). **Orangeville** at Athlete Institute, 207321 Highway 9, Mono, ON L9W 6J2 (ALL CAN Circuit). |
 | Toronto areas | **Each Toronto area is its own location** (`toronto-midtown`, later `toronto-west`, etc.), grouped by city ("Toronto") in the Locations finder; in the menu, locations sit inside a province folder (**Ontario**), see §3. The area name "Midtown" is a working name, to be confirmed. |
 | Program data | **Not pulled from the registration platform yet** (owner decision). Location and program facts are site records that staff enter in the editor (§6.10). When the registration platform is ready, the same fact blocks switch to reading Module 4 programs; pages don't change. |
 | Registration | **Not in this build.** Program pages show live facts and an interest form ("notify me when registration opens"). Register and pay on allcansport.ca comes later with the registration platform; leave the slot in the program page. |
@@ -161,7 +161,8 @@ What changed from the original, and why:
 - **Replaced the purpose list** (Google Analytics, Mailchimp, geolocation) with what allcansport.ca actually uses, and **named the service providers** from the portal stack: Vercel, Supabase, Clerk, Resend, Twilio, Stripe, Anthropic. If Athlete Institute also uses Mailchimp or Google Analytics for ALL CAN, add them back.
 - **Text messages:** "may send text messages for any purpose" became texts about ALL CAN programs (schedule changes, cancellations, reminders), with STOP and HELP, which fits CASL's requirement that consent be for a stated purpose.
 - **Added**, because PIPEDA guidance expects them or the site needs them: youth players and photos (guardian permission, no birth dates or schools on public pages, profiles out of search), parent or guardian consent for players under 18, storage outside Canada, cookies, breach notification, the right to complain to the Office of the Privacy Commissioner of Canada, Ask ALL CAN, and Rowan's Law records.
-- **Still to fill in:** effective date, privacy officer's name, privacy email and mailing address. A lawyer should review the final text before launch.
+- **Contact:** phone 519-940-3735, email info@athleteinstitute.ca, mail Athlete Institute, Ltd., 207321 Highway 9, Mono, ON L9W 6J2, Canada.
+- **Still to fill in:** effective date and the privacy officer's name. A lawyer should review the final text before launch.
 
 ---
 
@@ -335,8 +336,8 @@ Registration and full program pages are a separate later stage, once the registr
 - Photos through Media: the hero (2400px+ original), venue photos for De La Salle College and Athlete Institute, credits, and guardian media permission for every player shown.
 
 **Legal and compliance** (Athlete Institute, Ltd. is the operator; have a lawyer confirm this list):
-- **Privacy policy** (done, §4.13): fill in the privacy officer, email, mailing address and effective date.
-- **CASL** (anti-spam): every marketing email and text needs express consent for a stated purpose, the sender's name (Athlete Institute, Ltd.), a mailing address and contact, and a working unsubscribe that takes effect within 10 business days. Keep a record of each consent (who, when, what wording). The interest forms and `notify()` templates must meet this.
+- **Privacy policy** (done, §4.13): fill in the privacy officer and effective date.
+- **CASL** (anti-spam): every marketing email and text needs express consent for a stated purpose, the sender's name (Athlete Institute, Ltd.), a mailing address and contact (Athlete Institute, Ltd., 207321 Highway 9, Mono, ON L9W 6J2; info@athleteinstitute.ca), and a working unsubscribe that takes effect within 10 business days. Keep a record of each consent (who, when, what wording). The interest forms and `notify()` templates must meet this.
 - **Accessibility (AODA):** Ontario requires organizations with 50 or more employees to meet WCAG 2.0 AA on public websites, and every organization serving the public to have a way to take accessibility feedback. The site is built to WCAG AA; add an **Accessibility** page with a feedback contact.
 - **Rowan's Law:** before players register or take part, athletes, parents of players under 18, coaches and officials must review Ontario's concussion awareness resources, and the organization needs a concussion code of conduct and removal-from-sport and return-to-sport protocols. Turn the hidden Rowan's Law menu link back on and add a **Concussion policy** page before the first session.
 - **Before registration and payment go live:** **Terms of use**, a **Refund and cancellation policy** linked from every price, full prices with taxes shown before checkout, and a copy of the terms sent with each receipt (Ontario consumer protection rules for online agreements). Registration also needs a **waiver and assumption of risk** and a **photo and media permission** step for guardians.
