@@ -87,14 +87,14 @@ Desktop header, left to right: **shield** (links home) · **Locations ▾ · Pla
 | Compete | folder | No column headings: **Schedules & Results** (`/scores`), **Standings**, **Rosters**. Featured: Schedules & results. (Any dropdown made only of pages shows no column heading.) |
 | Training | page | Hidden from the header for now. The page stays live, linked from Sports → Basketball → Skills. |
 | Stories | page | Hidden from the header for now. The page stays live, linked from the footer. |
-| Families | folder | About ALL CAN Sport, Contact, **Rowan's Law (concussion safety)** (link, new tab: https://www.ontario.ca/page/rowans-law-concussion-safety), **Safe Sport** (link, new tab: https://abuse-free-sport.ca, Canada's independent safe sport program and helpline). Both links also appear in the footer's Families column. Featured: About. Parent guide and Financial assistance are hidden from the menu for now; both pages stay live and linked from the home page and footer. |
+| Families | folder | For now: **About ALL CAN Sport** and **Contact** only. Hidden menu items, kept in the tree to turn back on later: Parent guide, Financial assistance, Rowan's Law (concussion safety, https://www.ontario.ca/page/rowans-law-concussion-safety), Safe Sport (https://abuse-free-sport.ca). The pages stay published. Featured: About. |
 | Shop | link | gear.athleteinstitute.ca, new tab. Hidden from the header for now; the footer keeps its Shop link. |
 
 The menu is the Module 23 `site_nav_items` tree: root → folder → folder → page/link at most. In the mega panel the title is just the menu name with a period (no kicker, no description line), set in Futura Bold in red; the Play title's period is the dribbling ball from Why ALL CAN; a root folder's child folders become columns; loose pages form a "More" column; a featured slot shows one promo with its line. Opens on hover with a pointer and on click or Enter for keyboard; Escape closes; focus returns to the trigger.
 
 Phones: black bar with Menu (hamburger + word) on the left and the shield centred. Menu opens the white left drawer. At the top, two side-by-side buttons: **Ask ALL CAN** (filled Ink) and **Sign in** (outline). When signed in, the Sign in button becomes a profile button (initials and first name); tapping it opens the same account links as the desktop dropdown in place, under the two buttons. The phone header never shows a profile icon; it stays Menu and logo only. Below them, root items as large rows and folders as accordions with their columns as subheads.
 
-Footer (black): ALL CAN Sport horizontal logo (max width 336px) and "A division of Athlete Institute." on the left; two columns on the right (ALL CAN Sport links; Families links; then Watch, Tickets and Shop link-outs); legal line in micro caps with the photo credit.
+Footer (black): ALL CAN Sport horizontal logo (max width 336px) and "A division of Athlete Institute." on the left; two columns on the right. **ALL CAN Sport:** Locations, Host a program, Schedules and results, Standings. **Families:** About, Contact. Then **Athlete Institute:** Watch, Tickets, Shop link-outs. (Basketball, ALL CAN Circuit, Rosters, Stories, Parent guide, Financial assistance, Policies, Rowan's Law and Safe Sport are left out of the footer for now.) legal line in micro caps with the photo credit.
 
 ---
 
