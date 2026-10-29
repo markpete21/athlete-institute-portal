@@ -1,6 +1,6 @@
 # allcansport.ca: build prompt
 
-> Build the ALL CAN Sport website at **allcansport.ca** as the first brand site of **Module 23 (Brand Sites)**, inside this repo. Read, in this order: `specs/MASTER-build-order.md`, `specs/brand-sites-module-prompt.md` (the platform: host routing, page builder, nav, publishing, permissions, dashboard), then this file (what ALL CAN's site contains and how it looks). Brand rules live in `specs/allcan/design-system/`. Reference material: `01-audit-website-summary.md`, `02-league-site-research.md`. Clickable prototype: https://claude.ai/artifact/RgSguZG5bqAwivJPxxSHTg (sample data, scripted Claude).
+> Build the ALL CAN Sport website at **allcansport.ca** as the first brand site of **Module 23 (Brand Sites)**, inside this repo. Read, in this order: `specs/MASTER-build-order.md`, `specs/brand-sites-module-prompt.md` (the platform: host routing, page builder, nav, publishing, permissions, dashboard), then this file (what ALL CAN's site contains and how it looks). Brand rules live in `specs/allcan/design-system/`. Reference material: `01-audit-website-summary.md`, `02-league-site-research.md`. Clickable prototype: https://claude.ai/artifact/RgSguZG5bqAwivJPxxSHTg (sample data, scripted Claude). **Where this file and the prototype differ, this file wins**; it was last brought in line with the prototype on Oct 29 2026.
 
 ---
 
@@ -8,19 +8,19 @@
 
 | Topic | Decision |
 |---|---|
-| Brand | **ALL CAN Sport**. Line: "Sport that belongs to everyone." Pillars: "Play. Compete. Grow." Covers youth and men's leagues. |
+| Brand | **ALL CAN Sport**. Line: "Sport that belongs to everyone." Pillars: "Play. Compete. Grow." Covers youth and adult leagues and skills programs. Site line under the hero: "Inclusive, professionally run leagues and skill development for youth and adults of all abilities." |
 | Sport structure | **Basketball:** ALL CAN Basketball League · ALL CAN Basketball Skills · ALL CAN Circuit (rep). **Volleyball:** League · Skills. **Soccer:** League · Skills. **Flag Football:** League. Only basketball is running at launch; the others show as coming soon. |
 | Hierarchy | **Location first, then sport, then league type** (youth league, adult league, youth skills, rep). |
 | Locations at launch | **Toronto Midtown** at De La Salle College (basketball league + skills). **Orangeville** at Athlete Institute, Mono, ON (ALL CAN Circuit). |
-| Toronto areas | **Each Toronto area is its own location** (`toronto-midtown`, later `toronto-west`, etc.), grouped under "Toronto" in the finder and menu. The area name "Midtown" is a working name, to be confirmed. |
+| Toronto areas | **Each Toronto area is its own location** (`toronto-midtown`, later `toronto-west`, etc.), grouped by city ("Toronto") in the Locations finder; in the menu, locations sit inside a province folder (**Ontario**), see §3. The area name "Midtown" is a working name, to be confirmed. |
 | Registration | **Not in this build.** Program pages show live facts and an interest form ("notify me when registration opens"). Register and pay on allcansport.ca comes later with the registration platform; leave the slot in the program page. |
 | Header | **Mega menu on desktop**, in brand style (hairline columns, white panel, no cards, no shadows). Phones keep the brand header: Menu left, logo centred, white left drawer. |
 | Logos | **ALL CAN Sport shield** in the header. **ALL CAN Sport horizontal** in the footer. Circuit lockup on Circuit pages only. |
 | Fonts | **System stack, no hosted fonts.** Apple devices render SF Pro natively; others fall back to Helvetica Neue, Helvetica, Arial. Do not serve the SF Pro or Helvetica Neue files from the brand zip; their licences don't cover web hosting. |
-| Display face | **Futura Bold** (regular width, not condensed) for the hero tagline "Sport that belongs to everyone." and the Play. / Compete. / Grow. pillar words in Why ALL CAN. Owner-approved exception to the rulebook's SF Pro-only web rule, for those lines only. Load it from the visitor's device (`local()`; Apple platforms ship it), fall back to Jost Bold from Google Fonts. To show Futura on every device, license a Futura webfont (for example Futura PT through Adobe Fonts) before hosting it. |
+| Display face | **Futura Bold** (regular width, not condensed) for the hero tagline "Sport that belongs to everyone." and the Play. / Compete. / Grow. pillar words in Why ALL CAN. Owner-approved exception to the rulebook's SF Pro-only web rule, for those lines only. It is also the face of the red mega-menu panel titles. The header menu items use **Futura Medium** (regular weight) at 18px. Load both from the visitor's device (`local()`; Apple platforms ship them), falling back to Jost 700 and Jost 500 from Google Fonts. To show Futura on every device, license a Futura webfont (for example Futura PT through Adobe Fonts) before hosting it. |
 | Live / Tickets / Gear | **Link out only.** Shop goes to gear.athleteinstitute.ca. |
-| Claude | Three features: **Write with Claude** block, **Build a page with Claude**, and **Ask ALL CAN** for visitors (answers only from published facts, hands off to staff). |
-| Editor | Site dashboard, page builder with the Claude block, navigation and mega-menu editor, site settings. All from Module 23. |
+| Claude | Three main features: **Write with Claude** block, **Build a page with Claude**, and **Ask ALL CAN** for visitors (answers only from published facts, hands off to staff). Plus smaller editor helpers (§7.4): SEO titles and descriptions, keyword suggestions, Draft with Claude for stories, and alt text for photos. |
+| Editor | Rail: **Dashboard · Analytics · Pages · Stories · Media · Navigation · SEO · Members · Site settings** (§6). Built on Module 23, with ALL CAN's additions. |
 
 ---
 
@@ -28,9 +28,9 @@
 
 The rulebook (`design-system/guidelines/ALL-CAN-Design-System.md`) and tokens win every conflict. Web behaviour follows `design-system/guidelines/web/WEB-UIUX.md`, which applies the Athlete Institute UI/UX prompt with the ALL CAN translation table. The key rules for this site:
 
-- **Colour.** Red `#CE112D` is the accent. **Owner decision:** red marks live and open status pills ("Open", "Now playing", "Following") and the main action in a section (for example Parent guide on the home page), so a view can carry more than one red moment; the rulebook's once-per-view rule is relaxed for the website. Keep red for those jobs only. Ink `#212322` for dark surfaces and type on light. **White `#FFFFFF` is the page ground** (owner decision; replaces the rulebook's Paper default). Paper `#EAEAEA` stays for small fills such as hover and selected states. Cool Gray 11 `#53565A` for secondary text on light. Red text only on light surfaces; on dark, red is a fill.
+- **Colour.** Red `#CE112D` is the accent. **Owner decision:** red marks live and open status pills ("Open", "Now playing", "Following") and the main action in a section (for example **Find your location** in the hero), plus the pillar words, the dribbling ball, the ALL CAN wordmark, the mega-menu titles and over-limit counters in the editor, so a view can carry more than one red moment; the rulebook's once-per-view rule is relaxed for the website. Keep red for those jobs only. Ink `#212322` for dark surfaces and type on light. **White `#FFFFFF` is the page ground** (owner decision; replaces the rulebook's Paper default). Paper `#EAEAEA` stays for small fills such as hover and selected states. Cool Gray 11 `#53565A` for secondary text on light. Red text only on light surfaces; on dark, red is a fill.
 - **Header and footer on black.** The ALL CAN Sport shield and horizontal files exist only as `-on-black` and `-on-red` versions, and the rulebook says a logo file sits only on the background its filename names. So the header and footer are `#000000`. Everything else follows the surface rules.
-- **Display lines.** The hero tagline and the pillar words use the display face from §0 (Futura Bold, weight 700). Nothing else on the site uses it.
+- **Display lines.** The hero tagline, the pillar words and the mega-menu panel titles use the display face from §0 (Futura Bold, weight 700); the header menu items use Futura Medium. Nothing else on the site uses Futura.
 - **Type.** Semibold (600) headlines with tight leading; at most four sizes per layout; tabular lining numerals everywhere; body lines no wider than about 60 characters. Every headline ends with a period ("Locations." "This week.").
 - **Grid.** 12 columns, 1440 max, margins `clamp(20px, 4.4vw, 64px)`. Labels and stacked titles in the left half; content from column 7.
 - **No cards, no shadows, no rounded corners** except pill buttons and status pills. Structure comes from 1px hairlines: standard at 28% Ink, strong at 70%. Tables have no vertical rules and no zebra stripes.
@@ -39,8 +39,8 @@ The rulebook (`design-system/guidelines/ALL-CAN-Design-System.md`) and tokens wi
 - **Sport marks.** Each sport has a supplied line mark (basketball snowflake ball, volleyball maple leaf, soccer star shield, flag football field). Files: `design-system/logos/sports/`. Black on white, about 72px tall, above the sport name. They are logos, not icons: never recolour, outline or redraw them, and don't use them as UI glyphs.
 - **Photography.** Full-bleed, one treatment per composition, faces never covered by type, every photo credited. Until real photos exist, use Ink with grain and a "Photo [TBC]" credit. Never use stock or another brand's images.
 - **Copy formats.** Dates stacked: `Saturday / April 4th / 2026.` Times: `7:30pm ET`. Scores and records with an en dash: `84–79`, `12–3`. Inline meta with middle dots: `De La Salle College · Court 2 · 7:30pm ET`. Brand name always `ALL CAN` / `ALL CAN Sport`.
-- **Accuracy.** Never state a date, price, age group, coach, partner or stat that wasn't supplied. Show `[TBC]` in admin and hide unconfirmed rows from the public page once the site is live (see §6.4).
-- **Never** use All Canadian Games or Orangeville Prep marks, lines, colours (Trophy Gold), Inter, JetBrains Mono or the dot field.
+- **Accuracy.** Never state a date, price, age group, coach, partner or stat that wasn't supplied. Show `[TBC]` in admin and hide unconfirmed rows from the public page once the site is live (see "`[TBC]` handling" at the end of §6).
+- **Never** use All Canadian Games or Orangeville Prep marks (the one exception: the All Canadian Games logo as a partner logo in the Partners band and footer, owner decision, §4.1), lines, colours (Trophy Gold), Inter, JetBrains Mono or the dot field.
 
 Implement the brand as the Module 23 **theme pack** `packages/foundation/src/themes/all-can/` with renderers in `components/site/themes/all-can/`. Tokens come from `design-system/tokens/` minus the font files. Logos ship from the public `brand-assets` bucket under `sites/all-can/` (raster only), resized for web.
 
@@ -68,9 +68,10 @@ Implement the brand as the Module 23 **theme pack** `packages/foundation/src/the
 /parent-guide                       How it works, placement, what to bring, policies
 /financial-assistance               Policy, limits, outside programs, confidential request
 /about                              About ALL CAN Sport, operator, contact
+/[page]                             Staff-made pages from New page, e.g. /summer-camps
 ```
 
-Location slugs are unique site-wide. Toronto areas are separate locations with a shared `city = "Toronto"` used for grouping in the finder and the Locations mega menu. Add a `locations` concept to `brand_sites` content (or reuse Module 2's facility tree with a `public_location` record) holding: slug, name, city, venue, address, parking, arrival, contact, local social link, status (`open`, `opening_soon`, `waitlist`, `closed`), and the sports offered. Programs link to a location through their venue. Status pills show a launch date when one is set (for example Toronto Midtown: **Coming Jan 2027**) instead of a generic "Opening soon"; the label comes from the location's status plus an optional launch month.
+Location slugs, staff page slugs and the reserved paths above share one namespace and are unique site-wide (the New page dialog and location editor refuse a clash and suggest `-2`). Toronto areas are separate locations with a shared `city = "Toronto"` used for grouping in the finder and the Locations mega menu. Add a `locations` concept to `brand_sites` content (or reuse Module 2's facility tree with a `public_location` record) holding: slug, name, city, venue, address, parking, arrival, contact, local social link, status (`open`, `opening_soon`, `waitlist`, `closed`), and the sports offered. Programs link to a location through their venue. Status pills show a launch date when one is set (for example Toronto Midtown: **Coming Jan 2027**) instead of a generic "Opening soon"; the label comes from the location's status plus an optional launch month.
 
 ---
 
@@ -83,9 +84,9 @@ Desktop header, left to right: **shield** (links home) · **Play. · Locations. 
 | Root | Type | Mega menu columns |
 |---|---|---|
 | Play | folder | Title "Play." takes a narrow column (2 of 12) so the tabs and panel start right beside it (columns 3–9). **Sport tabs** across the top (Basketball, Volleyball, Soccer, Flag Football), each a pill with its sport mark; the selected tab is filled Ink with the mark inverted. Clicking a tab (or arrow keys, as a proper ARIA tablist) shows that sport's panel below: its programs as hairline rows with a one-line description (Basketball: League, Skills, Circuit) and an "All of basketball" link; coming-soon sports list their programs marked Soon and a "Request [sport] near you" link. Featured: Basketball. |
-| Locations | folder | Tree: **Locations** (root folder) → **Ontario** (folder, the province) → one page per location (Toronto Midtown, Orangeville), plus the loose pages Request a location and Host a program. A new province is a new folder beside Ontario. **Location cards** on the left under the panel title "Locations.": one card per location page in the region folders, in menu order (two today), each with a venue photo (4:3), location name, facility and status pill (no separate city label), linking to the location hub; cards come from the location records, not the menu tree. To the right of the cards, in the same row and starting level with the top of the photos, two plain links with no heading: Request a location, Host a program (All locations is hidden for now; the /locations page stays live). No featured box in this dropdown. |
+| Locations | folder | Tree: **Locations** (root folder) → **Ontario** (folder, the province) → one page per location (Toronto Midtown, Orangeville), plus the loose pages Request a location and Host a program. A new province is a new folder beside Ontario. **Location cards** on the left under the panel title "Locations.": one card per location page in the region folders, in menu order (two today), each with a venue photo (4:3), location name, facility and status pill (no separate city label), linking to the location hub. Which cards show, and their order, come from the menu tree; the photo, venue and status on each card come from the location record. To the right of the cards, in the same row and starting level with the top of the photos, two plain links with no heading: Request a location, Host a program (All locations is hidden for now; the /locations page stays live). No featured box in this dropdown. |
 | Compete | folder | No column headings: **Schedules & Results** (`/scores`), **Standings**, **Rosters**. Featured: Schedules & results. (Any dropdown made only of pages shows no column heading.) |
-| Training | page | Hidden from the header for now. The page stays live, linked from Sports → Basketball → Skills. |
+| Training | page | Hidden from the header for now. The page stays live, linked from Play → Basketball → Skills. |
 | Stories | page | Hidden from the header for now. The page stays live, linked from the footer. |
 | Families | folder | For now: **About ALL CAN Sport** and **Contact** only. Hidden menu items, kept in the tree to turn back on later: Parent guide, Financial assistance, Rowan's Law (concussion safety, https://www.ontario.ca/page/rowans-law-concussion-safety), Safe Sport (https://abuse-free-sport.ca). The pages stay published. Featured: About. |
 | Shop | link | gear.athleteinstitute.ca, new tab. Hidden from the header for now; the footer keeps its Shop link. |
@@ -171,7 +172,7 @@ Everything here reuses Module 23 §3.2: shared Compete components, `brandKey` fi
 
 ## 6. Editor
 
-All from Module 23 §7, with these ALL CAN specifics.
+Built on Module 23 §7, with these ALL CAN specifics. **Editor rail**, top to bottom: Dashboard · Analytics · Pages · Stories · Media · Navigation · SEO · Members · Site settings · View site. On phones the rail becomes a scrolling row of tabs. Every view must work at 390px with no sideways page scroll (tables scroll inside their own box).
 
 ### 6.1 Dashboard
 KPIs: visitors, page views (Vercel Web Analytics, filtered to allcansport.ca), registrations (shows "Not connected yet" until registration is live), **interest sign-ups** by location and sport. Panels: traffic sparkline and top pages (with an Open analytics link); **page tree** with Page, Folder and Link tags, publish state and an Edit link per page; content counts (published, unpublished changes, drafts, hidden); Compete activity (divisions, teams, games this week, most-viewed standings).
@@ -185,7 +186,7 @@ Rows are draggable: each has a grip handle; drag to reorder (a line shows where 
 ### 6.4 Site settings
 Launch switch (Off · Coming soon · Live) with its go-live checks; domains (allcansport.ca verified, www redirects, sign-in ready); a **Search and sharing** panel that only points to SEO (§6.5); contact and link-outs; a **Members** panel that only points to Members (§6.9); **Ask ALL CAN** on/off and its hand-off contact.
 
-### 6.5 SEO (editor rail: Dashboard · Pages · Navigation · **SEO** · Site settings)
+### 6.5 SEO
 Modelled on the Wix SEO Setup Checklist and Squarespace's page SEO panel, adapted to a multi-location league. Everything here is saved per site (Module 23 §9), so every brand site gets the same tool.
 
 **Banner.** While the site is Off or Coming soon, a notice says search engines see nothing (or only the coming-soon page) and that the settings take effect at launch.
@@ -220,7 +221,7 @@ Modelled on the Wix SEO Setup Checklist and Squarespace's page SEO panel, adapte
 
 The Dashboard gains an **SEO** panel: the progress bar, "N of 12 done" and Open SEO / Set up SEO.
 
-### 6.6 Analytics (rail: Dashboard · **Analytics** · Pages · Stories · Media · Navigation · SEO · Members · Site settings)
+### 6.6 Analytics
 Date range: 7 · 28 · 90 days. Three tabs (a proper ARIA tablist):
 - **Key metrics:** visitors (with change vs the previous period), page views, bounce rate, interest sign-ups (and the share of location-page visitors who signed up), registrations ("Shows once registration is live"). **Traffic:** daily visitors line chart with a hover crosshair and tooltip. **Traffic sources:** Google search, Direct, Instagram, Athlete Institute sites, AI assistants, Other. **Search keywords:** top Google searches (from Search Console once connected) with a link to the Google tab. **Geography:** visitors by city (Toronto, Orangeville and Dufferin, Mississauga and Brampton, rest of Ontario, outside Ontario). **Devices**, **Top pages** (views, change) and **Sign-ups** by location and sport.
 - **Performance on Google** (needs Search Console; until then a Connect panel that opens SEO setup at the Google step): clicks, impressions, click-through rate, average position; daily clicks chart; a searches table (clicks, impressions, CTR, position); **Opportunities**: searches with many impressions at position 7 or worse, each with "Improve page" opening that page's SEO panel; pages on Google.
@@ -266,6 +267,14 @@ All three run **server-side** through one `lib/site/claude.ts` client using the 
 
 ---
 
+### 7.4 Claude helpers in the editor
+Same client, grounding and audit log as above; every result is a draft the editor reviews, and nothing is saved or published without an editor action.
+- **SEO:** keyword suggestions from the location and program records (setup step 2); **Write with Claude** in the page SEO panel drafts a search title (≤ 60) and description (120–160) using a chosen keyword and says which one it used.
+- **Stories:** **Draft with Claude** writes a title, summary and body blocks from the chosen location and program records, leaving missing facts as `[TBC]` and saying how many.
+- **Alt text:** describes photos that lack alt text (the image is sent to the model; the result is checked by staff before use). Offered in Media and in the SEO checklist.
+
+---
+
 ## 8. Build stages: show me each working
 
 Stages 1–6 of Module 23 deliver the platform. On top of them:
@@ -274,9 +283,12 @@ Stages 1–6 of Module 23 deliver the platform. On top of them:
 2. **Locations.** Location records, finder with request form, Toronto Midtown and Orangeville hubs, sport-at-location pages with program blocks and interest forms. Verify: changing a program's day in admin changes the public fact block.
 3. **Compete on allcansport.ca.** Location-first filters, scores, standings, teams, team pages, players, profiles, follow a team with notifications. Verify: Toronto Midtown divisions appear here and on compete.athleteinstitute.ca with identical masking; following a team sends a test final-score notification.
 4. **Supporting pages.** Sport overviews and coming-soon sports, Circuit, training with the request form, stories, parent guide, financial assistance with the confidential request, about and contact.
-5. **Editor specifics.** Dashboard panels, the ALL CAN block types, navigation editor depth rule and live preview, settings including Ask ALL CAN and the `[TBC]` go-live check.
-6. **Claude.** Write with Claude block, Improve with Claude, Build a page with Claude (structured proposal), Ask ALL CAN with sources and hand-off, audit log, rate limits.
-7. **Launch.** Domain, Clerk satellite, status Coming soon, then Live once every launch fact is confirmed.
+5. **Editor specifics.** Dashboard panels, the ALL CAN block types, New page with templates, navigation editor (drag to reorder, grey folders, depth rule, live preview), settings including Ask ALL CAN and the `[TBC]` go-live check.
+6. **Stories and Media.** Article editor with blocks, scheduling, preview and search fields; Media library with upload, usage, Replace, blocked delete and alt text. Verify: a scheduled story appears on /stories at its time; replacing a partner logo updates the home band and footer.
+7. **SEO.** Setup wizard, auto-ticked checklist, page SEO panel, title formats, redirects in middleware, sitemap, robots.txt with the AI crawler groups, structured data. Verify: changing a page address adds a 301 and leaves no chains; player profiles are noindex and absent from the sitemap.
+8. **Analytics and Members.** Vercel Web Analytics, Search Console API and the weekly AI visibility job; Members with roles, invites and the last-admin rule. Verify: a Writer can't publish; removing the last Site admin is refused.
+9. **Claude.** Write with Claude block, Improve with Claude, Build a page with Claude (structured proposal), Ask ALL CAN with sources and hand-off, the editor helpers (§7.4), audit log, rate limits.
+10. **Launch.** Domain, Clerk satellite, status Coming soon, then Live once every launch fact is confirmed.
 
 Registration and full program pages are a separate later stage, once the registration platform is ready.
 
@@ -286,7 +298,12 @@ Registration and full program pages are a separate later stage, once the registr
 - Interest form validation and consent; nothing labelled as registration.
 - Compete parity with compete.athleteinstitute.ca; masking; hidden players never get profiles.
 - Nav depth rule; mega panel built from the tree; keyboard and Escape behaviour.
-- One red per view: a render check that counts red-filled elements per page.
+- Red only where §1 allows it: a render check that flags red on anything other than status pills, main actions, the pillar words and ball, the wordmark and mega titles.
+- SEO: title formats fill in; slug change → one 301 with no chains; noindex and sitemap rules; robots.txt matches the two AI checkboxes; structured data validates.
+- Stories: drafts and scheduled stories never appear publicly; publishing needs title, body and cover alt text.
+- Media: delete is refused while a file is used; Replace keeps every reference; SVG and oversize uploads are refused.
+- Members: role permissions match the table in §6.9; the last Site admin can't be demoted or removed; invites claim on first sign-in.
+- Nav editor: drag and keyboard moves give the same tree; depth and self-nesting refusals.
 - Claude: proposals validate against the block schema; facts missing from records come back `[TBC]`; Ask ALL CAN answers cite sources and hands off when no source matches; generated content is never published without an editor action.
 
 ---
@@ -301,4 +318,11 @@ Registration and full program pages are a separate later stage, once the registr
 - Financial assistance funding, limits, reviewer and response time.
 - Contact email, phone and response time; local social handles.
 - Photography: first shoot, credits and guardian media permissions.
+- Hero photo: a 2400px+ original and guardian media permission for every player shown; venue photos for De La Salle College and Athlete Institute.
+- Partner logo permissions (All Canadian Games, Athlete Institute, NCCP, Safe Sport Training).
+- A Futura webfont licence if Futura should show on every device, not only Apple ones.
+- A vision line for Why ALL CAN, and the legal operator name (e.g. "Athlete Institute Ltd.").
+- Google: who owns the Search Console property and the Orangeville Business Profile; a service account for the Search Console API.
+- AI visibility checks: which assistants to query and the weekly budget.
+- Members: the first Site admin and editors for ALL CAN.
 - Rulebook open items that touch the site: the ALL CAN League mark and sign-off, and whether the Nike partnership extends to ALL CAN.
