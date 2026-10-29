@@ -130,7 +130,7 @@ Our site links to other sites, including other Athlete Institute sites, partners
 
 ## Contact us
 
-- **Privacy officer:** [TBC]
+- **Write to:** Privacy Officer, Athlete Institute, Ltd.
 - **Phone:** 519-940-3735
 - **Email:** info@athleteinstitute.ca
 - **Mail:** Athlete Institute, Ltd., 207321 Highway 9, Mono, ON L9W 6J2, Canada

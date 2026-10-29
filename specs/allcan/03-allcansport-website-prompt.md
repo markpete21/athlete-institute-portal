@@ -162,7 +162,8 @@ What changed from the original, and why:
 - **Text messages:** "may send text messages for any purpose" became texts about ALL CAN programs (schedule changes, cancellations, reminders), with STOP and HELP, which fits CASL's requirement that consent be for a stated purpose.
 - **Added**, because PIPEDA guidance expects them or the site needs them: youth players and photos (guardian permission, no birth dates or schools on public pages, profiles out of search), parent or guardian consent for players under 18, storage outside Canada, cookies, breach notification, the right to complain to the Office of the Privacy Commissioner of Canada, Ask ALL CAN, and Rowan's Law records.
 - **Contact:** phone 519-940-3735, email info@athleteinstitute.ca, mail Athlete Institute, Ltd., 207321 Highway 9, Mono, ON L9W 6J2, Canada.
-- **Still to fill in:** effective date and the privacy officer's name. A lawyer should review the final text before launch.
+- **Privacy officer:** the policy names the role, not a person (owner decision): "Privacy Officer, Athlete Institute, Ltd." PIPEDA still requires the company to designate someone internally who is accountable and who receives privacy requests sent to info@athleteinstitute.ca.
+- **Still to fill in:** the effective date. A lawyer should review the final text before launch.
 
 ---
 
@@ -336,7 +337,7 @@ Registration and full program pages are a separate later stage, once the registr
 - Photos through Media: the hero (2400px+ original), venue photos for De La Salle College and Athlete Institute, credits, and guardian media permission for every player shown.
 
 **Legal and compliance** (Athlete Institute, Ltd. is the operator; have a lawyer confirm this list):
-- **Privacy policy** (done, §4.13): fill in the privacy officer and effective date.
+- **Privacy policy** (done, §4.13): fill in the effective date, and designate a privacy officer internally (the policy shows the role, not a name).
 - **CASL** (anti-spam): every marketing email and text needs express consent for a stated purpose, the sender's name (Athlete Institute, Ltd.), a mailing address and contact (Athlete Institute, Ltd., 207321 Highway 9, Mono, ON L9W 6J2; info@athleteinstitute.ca), and a working unsubscribe that takes effect within 10 business days. Keep a record of each consent (who, when, what wording). The interest forms and `notify()` templates must meet this.
 - **Accessibility (AODA):** Ontario requires organizations with 50 or more employees to meet WCAG 2.0 AA on public websites, and every organization serving the public to have a way to take accessibility feedback. The site is built to WCAG AA; add an **Accessibility** page with a feedback contact.
 - **Rowan's Law:** before players register or take part, athletes, parents of players under 18, coaches and officials must review Ontario's concussion awareness resources, and the organization needs a concussion code of conduct and removal-from-sport and return-to-sport protocols. Turn the hidden Rowan's Law menu link back on and add a **Concussion policy** page before the first session.
