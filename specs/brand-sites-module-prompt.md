@@ -156,14 +156,19 @@ visible     boolean not null default true
 
 ```
 id, brand_key, slug (unique per brand), title, excerpt, cover_url, body_blocks jsonb (same block schema),
-status text check (status in ('draft','published')), published_at, author_profile_id, tags text[],
+status text check (status in ('draft','scheduled','published')), published_at (future = scheduled; a cron publishes it), author_profile_id, author_label, type text, location_id, sport, program_id, cover_media_id, cover_alt, cover_credit, seo jsonb, tags text[],
 created_at / updated_at
 ```
 
 ### 2.5 `site_media` — media library per site
 
 ```
-id, brand_key, path (storage), url, kind (image|video|file), alt, width, height, bytes, uploaded_by, created_at
+id, brand_key, path (storage), url, kind (image|logo|video|file), name, folder, alt, decorative bool, credit, width, height, bytes, uploaded_by, created_at, replaced_at
+```
+
+Usage is computed from page blocks, posts, nav items and site settings (a `site_media_usage` view), so Delete can be refused while a file is used and Replace keeps every reference (references point at the media id, not the URL).
+
+```
 ```
 
 Bucket: reuse the **public** `brand-assets` bucket under `sites/<brand_key>/…`. Raster + MP4/WebM only; **no SVG uploads** (public bucket, stored-XSS vector, same rule as brand logos).
@@ -173,11 +178,14 @@ Bucket: reuse the **public** `brand-assets` bucket under `sites/<brand_key>/…`
 ```
 profile_id  bigint references profiles(id) on delete cascade
 brand_key   text references brand_sites(brand_key) on delete cascade
+role        text not null default 'editor' check (role in ('admin','editor','writer')),
+status      text not null default 'active' check (status in ('invited','active')),
+invited_email text, last_active_at timestamptz,
 granted_by  text, created_at
 primary key (profile_id, brand_key)
 ```
 
-Permission rule: `canEditSite(brandKey)` = super admin **or** (staff **and** has a scope row for that brand). The `/admin/sites` index lists only brands the user may edit. A new system role **`Site Editor`** (seeded in `roles`, `is_system = true`) makes a profile staff so they can reach `admin.*`; the scope rows then say which sites. Assigning the role without a scope grants nothing.
+Permission rule: `canEditSite(brandKey)` = super admin **or** (staff **and** has a scope row for that brand). `siteRole(brandKey)` returns `super | admin | editor | writer`; writers can't publish, and only super and site admins can manage members, the launch switch and domains. A site must keep one active `admin` row (enforced in the action). Invites for emails without a profile are held as `invited` rows keyed by email and claimed on first sign-in. Every grant, change and removal is written to the audit log. The `/admin/sites` index lists only brands the user may edit. A new system role **`Site Editor`** (seeded in `roles`, `is_system = true`) makes a profile staff so they can reach `admin.*`; the scope rows then say which sites. Assigning the role without a scope grants nothing.
 
 ### 2.7 `site_page_views` — lightweight, optional
 
@@ -352,11 +360,15 @@ Tree editor for header (depth rule from §2.3 enforced in UI and action) and foo
 
 ### 7.5 News, media
 
-Posts list + editor (same block editor, plus cover, excerpt, tags, publish). Media library with upload (allowlisted types, 20 MB images / 200 MB video), alt text required for images, usage count, delete blocked while referenced.
+Posts list + editor (same block editor, plus cover, excerpt, tags, publish). Media library with upload (allowlisted types, 20 MB images / 200 MB video), alt text required for images, usage count, delete blocked while referenced. ALL CAN's fuller versions (Stories with scheduling and Draft with Claude; Media with folders, Replace and Claude alt text) are in `specs/allcan/03-allcansport-website-prompt.md` §6.7–6.8 and apply to every site.
+
+### 7.5a Analytics, Members
+
+**Analytics** (`/admin/sites/<brand>/analytics`): key metrics, Performance on Google (Search Console API, server-side service account) and Performance on AI platforms (AI referrals from Vercel Web Analytics referrers; AI crawler hits from request logs by user agent; tracked questions in a new `site_ai_questions (id, brand_key, question, created_by)` table with weekly results in `site_ai_checks (question_id, assistant, ran_at, result check (result in ('cited','mentioned','none')), cited_url)` written by a scheduled job). **Members** (`/admin/sites/<brand>/members`): the `site_editor_scopes` table with roles and invites. Full behaviour: ALL CAN prompt §6.6 and §6.9.
 
 ### 7.6 Settings
 
-Status (launch switch), **Domains** (hostnames, "Verify DNS" button that checks the CNAME/A record and the Vercel domain state and prints the exact GoDaddy records to add), SEO defaults, social, contact, links (Watch / Tickets / Gear / Play overrides), coming-soon copy, design tokens (§4.2), theme pack picker (super admin), and **Editors** (grant/revoke `site_editor_scopes` by email; super admin only).
+Status (launch switch), **Domains** (hostnames, "Verify DNS" button that checks the CNAME/A record and the Vercel domain state and prints the exact GoDaddy records to add), SEO defaults, social, contact, links (Watch / Tickets / Gear / Play overrides), coming-soon copy, design tokens (§4.2), theme pack picker (super admin), and a pointer to **Members** (§7.5a), which replaces the old Editors panel.
 
 ---
 
