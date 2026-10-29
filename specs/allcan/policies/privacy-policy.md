@@ -6,7 +6,7 @@ How ALL CAN Sport collects, uses and protects personal information.
 
 - **Operator:** Athlete Institute, Ltd. ALL CAN Sport is a division.
 - **Applies to:** allcansport.ca and every ALL CAN Sport program
-- **Effective:** [TBC]
+- **Effective:** November 1, 2026
 
 ## Our commitment
 
