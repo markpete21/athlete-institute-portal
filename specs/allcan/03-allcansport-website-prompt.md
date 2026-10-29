@@ -13,6 +13,7 @@
 | Hierarchy | **Location first, then sport, then league type** (youth league, adult league, youth skills, rep). |
 | Locations at launch | **Toronto Midtown** at De La Salle College (basketball league + skills). **Orangeville** at Athlete Institute, Mono, ON (ALL CAN Circuit). |
 | Toronto areas | **Each Toronto area is its own location** (`toronto-midtown`, later `toronto-west`, etc.), grouped by city ("Toronto") in the Locations finder; in the menu, locations sit inside a province folder (**Ontario**), see §3. The area name "Midtown" is a working name, to be confirmed. |
+| Program data | **Not pulled from the registration platform yet** (owner decision). Location and program facts are site records that staff enter in the editor (§6.10). When the registration platform is ready, the same fact blocks switch to reading Module 4 programs; pages don't change. |
 | Registration | **Not in this build.** Program pages show live facts and an interest form ("notify me when registration opens"). Register and pay on allcansport.ca comes later with the registration platform; leave the slot in the program page. |
 | Header | **Mega menu on desktop**, in brand style (hairline columns, white panel, no cards, no shadows). Phones keep the brand header: Menu left, logo centred, white left drawer. |
 | Logos | **ALL CAN Sport shield** in the header. **ALL CAN Sport horizontal** in the footer. Circuit lockup on Circuit pages only. |
@@ -237,7 +238,10 @@ List with filters All · Drafts · Scheduled · Published (with counts): title, 
 Upload button and a drop zone (JPG, PNG, WebP up to 15 MB, PDF, MP4; no SVG). Type filters (All, Photos, Logos, Documents, Video) and search by name, alt text or folder. Tiles flag **Needs alt text** and **Missing**. The detail panel: preview, type, size, date added, **Used on** (every page or slot that uses it), alt text (or **Decorative**, for marks shown beside their name), credit, folder; Save, **Replace** (swaps the file everywhere it's used), Copy link, Delete (blocked while it's used, with the list of where). **Write alt text with Claude** drafts alt text for every photo missing it, for review. Photos are resized and served in modern formats automatically.
 
 ### 6.9 Members
-Who can work on allcansport.ca, mirroring the portal's Roles page (grant by account email, revoke). Table: person and email, role, status (Active with last active, or Invited with date), Resend / Cancel invite / Remove. Roles: **Super admin** (every app; comes from Admin › Roles and can't be changed or removed here), **Site admin** (everything on this site including members, launch and domains), **Editor** (pages, menu, stories, media, SEO; can publish), **Writer** (drafts stories and uploads media; an editor publishes). A "What each role can do" table. **Add a member**: email and role; they get an email to sign in with their Athlete Institute account or create one. Removing asks to confirm and says they keep their account and other apps. A site always keeps one Site admin (changing or removing the last one is refused with a message). Recent access changes are listed.
+Who can work on allcansport.ca, mirroring the portal's Roles page (grant by account email, revoke). Table: person and email, role, status (Active with last active, or Invited with date), Resend / Cancel invite / Remove. Roles: **Super admin** (every app; comes from Admin › Roles and can't be changed or removed here), **Site admin** (everything on this site including members, launch and domains), **Editor** (pages, menu, stories, media, SEO; can publish), **Writer** (drafts stories and uploads media; an editor publishes). A "What each role can do" table. **Add a member**: email and role; they get an email to sign in with their Athlete Institute account or create one. Removing asks to confirm and says they keep their account and other apps. A site always keeps at least one admin, and a super admin counts (demoting or removing the last one is refused with a message). At launch the only member is Mark Peterson (super admin); add others later in Members. Recent access changes are listed.
+
+### 6.10 Locations and programs (records)
+Until the registration platform connects, the facts the public pages show come from site-owned records, edited here (a section inside Pages, or its own rail item if it grows). **Locations:** name, slug, city, province folder, venue, address, parking, arrival, contact, local social link, status with optional launch month, sports offered, venue photo (from Media). **Programs:** location, sport, league type (youth league, adult league, youth skills, rep), name, status, and the fact-block fields in their fixed order (ages or birth years, format, day and time, season, venue, price with taxes, what's included, spots, registration opens). One record per program; every page, menu card and interest form reads from it, so a change shows everywhere at once. Ended seasons are archived, not deleted. Later, a program record can be linked to its Module 4 program and its facts then come from there.
 
 **`[TBC]` handling:** in the editor and in previews, unconfirmed facts show as `[TBC]`. On the live site, a fact block row whose value is still `[TBC]` renders as "To be confirmed" in Cool Gray 11, never as raw brackets. The go-live check lists every `[TBC]` left on published pages.
 
@@ -308,21 +312,24 @@ Registration and full program pages are a separate later stage, once the registr
 
 ---
 
-## 9. Open items to confirm before launch
+## 9. Before going live
 
-- Toronto area name for De La Salle College (working name "Toronto Midtown"), parking and arrival details.
-- Ages or birth years, days, times, season dates, prices, inclusions and capacity for every program.
-- Circuit divisions, selection process and events.
-- Coaches per location; screening statement wording.
-- Refund, cancellation, weather, attendance and consent policies.
-- Financial assistance funding, limits, reviewer and response time.
-- Contact email, phone and response time; local social handles.
-- Photography: first shoot, credits and guardian media permissions.
-- Hero photo: a 2400px+ original and guardian media permission for every player shown; venue photos for De La Salle College and Athlete Institute.
+**Content staff add in the editor once the site is built** (none of this blocks the build; the site can be built with `[TBC]` and stays Off or Coming soon until it's filled in):
+- Program facts for every program (§6.10): ages, days, times, season dates, prices, inclusions, spots; Circuit divisions, selection and events.
+- Location details: the Toronto area name for De La Salle College (working name "Toronto Midtown"), parking, arrival, contact, local social handles.
+- Coaches per location and the screening statement.
+- Policies on the Parent guide: refunds, cancellations, weather, attendance, photos and consent, code of conduct. Financial assistance funding, limits, reviewer and response time.
+- Contact email, phone and response time.
+- Photos through Media: the hero (2400px+ original), venue photos for De La Salle College and Athlete Institute, credits, and guardian media permission for every player shown.
+
+**Decisions and paperwork still open:**
+- Legal operator name, needed for the privacy policy, terms, refund policy and the sender line on emails (CASL). The site keeps "A division of Athlete Institute." until it's confirmed.
+- Vision line for Why ALL CAN: optional; the section works without it.
 - Partner logo permissions (All Canadian Games, Athlete Institute, NCCP, Safe Sport Training).
-- A Futura webfont licence if Futura should show on every device, not only Apple ones.
-- A vision line for Why ALL CAN, and the legal operator name (e.g. "Athlete Institute Ltd.").
-- Google: who owns the Search Console property and the Orangeville Business Profile; a service account for the Search Console API.
-- AI visibility checks: which assistants to query and the weekly budget.
-- Members: the first Site admin and editors for ALL CAN.
+- Futura webfont licence, only if Futura should show on every device rather than Apple ones.
 - Rulebook open items that touch the site: the ALL CAN League mark and sign-off, and whether the Nike partnership extends to ALL CAN.
+
+**After launch:**
+- Connect Google Search Console and the Orangeville Business Profile (the SEO and Analytics Google panels show Connect until then).
+- AI visibility checks: choose the assistants, the number of questions and how often, which sets the monthly API cost. The panel can launch switched off.
+- Add more members as needed; at launch the only admin is Mark Peterson.
