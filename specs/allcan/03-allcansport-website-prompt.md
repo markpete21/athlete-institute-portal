@@ -76,14 +76,14 @@ Location slugs are unique site-wide. Toronto areas are separate locations with a
 
 ## 3. Navigation
 
-Desktop header, left to right: **shield** (links home) · **Locations ▾ · Play ▾ · Compete ▾ · Families ▾** · Sign in · **Ask ALL CAN** (outline pill).
+Desktop header, left to right: **shield** (links home) · **Play ▾ · Locations ▾ · Compete ▾ · Families ▾** · Sign in · **Ask ALL CAN** (outline pill).
 
 **Signed in (desktop):** a round white chip with the person's initials replaces the Sign in link, in the same place, left of Ask ALL CAN. Clicking it opens a white dropdown under the header: name and email, then **My teams and schedule** (`/my-teams`), **My account on Play** (play.athleteinstitute.ca/account), **Site editor** (only for people with a Site Editor or admin role on this site), and **Sign out**. Escape or a click outside closes it.
 
 | Root | Type | Mega menu columns |
 |---|---|---|
-| Locations | folder | **Location cards** on the left under the panel title "Locations.": one card per location (two today), each with a venue photo (4:3), location name, facility and status pill (no separate city label), linking to the location hub; cards come from the location records, not the menu tree. To the right of the cards, in the same row and starting level with the top of the photos, two plain links with no heading: Request a location, Host a program (All locations is hidden for now; the /locations page stays live). No featured box in this dropdown. |
 | Play | folder | **Sport tabs** across the top (Basketball, Volleyball, Soccer, Flag Football), each a pill with its sport mark; the selected tab is filled Ink with the mark inverted. Clicking a tab (or arrow keys, as a proper ARIA tablist) shows that sport's panel below: its programs as hairline rows with a one-line description (Basketball: League, Skills, Circuit) and an "All of basketball" link; coming-soon sports list their programs marked Soon and a "Request [sport] near you" link. Featured: Basketball. |
+| Locations | folder | **Location cards** on the left under the panel title "Locations.": one card per location (two today), each with a venue photo (4:3), location name, facility and status pill (no separate city label), linking to the location hub; cards come from the location records, not the menu tree. To the right of the cards, in the same row and starting level with the top of the photos, two plain links with no heading: Request a location, Host a program (All locations is hidden for now; the /locations page stays live). No featured box in this dropdown. |
 | Compete | folder | No column headings: **Schedules & Results** (`/scores`), **Standings**, **Rosters**. Featured: Schedules & results. (Any dropdown made only of pages shows no column heading.) |
 | Training | page | Hidden from the header for now. The page stays live, linked from Sports → Basketball → Skills. |
 | Stories | page | Hidden from the header for now. The page stays live, linked from the footer. |
