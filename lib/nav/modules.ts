@@ -11,7 +11,7 @@ export type ModuleKey =
   | 'schedule' | 'facilities' | 'conflicts' | 'rentals' | 'displays'
   | 'accounts' | 'staff' | 'roles' | 'waivers' | 'import' | 'brands'
   | 'comms' | 'feedback' | 'points' | 'promotions' | 'gallery'
-  | 'reports' | 'retention' | 'dunning' | 'assist';
+  | 'reports' | 'retention' | 'dunning' | 'assist' | 'sites';
 
 export interface QuickAction { label: string; href: string }
 export interface ModuleDef {
@@ -120,6 +120,12 @@ export const MODULES: ModuleDef[] = [
   ] },
   { key: 'gallery', label: 'Photo & Video', group: 'Engagement', href: '/gallery', actions: [
     { label: 'Galleries', href: '/gallery' },
+  ] },
+  { key: 'sites', label: 'Websites', group: 'Engagement', href: '/sites', actions: [
+    { label: 'All sites', href: '/sites' },
+    { label: 'ALL CAN Sport', href: '/sites/all-can' },
+    { label: 'ALL CAN pages', href: '/sites/all-can/pages' },
+    { label: 'ALL CAN stories', href: '/sites/all-can/stories' },
   ] },
 
   { key: 'reports', label: 'Dashboard & Reports', group: 'Business & Insight', href: '/reports', actions: [

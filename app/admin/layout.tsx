@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation';
 import { ECOSYSTEM_LINKS } from '@ai/foundation';
 import AdminShell from '@/components/nav/AdminShell';
 import { getPortalSession } from '@/lib/auth';
+import { editableSites } from '@/lib/site/scopes';
 import { getNavPrefs, pinnablePrograms, pinnedProgramStats } from '@/lib/nav/prefs';
 import { setRailMinimizedAction, toggleFavouriteAction, togglePinnedProgramAction } from './nav-actions';
 
@@ -22,7 +23,10 @@ const STATS_DAYS = 7; // pinned-program key stats default to the last 7 days
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
   const session = await getPortalSession();
 
-  if (!session.isStaff) {
+  // Brand-site editors (Module 23 §2.6) may not be staff: they reach only
+  // /sites/<brand>, which the sites layout gates per brand.
+  const siteEditor = !session.isStaff && session.profileId ? (await editableSites(session)).length > 0 : false;
+  if (!session.isStaff && !siteEditor) {
     const playUrl = process.env.NEXT_PUBLIC_PLAY_URL ?? ECOSYSTEM_LINKS.hub;
     redirect(playUrl);
   }

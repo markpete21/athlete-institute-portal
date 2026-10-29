@@ -194,6 +194,8 @@ export async function saveScore(input: { gameId: number; homeScore: number; away
     .eq('id', input.gameId);
   if (error) throw new Error(`score save failed: ${error.message}`);
   await audit({ actorId: input.actorClerkId, action: 'game.scored', target: `game:${input.gameId}`, meta: { home: input.homeScore, away: input.awayScore, overtime: input.overtime } });
+  // Brand-site followers (Module 23 §3.5): best effort, never blocks the save.
+  void import('@/lib/site/follows').then((m) => m.notifyFollowers(input.gameId, 'final')).catch(() => {});
 }
 
 /** Sport-aware standings for a division from final games. */

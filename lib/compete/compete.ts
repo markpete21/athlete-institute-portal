@@ -134,14 +134,20 @@ export function displayName(
   return l ? `${f} ${l[0].toUpperCase()}.` : f;
 }
 
-/** Publicly visible divisions, newest first. */
-export async function listDivisions(): Promise<CompeteDivision[]> {
+/**
+ * Publicly visible divisions, newest first. `brandKey` scopes the list to one
+ * brand's programs (brand sites, Module 23); Compete passes nothing and gets
+ * everything. The brand filter runs on programs.brand_key through the join.
+ */
+export async function listDivisions(brandKey?: string | null): Promise<CompeteDivision[]> {
   const db = supabaseAdmin();
-  const { data } = await db
+  let q = db
     .from('divisions')
-    .select('id, name, sport, show_full_names, stats_enabled, stats_show, program_id, programs(name, brand_key, tournament_mode)')
+    .select(`id, name, sport, show_full_names, stats_enabled, stats_show, program_id, programs${brandKey ? '!inner' : ''}(name, brand_key, tournament_mode)`)
     .eq('show_on_compete', true)
     .order('id', { ascending: false });
+  if (brandKey) q = q.eq('programs.brand_key', brandKey);
+  const { data } = await q;
   const rows = data ?? [];
   if (rows.length === 0) return [];
 
@@ -168,14 +174,16 @@ export async function listDivisions(): Promise<CompeteDivision[]> {
 }
 
 /** Published divisions grouped by program — the Compete top nav. */
-export async function listPrograms(): Promise<CompeteProgram[]> {
+export async function listPrograms(brandKey?: string | null): Promise<CompeteProgram[]> {
   const byProgram = new Map<number, CompeteProgram>();
   const db = supabaseAdmin();
-  const { data } = await db
+  let q = db
     .from('divisions')
-    .select('id, name, sport, program_id, programs(name, brand_key)')
+    .select(`id, name, sport, program_id, programs${brandKey ? '!inner' : ''}(name, brand_key)`)
     .eq('show_on_compete', true)
     .order('id');
+  if (brandKey) q = q.eq('programs.brand_key', brandKey);
+  const { data } = await q;
   for (const d of data ?? []) {
     const p = d.programs as unknown as { name: string; brand_key: string | null } | null;
     const entry: CompeteProgram = byProgram.get(d.program_id) ?? { programId: d.program_id, programName: p?.name ?? 'Program', brandKey: p?.brand_key ?? null, divisions: [] };
@@ -190,12 +198,14 @@ export async function listPrograms(): Promise<CompeteProgram[]> {
  * comes through the Module 2 booking when the game has one; the stream ref
  * feeds the Watch-live handoff. Nothing person-level is ever in here.
  */
-export async function upcomingGames(limit = 12): Promise<UpcomingGame[]> {
+export async function upcomingGames(limit = 12, brandKey?: string | null): Promise<UpcomingGame[]> {
   const db = supabaseAdmin();
-  const { data: divs } = await db
+  let dq = db
     .from('divisions')
-    .select('id, name, programs(name, brand_key)')
+    .select(`id, name, programs${brandKey ? '!inner' : ''}(name, brand_key)`)
     .eq('show_on_compete', true);
+  if (brandKey) dq = dq.eq('programs.brand_key', brandKey);
+  const { data: divs } = await dq;
   if (!divs?.length) return [];
   const divById = new Map(divs.map((d) => [d.id, d]));
 
@@ -228,6 +238,40 @@ export async function upcomingGames(limit = 12): Promise<UpcomingGame[]> {
       awayTeam: g.away_team_id ? teamName.get(g.away_team_id) ?? 'TBD' : 'TBD',
       facilityName: facility,
       liveStreamRef: g.live_stream_ref,
+    };
+  });
+}
+
+/**
+ * Final scores across a brand's published divisions, newest first (brand
+ * site Results page). Same shape as upcomingGames plus the score.
+ */
+export async function recentResults(limit = 24, brandKey?: string | null): Promise<(UpcomingGame & { homeScore: number; awayScore: number; overtime: boolean })[]> {
+  const db = supabaseAdmin();
+  let dq = db.from('divisions').select(`id, name, programs${brandKey ? '!inner' : ''}(name, brand_key)`).eq('show_on_compete', true);
+  if (brandKey) dq = dq.eq('programs.brand_key', brandKey);
+  const { data: divs } = await dq;
+  if (!divs?.length) return [];
+  const divById = new Map(divs.map((d) => [d.id, d]));
+  const { data: games } = await db
+    .from('games')
+    .select('id, division_id, starts_at, home_team_id, away_team_id, home_score, away_score, overtime, live_stream_ref, bookings(facilities(name))')
+    .in('division_id', divs.map((d) => d.id))
+    .eq('status', 'final')
+    .order('starts_at', { ascending: false })
+    .limit(limit);
+  if (!games?.length) return [];
+  const teamIds = [...new Set(games.flatMap((g) => [g.home_team_id, g.away_team_id]).filter(Boolean))] as number[];
+  const { data: teams } = await db.from('teams').select('id, name').in('id', teamIds);
+  const teamName = new Map((teams ?? []).map((t) => [t.id, t.name]));
+  return games.map((g) => {
+    const d = divById.get(g.division_id)!;
+    const p = d.programs as unknown as { name: string; brand_key: string | null } | null;
+    const facility = (g.bookings as unknown as { facilities: { name: string } | null } | null)?.facilities?.name ?? null;
+    return {
+      id: g.id, startsAt: g.starts_at ?? '', divisionId: g.division_id, divisionName: d.name, programName: p?.name ?? null, brandKey: p?.brand_key ?? null,
+      homeTeam: g.home_team_id ? teamName.get(g.home_team_id) ?? 'TBD' : 'TBD', awayTeam: g.away_team_id ? teamName.get(g.away_team_id) ?? 'TBD' : 'TBD',
+      facilityName: facility, liveStreamRef: g.live_stream_ref, homeScore: g.home_score ?? 0, awayScore: g.away_score ?? 0, overtime: !!g.overtime,
     };
   });
 }

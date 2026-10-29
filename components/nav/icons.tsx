@@ -27,6 +27,7 @@ const PATHS: Record<string, string> = {
   reports: 'M4 20V4M4 20h16M7 17v-5M12 17V8M17 17V5',
   retention: 'M12 21s-7-4.5-9-9.5C1.5 7 4 4 7 4c2 0 3 1 5 3 2-2 3-3 5-3 3 0 5.5 3 4 7.5-2 5-9 9.5-9 9.5z',
   dunning: 'M12 7v6M12 16v.5',
+  sites: 'M3 12h18M12 3c3 3 4.5 6 4.5 9S15 18 12 21c-3-3-4.5-6-4.5-9S9 6 12 3z',
   assist: 'M12 3l1.8 4.7L18.5 9l-4.7 1.3L12 15l-1.8-4.7L5.5 9l4.7-1.3zM18 15l.7 1.8L20.5 17l-1.8.7L18 19.5l-.7-1.8L15.5 17l1.8-.5z',
   // UI glyphs
   plus: 'M12 5v14M5 12h14',
@@ -40,6 +41,7 @@ const CIRCLES: Record<string, { cx: number; cy: number; r: number }[]> = {
   staff: [{ cx: 12, cy: 8, r: 3.5 }],
   points: [{ cx: 12, cy: 12, r: 8 }],
   dunning: [{ cx: 12, cy: 12, r: 9 }],
+  sites: [{ cx: 12, cy: 12, r: 9 }],
   rentals: [{ cx: 8, cy: 15, r: 4 }],
   gallery: [{ cx: 8.5, cy: 9.5, r: 1.5 }],
 };

@@ -594,6 +594,69 @@ narrative/polish).
 
 Verify: `/api/dev/ai-verify` (12/12). Build green.
 
+## Module 23 — Brand Websites ✅ (allcansport.ca first)
+
+Per-brand public websites served by this same project, edited in Admin >
+**Websites**. Spec: `specs/brand-sites-module-prompt.md`; the ALL CAN build
+prompt and prototype decisions: `specs/allcan/03-allcansport-website-prompt.md`.
+Migration **0064** (tables `brand_sites`, `site_pages`, `site_nav_items`,
+`site_posts`, `site_media`, `site_editor_scopes`, `site_locations`,
+`site_programs`, `site_leads`, `site_redirects`, `site_page_views`,
+`site_ai_questions`/`site_ai_checks`, `site_ask_logs`, `team_follows`) seeds
+the whole ALL CAN site — pages, menu, locations, programs, media, stories,
+redirects — with the site switched **off**.
+
+- **Routing** — `resolveHost()` (`@ai/foundation`) maps a brand host to
+  `{ app: 'site', brandKey }` from the seeded list plus the runtime manifest
+  `sites/hosts.json` in the public `brand-assets` bucket (republished on every
+  domain/status change). Middleware rewrites to `app/site/[brand]/*`, 308s
+  `www` → apex, applies staff redirects, and treats brand hosts as **Clerk
+  satellites** (sign-in on play., session shared). Dev: `all-can.site.localhost:3000`;
+  Vercel previews: `?site=all-can`.
+- **Theme packs** — `packages/foundation/src/themes` (`vanguard`, `all-can`)
+  emit `--site-*` CSS variables; `app/site/site.css` is the design system.
+  Blocks render per theme; every site shares one block schema.
+- **Pages** — `lib/site/blocks.ts` is the ONE validator/sanitiser (allow-listed
+  HTML, embed hosts, link schemes); draft/published are separate columns, state
+  derives from their difference. Templates (`location`, `location-sport`,
+  `sport`, `circuit`, `training`, `parent-guide`, `financial-assistance`,
+  `about`, `privacy-policy`, `programs`, …) live in
+  `app/site/[brand]/[...slug]/page.tsx` and `components/site/templates`.
+  `[TBC]` in any fact renders as "To be confirmed" on the live site and is
+  counted by the launch checks.
+- **Compete sharing** — `components/compete/DivisionPage|PlayerPage|ProgramLandingPage`
+  render on compete.* and on brand sites (`/standings/[id]`, `/leagues/[id]`,
+  `/scores|schedule|results`, `/rosters`, `/my-teams` with Follow this team);
+  `listDivisions/upcomingGames/recentResults` take a `brandKey` filter;
+  compete.* pages carry a canonical to the brand site when one is live.
+  Score entry fans out to followers (`notifyFollowers`, best effort).
+- **Editor** (`app/admin/sites/*`) — overview with launch checks and the
+  Off → Coming soon → Live switch; page builder (block list, typed inspector,
+  **Write with Claude** from the site's own records, SEO panel, 1-hour preview
+  tokens); menu tree with drag-to-reorder (max two folder levels); stories
+  with scheduling and **Draft with Claude**; media library (alt text required
+  for photos, replace everywhere, usage, no SVG); locations/programs records;
+  leads (CASL consent on record, CSV); SEO checklist + setup wizard +
+  redirects + per-host `sitemap.xml`/`robots.txt` (AI answer crawlers allowed,
+  training crawlers blocked, Googlebot never blocked); analytics (Vercel
+  Analytics, Search Console, AI referrals + weekly citation checks); members
+  (admin/editor/writer per site; super admins everywhere).
+- **Public endpoints** — `/api/site/ask` (answers only from published pages,
+  hands off to the contact email), `/api/site/lead`, `/api/site/follow`,
+  `/api/site/signout`, `/api/ecosystem/sites` (public manifest for sibling
+  apps); crons `site-posts` (hourly) and `site-ai-checks` (weekly) in
+  `vercel.json`.
+- **Tests** — `npm run test:sites` (host resolution) and `npm run test:blocks`
+  (validator, sanitiser, slugs, public filtering).
+
+**Launch checklist for allcansport.ca** (owner decisions recorded in the spec):
+run migration 0064 → upload the real photos in Websites › Media → confirm
+program facts (replace every `[TBC]`) → Settings › Domains: add
+`allcansport.ca` + `www` to the Vercel project and the A/CNAME records, add the
+host to the prod Clerk instance as a satellite domain and to
+`CLERK_SATELLITE_HOSTS` → Verify DNS → flip to **Coming soon** (email capture)
+→ SEO › Site setup, Search Console, submit sitemap → flip to **Live**.
+
 ## Deploying to Vercel
 
 One Vercel project serves both subdomains (middleware routes by host).
@@ -624,6 +687,11 @@ One Vercel project serves both subdomains (middleware routes by host).
 
 Cross-app: set the same `ECOSYSTEM_API_KEY` in the live-stream and tickets
 apps' envs so they can call `/api/ecosystem/points`.
+
+Brand sites (Module 23): add each brand domain (apex + `www`) to the same
+Vercel project and as a Clerk satellite domain; set `CLERK_SATELLITE_HOSTS`.
+Middleware serves it from `app/site/[brand]` once the site is switched on in
+Admin › Websites.
 
 ## TV displays — device setup
 

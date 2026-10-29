@@ -100,6 +100,9 @@ export async function getOrCreateProfile(): Promise<Profile> {
     .single();
 
   if (error) throw new Error(`profiles upsert failed: ${error.message}`);
+  // Brand-site editor invites (Module 23) are keyed by email until the person
+  // signs in; claim them now. Best effort, never blocks sign-in.
+  void import('@/lib/site/scopes').then((m) => m.claimInvites((data as Profile).id, (data as Profile).email)).catch(() => {});
   return data as Profile;
 }
 

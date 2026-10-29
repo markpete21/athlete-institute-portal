@@ -1,0 +1,137 @@
+import type { Metadata } from 'next';
+import { headers } from 'next/headers';
+import { notFound } from 'next/navigation';
+import { auth, currentUser } from '@clerk/nextjs/server';
+import SiteHeader, { type HeaderUser } from '@/components/site/SiteHeader';
+import SiteFooter from '@/components/site/SiteFooter';
+import LeadForm from '@/components/site/LeadForm';
+import { siteContext, type SiteContext } from '@/lib/site/context';
+import { listLocations, locationStatusLabel, SPORTS } from '@/lib/site/records';
+import { listMedia } from '@/lib/site/media';
+import { siteRoleFor } from '@/lib/site/scopes';
+import { getPortalSession } from '@/lib/auth';
+import { bumpView } from '@/lib/site/views';
+import { organizationJsonLd } from '@/lib/site/seo';
+import '../site.css';
+
+export const dynamic = 'force-dynamic';
+
+const PLAY_URL = process.env.NEXT_PUBLIC_PLAY_URL ?? 'https://play.athleteinstitute.ca';
+const ADMIN_URL = process.env.NEXT_PUBLIC_ADMIN_URL ?? 'https://admin.athleteinstitute.ca';
+
+/**
+ * Brand-site shell (Module 23 §1.2, §3; ALL CAN §3). Resolves the site from the
+ * middleware's x-site-brand header, applies the theme tokens, the launch
+ * switch (off = 404, coming soon = one page, live = full site; a valid preview
+ * token sees the full draft site), the header with the public menu, the Ask
+ * sheet and the footer. Everything renders for a signed-out visitor; a session
+ * only lights up the account chip.
+ */
+async function ctxFromRequest(brand: string): Promise<SiteContext | null> {
+  const h = headers();
+  const path = h.get('x-portal-path') ?? '/';
+  const q = path.includes('?') ? path.split('?')[1] : '';
+  const token = new URLSearchParams(q).get('preview') ?? h.get('x-site-preview');
+  return siteContext(brand, token);
+}
+
+export async function generateMetadata({ params }: { params: { brand: string } }): Promise<Metadata> {
+  const ctx = await siteContext(params.brand);
+  if (!ctx) return {};
+  const { site } = ctx;
+  return {
+    title: { default: site.seo.title || site.name, template: site.seo.title_formats?.page?.replace('{Page}', '%s') ?? `%s · ${site.name}` },
+    description: site.seo.default_description,
+    metadataBase: new URL(ctx.origin),
+    robots: site.status === 'live' ? undefined : { index: false, follow: false },
+    openGraph: { siteName: site.name, type: 'website', images: site.seo.og_image_url ? [site.seo.og_image_url] : undefined },
+    icons: { icon: [{ url: `/favicons/play.svg`, type: 'image/svg+xml' }] },
+  };
+}
+
+export default async function SiteLayout({ children, params }: { children: React.ReactNode; params: { brand: string } }) {
+  const ctx = await ctxFromRequest(params.brand);
+  if (!ctx) notFound();
+  const { site, theme, themeVars, nav, preview } = ctx;
+  const h = headers();
+  const path = (h.get('x-portal-path') ?? '/').split('?')[0];
+
+  if (site.status === 'off' && !preview) notFound();
+
+  // Session is optional: the brand host only has one once its Clerk satellite
+  // domain is configured. Never let a missing session break the page.
+  let user: HeaderUser | null = null;
+  let canEdit = false;
+  try {
+    const { userId } = await auth();
+    if (userId) {
+      const u = await currentUser();
+      const session = await getPortalSession();
+      canEdit = !!(await siteRoleFor(session, site.brandKey));
+      const name = [u?.firstName, u?.lastName].filter(Boolean).join(' ') || u?.primaryEmailAddress?.emailAddress || 'You';
+      user = { initials: name.split(/\s+/).slice(0, 2).map((w) => w[0]).join('').toUpperCase(), first: u?.firstName ?? name, name, email: u?.primaryEmailAddress?.emailAddress ?? '', canEdit };
+    }
+  } catch {
+    user = null;
+  }
+
+  const [locations, media] = await Promise.all([listLocations(site.brandKey), listMedia(site.brandKey)]);
+  const logo = (n: string) => media.find((m) => m.name === n)?.url ?? null;
+  const shield = logo('shield-on-black.png') ?? `/sites/${site.brandKey}/logos/shield-on-black.png`;
+  const drawerLogo = logo('sport-horizontal-leaf-red.png') ?? logo('sport-horizontal-on-black.png') ?? shield;
+  const footerLogo = logo('sport-horizontal-on-black.png');
+  const partners = media.filter((m) => m.folder === 'Partners' && !m.decorative).map((m) => ({ name: m.alt ?? m.name, logoUrl: m.url, factor: m.name.includes('athlete-institute') ? 0.58 : m.name.includes('nccp') ? 0.661 : m.name.includes('safe-sport') ? 0.579 : 1 }));
+
+  if (site.status !== 'live' && !preview) {
+    void bumpView(site.brandKey, '/coming-soon');
+    return (
+      <div className="site" style={themeVars as React.CSSProperties}>
+        {theme.fontsHref && <link rel="stylesheet" href={theme.fontsHref} />}
+        <main className="soon on-dark">
+          <div className="wrap">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={shield} alt={site.name} style={{ height: 96, width: 'auto' }} />
+            <h1>{site.comingSoon.headline ?? `${site.name} is coming.`}</h1>
+            <p className="sub">{site.comingSoon.body}</p>
+            {site.comingSoon.show_email_capture !== false && <div className="soon-form"><LeadForm brandKey={site.brandKey} variant="interest" context={site.name} siteName={site.name} /></div>}
+            <p className="note">Already registered? <a href={site.links.play_url ?? PLAY_URL}>Open Play. App</a></p>
+          </div>
+        </main>
+      </div>
+    );
+  }
+
+  void bumpView(site.brandKey, path);
+  const askName = site.name.replace(/\s+Sport$/i, '');
+  const jsonLd = await organizationJsonLd(site, ctx.origin);
+  const signIn = `${PLAY_URL}/sign-in?redirect_url=${encodeURIComponent(`${ctx.origin}${path}`)}`;
+
+  return (
+    <div className="site" style={themeVars as React.CSSProperties} data-theme={theme.key}>
+      {theme.fontsHref && <link rel="stylesheet" href={theme.fontsHref} />}
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
+      <SiteHeader
+        siteName={site.name}
+        askName={askName}
+        shieldUrl={shield}
+        drawerLogoUrl={drawerLogo}
+        nav={nav}
+        locations={locations.map((l) => ({ slug: l.slug, name: l.name, venue: l.venue, status: locationStatusLabel(l), photoUrl: l.photoUrl }))}
+        sports={SPORTS.map((s) => ({ slug: s.slug, name: s.name, markUrl: s.markUrl, status: s.status }))}
+        user={user}
+        signInHref={signIn}
+        signOutHref="/api/site/signout"
+        accountHref={`${site.links.play_url ?? PLAY_URL}/account`}
+        myTeamsHref="/my-teams"
+        editorHref={`${ADMIN_URL}/sites/${site.brandKey}`}
+        askEnabled={site.settings.ask_enabled !== false}
+        askPrompts={['When does registration open?', 'What ages can play?', 'Where is the closest location?', 'Is there financial help?']}
+        brandKey={site.brandKey}
+        preview={preview}
+        previewBack={preview ? `${ADMIN_URL}/sites/${site.brandKey}/pages` : null}
+      />
+      <main id="main" tabIndex={-1}>{children}</main>
+      <SiteFooter site={site} logoUrl={footerLogo} partners={partners} />
+    </div>
+  );
+}

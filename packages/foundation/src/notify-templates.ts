@@ -58,6 +58,10 @@ export interface NotifyTemplates {
   'payment.reminder': { amountLabel: string; dueLabel: string; payUrl: string };
   'waitlist.opening': { programName: string; claimUrl: string; expiresLabel: string };
   'session.rescheduled': { programName: string; oldLabel: string; newLabel: string | null; detailsUrl: string };
+  /** Brand-site interest sign-up confirmation (Module 23). CASL: sender name + mailing address in the body. */
+  'site.interest': { siteName: string; context: string; siteUrl: string; legalName: string; address: string };
+  /** Brand-site "Follow this team" update: schedule change, postponement or final score. */
+  'site.team-update': { teamName: string; divisionName: string; body: string; url: string };
 }
 
 export type TemplateKey = keyof NotifyTemplates;
@@ -125,6 +129,28 @@ const TEMPLATES: { [K in TemplateKey]: TemplateDef<K> } = {
         : `Your <strong>${escapeHtml(d.programName)}</strong> session on <strong>${escapeHtml(d.oldLabel)}</strong> is being rescheduled. We&apos;ll confirm the new date soon.`,
       ctaLabel: 'View schedule',
       ctaUrl: d.detailsUrl,
+    }),
+  },
+  'site.interest': {
+    subject: (d) => `You're on the list: ${d.context}`,
+    pushTitle: () => "You're on the list",
+    text: (d) => `Thanks. We'll email you the moment ${d.context} registration opens on ${d.siteUrl}. This doesn't hold a spot. Unsubscribe any time by replying STOP or using the link in any email.\n\n${d.legalName}${d.address ? `, ${d.address}` : ''}`,
+    emailBody: (d) => ({
+      heading: "You're on the list.",
+      bodyHtml: `We'll email you the moment <strong>${escapeHtml(d.context)}</strong> registration opens. This doesn't hold a spot.<br><br><span style="color:#9ea1a1;font-size:12px">You asked ${escapeHtml(d.siteName)} to email you about this. Unsubscribe any time by replying to this email.<br>${escapeHtml(d.legalName)}${d.address ? `, ${escapeHtml(d.address)}` : ''}</span>`,
+      ctaLabel: `Open ${d.siteName}`,
+      ctaUrl: d.siteUrl,
+    }),
+  },
+  'site.team-update': {
+    subject: (d) => `${d.teamName}: ${d.body.split('.')[0]}`,
+    pushTitle: (d) => d.teamName,
+    text: (d) => `${d.teamName} (${d.divisionName}): ${d.body} ${d.url}`,
+    emailBody: (d) => ({
+      heading: d.teamName,
+      bodyHtml: `${escapeHtml(d.divisionName)}<br><br>${escapeHtml(d.body)}<br><br><span style="color:#9ea1a1;font-size:12px">You follow this team. Change your notifications on your My teams page.</span>`,
+      ctaLabel: 'Schedule and results',
+      ctaUrl: d.url,
     }),
   },
 };

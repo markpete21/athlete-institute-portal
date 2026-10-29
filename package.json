@@ -22,6 +22,8 @@
     "test:academy": "tsc packages/foundation/src/academy-core.ts packages/foundation/src/money.ts --module esnext --target es2022 --moduleResolution bundler --outDir packages/foundation/src/__compiled__ && node scripts/fix-compiled-imports.mjs && node packages/foundation/src/academy-core.test.mjs",
     "test:comms": "tsc packages/foundation/src/comms-core.ts --module esnext --target es2022 --moduleResolution bundler --outDir packages/foundation/src/__compiled__ && node scripts/fix-compiled-imports.mjs && node packages/foundation/src/comms-core.test.mjs",
     "test:reports": "tsc packages/foundation/src/reports-core.ts packages/foundation/src/money.ts --module esnext --target es2022 --moduleResolution bundler --outDir packages/foundation/src/__compiled__ && node scripts/fix-compiled-imports.mjs && node packages/foundation/src/reports-core.test.mjs",
+    "test:sites": "tsc packages/foundation/src/hosts.ts --module esnext --target es2022 --moduleResolution bundler --outDir packages/foundation/src/__compiled__ && node scripts/fix-compiled-imports.mjs && node packages/foundation/src/hosts.test.mjs",
+    "test:blocks": "tsc lib/site/blocks.ts --module esnext --target es2022 --moduleResolution bundler --outDir lib/site/__compiled__ && node lib/site/blocks.test.mjs",
     "test:retention": "tsc packages/foundation/src/retention-core.ts --module esnext --target es2022 --moduleResolution bundler --outDir packages/foundation/src/__compiled__ && node scripts/fix-compiled-imports.mjs && node packages/foundation/src/retention-core.test.mjs"
   },
   "dependencies": {

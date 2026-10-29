@@ -13,7 +13,7 @@ const COLS: { key: SortKey; label: string }[] = [
 
 /** Sortable player-averages table. Names are already masked by lib/compete;
  *  each links to the player's public profile. */
-export default function AveragesTable({ rows, divisionId }: { rows: PlayerAverages[]; divisionId: number }) {
+export default function AveragesTable({ rows, divisionId, playerHref }: { rows: PlayerAverages[]; divisionId: number; playerHref?: (memberId: number) => string }) {
   const [sort, setSort] = useState<SortKey>('ppg');
   const sorted = useMemo(() => [...rows].sort((a, b) => b[sort] - a[sort]), [rows, sort]);
   return (
@@ -34,7 +34,7 @@ export default function AveragesTable({ rows, divisionId }: { rows: PlayerAverag
           {sorted.map((p) => (
             <tr key={p.memberId}>
               <td className="cs-team">
-                <a className="cs-plink" href={`/${divisionId}/player/${p.memberId}`}>{p.name}</a>
+                <a className="cs-plink" href={playerHref ? playerHref(p.memberId) : `/${divisionId}/player/${p.memberId}`}>{p.name}</a>
               </td>
               <td>{p.teamName}</td>
               <td className="mono">{p.gp}</td>

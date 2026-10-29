@@ -15,6 +15,8 @@
  */
 
 export * from './hosts';
+export * from './themes';
+export * from './site-url';
 export * from './access';
 export * from './brands';
 export * from './family-policy';
