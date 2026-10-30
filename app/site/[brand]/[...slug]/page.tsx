@@ -4,6 +4,9 @@ import { notFound } from 'next/navigation';
 import BlockRenderer, { SportTiles } from '@/components/site/blocks/BlockRenderer';
 import ProgramBlock from '@/components/site/ProgramBlock';
 import LeadForm from '@/components/site/LeadForm';
+import ApplyDialog from '@/components/site/ApplyDialog';
+import { fmtDateStacked, fmtTime } from '@/lib/site/context';
+import { divisionsOf, listGames, standings } from '@/lib/site/league';
 import { Chev, FactsDl, PageHead, Row, SecHead, Section, SplitGrid, StatusPill, T } from '@/components/site/ui';
 import { GameCard } from '@/components/compete/DivisionPage';
 import { siteContext, type SiteContext } from '@/lib/site/context';
@@ -46,7 +49,7 @@ export async function generateMetadata({ params }: { params: { brand: string; sl
   return {};
 }
 
-export default async function SitePage({ params, searchParams }: { params: { brand: string; slug: string[] }; searchParams: { preview?: string; sport?: string } }) {
+export default async function SitePage({ params, searchParams }: { params: { brand: string; slug: string[] }; searchParams: { preview?: string; sport?: string; division?: string } }) {
   const r = await resolve(params.brand, params.slug, searchParams.preview);
   if (!r) notFound();
   const { ctx, page, slug } = r;
@@ -97,7 +100,7 @@ export default async function SitePage({ params, searchParams }: { params: { bra
         </>
       );
     }
-    case 'circuit': return <Circuit ctx={rctx} page={page} />;
+    case 'circuit': return <Circuit ctx={rctx} page={page} division={searchParams.division} />;
     case 'training': {
       const skills = (await listPrograms(params.brand)).filter((p) => /skills/i.test(p.leagueType));
       const locs = await listLocations(params.brand);
@@ -247,11 +250,52 @@ async function SportOverview({ ctx, sport, page }: { ctx: Ctx; sport: NonNullabl
   );
 }
 
-async function Circuit({ ctx, page }: { ctx: Ctx; page: SitePage | null }) {
-  const rep = (await listPrograms(ctx.brandKey)).find((p) => p.leagueType === 'Rep');
+async function Circuit({ ctx, page, division }: { ctx: Ctx; page: SitePage | null; division?: string }) {
+  const rep = (await listPrograms(ctx.brandKey)).find((p) => p.leagueType === 'Rep' || p.slug === 'circuit');
   const loc = rep ? await getLocation(ctx.brandKey, rep.locationSlug) : null;
   const blocks = page ? (ctx.preview ? page.blocksDraft : page.blocksPublished ?? []) : [];
-  const divs = (await listDivisions(ctx.brandKey)).filter((d) => d.tournamentMode || /circuit/i.test(d.programName ?? ''));
+  const games = await listGames(ctx.brandKey, rep?.slug ?? 'circuit');
+  const divs = divisionsOf(games);
+  const table = standings(games);
+  const season = (() => { const ys = games.map((g) => g.startsAt ? Number(g.startsAt.slice(0, 4)) : 0).filter(Boolean); if (!ys.length) return null; const a = Math.min(...ys), b = Math.max(...ys); return b > a ? `${a}-${String(b).slice(2)}` : String(a); })();
+  const nextSeason = season ? `${Number(season.slice(0, 4)) + 1}-${String(Number(season.slice(0, 4)) + 2).slice(2)}` : '2027-28';
+  const teams = [...new Set(games.flatMap((g) => [g.home, g.away]))].sort();
+  const sel = division && divs.includes(division) ? division : '';
+  const shown = sel ? games.filter((g) => g.division === sel) : games;
+  // Group games into nights (one date, one division per night on the Circuit).
+  const nights: { key: string; iso: string | null; division: string; note: string | null; games: typeof games }[] = [];
+  for (const g of shown) {
+    const key = `${g.startsAt ? new Date(g.startsAt).toLocaleDateString('en-CA', { timeZone: 'America/Toronto' }) : 'tbd'}|${g.division}`;
+    let n = nights.find((x) => x.key === key);
+    if (!n) { n = { key, iso: g.startsAt, division: g.division, note: g.note, games: [] }; nights.push(n); }
+    n.games.push(g);
+  }
+  const now = Date.now();
+  const upcoming = nights.filter((n) => !n.iso || new Date(n.iso).getTime() >= now - 4 * 3600_000);
+  const played = nights.filter((n) => n.iso && new Date(n.iso).getTime() < now - 4 * 3600_000).reverse();
+  const apply = <ApplyDialog brandKey={ctx.brandKey} siteName={ctx.site.name} season={nextSeason} divisions={divs.length ? divs : ['U13 Boys', 'U14 Boys', 'U15 Boys']} label={`Apply for ${nextSeason}`} />;
+  const Night = ({ n }: { n: (typeof nights)[number] }) => {
+    const [wd, md, yr] = fmtDateStacked(n.iso);
+    return (
+      <div className="night">
+        <div className="d"><small>{n.iso ? wd : 'Date'}</small>{n.iso ? `${md.replace(/\s\d+$/, '')} ${md.split(' ').pop()}` : 'To be confirmed'}<small style={{ marginTop: 4 }}>{yr}</small></div>
+        <div>
+          <p className="div">{n.division || 'All divisions'}{n.note && <span className="muted">{n.note}</span>}</p>
+          {n.games.map((g) => {
+            const fin = g.status === 'final' && g.homeScore != null && g.awayScore != null;
+            const hw = fin && g.homeScore! > g.awayScore!, aw = fin && g.awayScore! > g.homeScore!;
+            return (
+              <div key={g.id} className="g">
+                <span className="muted">{g.status === 'postponed' ? 'PPD' : fmtTime(g.startsAt).replace(' ET', '')}</span>
+                <span><span className={hw ? 'w' : ''}>{g.home}</span> <span className="muted">v</span> <span className={aw ? 'w' : ''}>{g.away}</span>{g.venue && g.venue !== (loc?.venue ?? '') ? <span className="muted"> · {g.venue}</span> : null}</span>
+                <span className="sc">{fin ? `${g.homeScore}–${g.awayScore}` : g.status === 'postponed' ? 'Postponed' : ''}</span>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    );
+  };
   return (
     <>
       <section className="hero ink on-dark" style={{ minHeight: 'min(60vh,560px)' }}>
@@ -262,11 +306,50 @@ async function Circuit({ ctx, page }: { ctx: Ctx; page: SitePage | null }) {
           <p className="kicker" style={{ color: 'var(--silver)' }}>Rep Basketball League{loc ? ` · ${loc.name}` : ''}</p>
           <div className="lane" aria-hidden="true"><i /><i /><i /></div>
           <h1>Rep your city.<br />Run the Circuit.</h1>
+          <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginTop: 28 }}>{apply}<a className="pill pill--line" href="#schedule">Schedule and results</a><a className="pill pill--line" href="#standings">Standings</a></div>
         </div></div></div>
       </section>
       <div className="wrap"><nav className="crumbs" aria-label="Breadcrumb"><Link href="/">Home</Link><span aria-hidden="true">/</span><Link href="/basketball">Basketball</Link><span aria-hidden="true">/</span><span aria-current="page">Circuit</span></nav></div>
-      {rep && <Section tight><ProgramBlock program={rep} location={loc} ctx={ctx} primary /></Section>}
-      <Section><SecHead label="Events" /><SplitGrid left={<h2>Circuit stops.</h2>} right={divs.length ? <div className="rows">{divs.map((d) => <Row key={d.id} href={`/standings/${d.id}`} title={d.name} meta={`${d.teamCount} teams`} />)}</div> : <p className="muted">Event dates, venues and divisions are <T preview={ctx.preview}>[TBC]</T>. Results and standings will appear on Schedules and Standings.</p>} /></Section>
+
+      {rep && (
+        <Section tight>
+          <SecHead label={`${season ? `${season} season` : 'Season'}`} right={<StatusPill label={programStatusLabel(rep).label} live={programStatusLabel(rep).live} />} />
+          <SplitGrid left={<><h2>Key info.</h2>{rep.description && <p className="muted" style={{ marginTop: 12 }}>{rep.description}</p>}</>} right={<>
+            <dl className="circuit-facts">{rep.facts.map(([k, v]) => <div key={k}><dt>{k}</dt><dd><T preview={ctx.preview}>{v}</T></dd></div>)}</dl>
+            {teams.length > 0 && <div style={{ marginTop: 24 }}><p className="kicker" style={{ marginBottom: 8 }}>Teams</p><div className="circuit-teams">{teams.map((t) => <span key={t}>{t}</span>)}</div></div>}
+          </>} />
+        </Section>
+      )}
+
+      <Section id="schedule">
+        <SecHead label="Schedule and results" right={divs.length > 1 ? <span className="tabs" style={{ margin: 0 }}><Link href="/circuit#schedule" className="tab" role="button" aria-pressed={!sel}>All</Link>{divs.map((d) => <Link key={d} href={`/circuit?division=${encodeURIComponent(d)}#schedule`} className="tab" role="button" aria-pressed={sel === d}>{d}</Link>)}</span> : undefined} />
+        {games.length === 0 ? <p className="muted">The schedule is <T preview={ctx.preview}>[TBC]</T>.</p> : (
+          <>
+            {upcoming.length > 0 && <><h2 style={{ marginBottom: 6 }}>Upcoming.</h2><p className="muted" style={{ marginBottom: 8 }}>{loc?.venue ?? 'Athlete Institute Dome'}{loc?.address ? ` · ${loc.address}` : ''}. Times ET.</p>{upcoming.map((n) => <Night key={n.key} n={n} />)}</>}
+            {played.length > 0 && <><h2 style={{ margin: '40px 0 6px' }}>Results.</h2>{played.map((n) => <Night key={n.key} n={n} />)}</>}
+          </>
+        )}
+      </Section>
+
+      <Section id="standings" tight>
+        <SecHead label="Standings" />
+        {table.size === 0 || [...table.values()].every((rows) => rows.every((r) => r.gp === 0)) ? <p className="muted">Standings appear after the first final score. Wins first, then point difference.</p> : (
+          <div className="grid" style={{ rowGap: 32 }}>
+            {[...table.entries()].filter(([d]) => !sel || d === sel).map(([div, rows]) => (
+              <div key={div} className="left" style={{ gridColumn: 'span 6' }}>
+                <h3 style={{ marginBottom: 8 }}>{div || 'League'}.</h3>
+                <div className="tbl-wrap"><table><thead><tr><th>#</th><th>Team</th><th className="num">GP</th><th className="num">W</th><th className="num">L</th><th className="num">PF</th><th className="num">PA</th><th className="num">Diff</th></tr></thead>
+                  <tbody>{rows.map((r, i) => <tr key={r.team}><td>{i + 1}</td><td className="team">{r.team}</td><td className="num">{r.gp}</td><td className="num">{r.w}</td><td className="num">{r.l}</td><td className="num">{r.pf}</td><td className="num">{r.pa}</td><td className="num">{r.diff > 0 ? `+${r.diff}` : r.diff}</td></tr>)}</tbody></table></div>
+              </div>
+            ))}
+          </div>
+        )}
+      </Section>
+
+      <Section>
+        <SecHead label={`${nextSeason} season`} />
+        <SplitGrid left={<h2>Bring your team.</h2>} right={<><p className="muted" style={{ marginBottom: 16 }}>Applications for the {nextSeason} Circuit are open to rep teams and clubs. Tell us who you are and which divisions you&apos;d enter; we reply to every application.</p>{apply}</>} />
+      </Section>
       <BlockRenderer blocks={blocks} ctx={ctx} />
     </>
   );

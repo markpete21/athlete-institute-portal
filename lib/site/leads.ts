@@ -10,7 +10,7 @@ import { getSite, siteOrigin } from '@/lib/site/sites';
  * (CASL record). Nothing here is ever labelled registration.
  */
 
-export type LeadKind = 'interest' | 'request' | 'host' | 'contact' | 'assistance';
+export type LeadKind = 'interest' | 'request' | 'host' | 'contact' | 'assistance' | 'apply';
 
 export interface LeadInput {
   kind: LeadKind;
@@ -55,7 +55,7 @@ export async function createLead(brandKey: string, input: LeadInput): Promise<{ 
       const summary = input.kind === 'assistance'
         ? `A confidential financial assistance request was received from ${email}. Open Websites > Leads to review it.`
         : `${input.kind === 'host' ? 'Hosting enquiry' : input.kind === 'request' ? 'Location request' : 'Message'} from ${input.name ?? email} (${email}${input.phone ? `, ${input.phone}` : ''}).\n\n${Object.entries(fields).map(([k, v]) => `${k}: ${v}`).join('\n')}`;
-      await notify({ to: { email: inbox }, channels: ['email'], brandKey, template: 'generic', data: { heading: `${site.name}: new ${input.kind} from the website`, body: summary, ctaLabel: 'Open leads', ctaUrl: `${process.env.NEXT_PUBLIC_ADMIN_URL ?? 'https://admin.athleteinstitute.ca'}/sites/${brandKey}/leads` } }).catch(() => {});
+      await notify({ to: { email: inbox }, channels: ['email'], brandKey, template: 'generic', data: { heading: `${site.name}: new ${input.kind} from the website`, body: summary, ctaLabel: 'Open leads', ctaUrl: `${origin}/admin/leads` } }).catch(() => {});
     }
   }
   return { ok: true };

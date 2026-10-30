@@ -407,7 +407,7 @@ Satellite domains are a Clerk Pro feature and the production instance is on Hobb
 2. Clerk dashboard › Domains › Satellites › Add satellite domain: `allcansport.ca` (the apex only; `www` redirects to it before Clerk runs).
 3. DNS at GoDaddy: the `clerk` CNAME for `allcansport.ca` with the target the dashboard prints under DNS configuration. Wait for the **Verified** label (up to 48 h).
 4. Editor › Settings › Domains › tick **Clerk satellite domain** › Save. That republishes `sites/hosts.json` with the host in `satellites`; middleware picks it up within a minute, no deploy.
-   Gotcha found on the day: the brand-assets bucket only allowed image/video MIME types, so the manifest upload had been failing silently since the module shipped (migration 0065 adds `application/json`). After that migration, save Domains once more to publish.
+   Gotcha found on the day: the brand-assets bucket only allowed image/video MIME types, so the manifest upload had been failing silently since the module shipped (migration 0067 adds `application/json`). After that migration, save Domains once more to publish.
 5. Check: Sign in on allcansport.ca goes to play.athleteinstitute.ca/sign-in and comes back signed in; the account button (Clerk UserButton) shows; Sign out there signs out of Play too.
 
 What the code does for it: the primary hosts (play./admin./compete.) mount `ClerkProvider` with `allowedRedirectOrigins` = every brand-site origin from the manifest (middleware passes them in `x-site-origins`); the brand host mounts it in satellite mode with Play's sign-in and sign-up URLs; every Sign in link on a brand host is built client-side with Clerk's `buildSignInUrl()` (`components/site/SignInLink.tsx`) so the return trip carries Clerk's sync marker (a hand-written `play…/sign-in?redirect_url=` comes back signed out). The header's account control is Clerk's `UserButton`, the same avatar and dropdown as Play, Admin, Live, Tickets and Gear, with the site's own links (My teams and schedule, Site editor) added; the Admin hand-off editor cookie, which has no Clerk session, keeps a look-alike chip. The report-only CSP lists `clerk.allcansport.ca` (the satellite's own Clerk frontend API host).
@@ -424,13 +424,20 @@ Two ways to be signed in on the brand host (`lib/site/editor-session.ts`):
 
 Member invite emails now point at `<site>/admin`. `/admin` was already a reserved slug.
 
-### 10.5e First walk-through changes (Oct 30, 2026; migration 0065)
+### 10.5e First walk-through changes (Oct 30, 2026; migration 0067)
 - Play › Basketball lists **League** and **Rep Circuit** ("League in Orangeville, ON") only; the "All basketball" line is gone. Menu item descriptions now come from the item itself (editable in Menu), with the old defaults as fallback.
 - Volleyball, Soccer and Flag Football tabs show one line, **"Coming Spring 2027."** (the folder's note, editable), plus "Request <sport> near you".
 - Play featured card: **Toronto Midtown, De La Salle** · ALL CAN Youth Basketball League → `/toronto-midtown/basketball`.
 - Compete menu: **ALL CAN Circuit** above Schedules & Results; the featured card is the Circuit lockup on white (a featured item can be a "logo card": `meta.card = logo`, checkbox in the Menu editor). The Circuit is set up as a league on the site (program record + Circuit page), not through the Compete portal yet.
 - Circuit page: h1 "Rep your city. Run the Circuit.", no line under it; under the logo "Rep Basketball League · Orangeville".
 - Share image: the crest on black, 1200×630 (`/sites/all-can/share.png`, `seo.og_image_url`). Favicon: the red maple leaf (`/sites/all-can/favicon.png`, `seo.favicon_url`; apple-touch-icon on black).
+
+### 10.5f Circuit on the site, Apply, Locations panel (Oct 30, 2026; migrations 0068, 0069)
+- **Site-run league** (`site_league_games`, `lib/site/league.ts`, editor tab **Circuit** at `/admin/league`): games, scores and postponements are entered on the site; standings (W, then point difference, then PF) are computed per division. The Circuit page reads this; the Compete portal is for later. Migration 0069 seeds the whole 2026-27 schedule from the four monthly PDFs (26 games, U13/U14/U15 Boys, Wednesdays 6:30 and 8:00pm ET, Athlete Institute Dome, hosted by Orangeville Bears) plus the program facts (season, divisions, teams, holiday break, Championship Weekend Feb 27–28).
+- **Circuit one-pager** (`/circuit`): hero with "Rep your city. Run the Circuit.", **Apply for 2027-28** (a popout form: team, city, divisions, role, contact; lead kind `apply`), Schedule and results by night with a division filter, Standings per division, a "Bring your team" section. Season and next-season labels derive from the games.
+- **Every form** emails the site contact (info@athleteinstitute.ca) with a link to `<site>/admin/leads`; interest forms also confirm to the sender.
+- Locations mega panel uses the shared grid: title at left, venue cards from the column where the other panels' lists start, links at right. Hairline rows: the name column fits the longest name so venues align at one left edge.
+- Home page: the Schedules/Standings big buttons are removed for now (0069); Locations stays.
 
 ### 10.6 Still manual before launch
 Run 0064 → upload the real photos → replace every `[TBC]` in Programs → Settings › Domains (Vercel project + DNS; Clerk satellite only with Clerk Pro) → Verify DNS → Coming soon → SEO setup, Search Console, sitemap → Live. The §9 legal list is unchanged. Registration on the brand host, the Accessibility and Concussion pages, and Futura hosting remain later stages.

@@ -308,25 +308,21 @@ function MegaPanel({ n, p, tab, setTab }: { n: NavItem; p: SiteHeaderProps; tab:
     const cards = folders.flatMap((f) => f.children).map((g) => p.locations.find((l) => `/${l.slug}` === g.href) ?? null).filter((l): l is HeaderLocation => !!l);
     return (
       <div className="wrap">
-        <div className="mega-loc">
-          <h2>Locations.</h2>
-          <div className="loc-row">
-            <div className="loc-cards">
-              {cards.map((l) => (
-                <a key={l.slug} className="loc-card" href={`/${l.slug}`}>
-                  <div className="loc-photo">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    {l.photoUrl ? <img src={l.photoUrl} alt="" /> : <span className="kicker">Venue photo <em className="tbc">[TBC]</em></span>}
-                  </div>
-                  <div className="loc-meta"><h3>{l.name}</h3><p className="muted">{l.venue}</p></div>
-                  <span className={`status ${l.status.live ? 'status--live' : 'status--soon'}`}>{l.status.label}</span>
-                </a>
-              ))}
-            </div>
-            <div className="mega-col loc-more">
-              {loose.map((g) => <a key={g.id} href={hrefOf(g)}><span>{g.label}</span><span className="chev" aria-hidden="true" /></a>)}
-            </div>
-          </div>
+        <div className="mega-title"><h2>{withPeriod(n.label)}</h2>{n.description && <p>{n.description}</p>}</div>
+        <div className="loc-cards">
+          {cards.map((l) => (
+            <a key={l.slug} className="loc-card" href={`/${l.slug}`}>
+              <div className="loc-photo">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                {l.photoUrl ? <img src={l.photoUrl} alt="" /> : <span className="kicker">Venue photo <em className="tbc">[TBC]</em></span>}
+              </div>
+              <div className="loc-meta"><h3>{l.name}</h3><p className="muted">{l.venue}</p></div>
+              <span className={`status ${l.status.live ? 'status--live' : 'status--soon'}`}>{l.status.label}</span>
+            </a>
+          ))}
+        </div>
+        <div className="mega-col loc-more">
+          {loose.map((g) => <a key={g.id} href={hrefOf(g)}><span>{g.label}</span><span className="chev" aria-hidden="true" /></a>)}
         </div>
       </div>
     );

@@ -3,7 +3,7 @@ import { createLead, type LeadKind } from '@/lib/site/leads';
 
 export const dynamic = 'force-dynamic';
 
-const KINDS: LeadKind[] = ['interest', 'request', 'host', 'contact', 'assistance'];
+const KINDS: LeadKind[] = ['interest', 'request', 'host', 'contact', 'assistance', 'apply'];
 
 /** Public lead capture (interest, request a location, host a league, contact, assistance). CASL consent required. */
 export async function POST(req: NextRequest) {

@@ -9,7 +9,7 @@ import { useState } from 'react';
  * exact consent wording (CASL). Never labelled as registration; never holds
  * a spot.
  */
-export type LeadVariant = 'interest' | 'location' | 'training' | 'assistance' | 'contact';
+export type LeadVariant = 'interest' | 'location' | 'training' | 'assistance' | 'contact' | 'apply';
 
 export interface LeadFormProps {
   brandKey: string;
@@ -35,14 +35,14 @@ export default function LeadForm(p: LeadFormProps) {
     const form = e.currentTarget;
     const fd = new FormData(form);
     const fields: Record<string, string> = {};
-    for (const [k, v] of fd.entries()) if (typeof v === 'string' && !['email', 'name', 'phone', 'consent'].includes(k)) fields[k] = v;
+    for (const [k, v] of fd.entries()) if (typeof v === 'string' && !['email', 'name', 'phone', 'consent'].includes(k)) fields[k] = fields[k] ? `${fields[k]}, ${v}` : v;
     const consentText = form.querySelector<HTMLElement>('[data-consent-text]')?.textContent ?? '';
-    const kind = p.variant === 'interest' ? 'interest' : p.variant === 'location' ? (mode === 'host' ? 'host' : 'request') : p.variant === 'assistance' ? 'assistance' : 'contact';
+    const kind = p.variant === 'interest' ? 'interest' : p.variant === 'location' ? (mode === 'host' ? 'host' : 'request') : p.variant === 'assistance' ? 'assistance' : p.variant === 'apply' ? 'apply' : 'contact';
     setState('busy');
     try {
       const res = await fetch('/api/site/lead', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ brandKey: p.brandKey, kind, email: fd.get('email'), name: fd.get('name'), phone: fd.get('phone'), fields: { ...fields, context: p.context ?? '' }, consent: fd.get('consent') === 'on', consentText, sourcePath: window.location.pathname }) });
       const json = (await res.json()) as { ok: boolean; error?: string };
-      if (json.ok) { setState('done'); setMsg(p.variant === 'interest' ? "You're on the list. We'll email you the moment registration opens." : p.variant === 'assistance' ? 'Sent. Only the reviewer sees this.' : 'Sent. We\'ll be in touch.'); }
+      if (json.ok) { setState('done'); setMsg(p.variant === 'interest' ? "You're on the list. We'll email you the moment registration opens." : p.variant === 'assistance' ? 'Sent. Only the reviewer sees this.' : p.variant === 'apply' ? 'Application received. We\'ll be in touch about the 2027-28 season.' : 'Sent. We\'ll be in touch.'); }
       else { setState('error'); setMsg(json.error ?? 'Something went wrong.'); }
     } catch {
       setState('error'); setMsg('Something went wrong. Please try again.');
@@ -90,14 +90,23 @@ export default function LeadForm(p: LeadFormProps) {
         </>
       )}
       {p.variant === 'contact' && <label className="field" htmlFor={`${id}-msg`}><span>Message</span><textarea id={`${id}-msg`} name="message" required /></label>}
+      {p.variant === 'apply' && (
+        <>
+          <label className="field" htmlFor={`${id}-team`}><span>Team or club</span><input id={`${id}-team`} name="team" required placeholder="e.g. Woodbridge Lions" /></label>
+          <label className="field" htmlFor={`${id}-city`}><span>Home city</span><input id={`${id}-city`} name="city" required /></label>
+          <label className="field" htmlFor={`${id}-divs`}><span>Divisions you&apos;d enter</span><select id={`${id}-divs`} name="divisions" multiple size={4}>{(p.programOptions ?? ['U13 Boys', 'U14 Boys', 'U15 Boys', 'Other']).map((o) => <option key={o}>{o}</option>)}</select></label>
+          <label className="field" htmlFor={`${id}-role`}><span>Your role</span><input id={`${id}-role`} name="role" placeholder="Head coach, club director…" /></label>
+          <label className="field" htmlFor={`${id}-about`}><span>About the team (optional)</span><textarea id={`${id}-about`} name="about" placeholder="Level, current league, anything we should know" /></label>
+        </>
+      )}
       {p.variant !== 'interest' && <label className="field" htmlFor={`${id}-name`}><span>{p.variant === 'assistance' ? 'Parent or guardian name' : 'Name'}</span><input id={`${id}-name`} name="name" autoComplete="name" required /></label>}
       <label className="field" htmlFor={`${id}-email`}><span>{p.variant === 'interest' || p.variant === 'assistance' ? 'Parent or guardian email' : 'Email'}</span><input id={`${id}-email`} name="email" type="email" autoComplete="email" required placeholder="name@example.com" /></label>
       {p.variant === 'interest' && (
         <label className="field" htmlFor={`${id}-age`}><span>Child&apos;s age group</span><select id={`${id}-age`} name="age_group"><option>Under 8</option><option>8–10</option><option>11–13</option><option>14–17</option><option>Adult</option></select></label>
       )}
-      {(p.variant === 'location' && mode === 'host') || p.variant === 'training' ? <label className="field" htmlFor={`${id}-phone`}><span>Phone (optional)</span><input id={`${id}-phone`} name="phone" type="tel" autoComplete="tel" /></label> : null}
+      {(p.variant === 'location' && mode === 'host') || p.variant === 'training' || p.variant === 'apply' ? <label className="field" htmlFor={`${id}-phone`}><span>Phone{p.variant === 'apply' ? '' : ' (optional)'}</span><input id={`${id}-phone`} name="phone" type="tel" autoComplete="tel" required={p.variant === 'apply'} /></label> : null}
       <label className="check" htmlFor={`${id}-ok`}><input id={`${id}-ok`} name="consent" type="checkbox" required /><span data-consent-text>{consent}</span> <a href="/privacy-policy">Privacy policy</a></label>
-      <div><button className={`pill ${p.variant === 'interest' ? 'pill--red' : 'pill--ink'}`} type="submit" disabled={state === 'busy'}>{p.variant === 'interest' ? 'Notify me' : p.variant === 'location' ? (mode === 'host' ? 'Send hosting enquiry' : 'Send request') : p.variant === 'assistance' ? 'Send request' : 'Send'}</button></div>
+      <div><button className={`pill ${p.variant === 'interest' || p.variant === 'apply' ? 'pill--red' : 'pill--ink'}`} type="submit" disabled={state === 'busy'}>{p.variant === 'interest' ? 'Notify me' : p.variant === 'location' ? (mode === 'host' ? 'Send hosting enquiry' : 'Send request') : p.variant === 'assistance' ? 'Send request' : p.variant === 'apply' ? 'Send application' : 'Send'}</button></div>
       {p.note && <p className="note">{p.note}</p>}
       {state === 'error' && <p className="note" role="alert">{msg}</p>}
     </form>

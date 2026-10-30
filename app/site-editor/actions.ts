@@ -437,3 +437,28 @@ export async function resendInviteAction(fd: FormData): Promise<void> {
   await resendInvite(brand, Number(fd.get('id')));
   revalidateSite(brand);
 }
+
+// --- Site-run league games -------------------------------------------------------
+
+export async function saveGameAction(fd: FormData): Promise<void> {
+  const brand = str(fd.get('brand'));
+  const { session } = await requireSiteRole(brand, ['super', 'admin', 'editor']);
+  const { saveGame, torontoLocalToIso } = await import('@/lib/site/league');
+  const when = str(fd.get('startsAt'));
+  await saveGame(brand, {
+    id: num(fd.get('id')) ?? undefined, leagueSlug: str(fd.get('leagueSlug')) || 'circuit', division: str(fd.get('division')),
+    // datetime-local has no zone: it's Toronto time.
+    startsAt: when ? torontoLocalToIso(when) : null,
+    venue: str(fd.get('venue')), home: str(fd.get('home')), away: str(fd.get('away')),
+    homeScore: num(fd.get('homeScore')), awayScore: num(fd.get('awayScore')), status: (str(fd.get('status')) || 'scheduled') as 'scheduled' | 'final' | 'postponed', note: str(fd.get('note')),
+  }, session.userId!);
+  revalidateSite(brand);
+}
+
+export async function deleteGameAction(fd: FormData): Promise<void> {
+  const brand = str(fd.get('brand'));
+  const { session } = await requireSiteRole(brand, ['super', 'admin', 'editor']);
+  const { deleteGame } = await import('@/lib/site/league');
+  await deleteGame(brand, Number(fd.get('id')), session.userId!);
+  revalidateSite(brand);
+}

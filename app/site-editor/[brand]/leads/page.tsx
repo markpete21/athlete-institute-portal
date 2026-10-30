@@ -5,7 +5,7 @@ import { SubmitButton } from '@/app/admin/brands/SubmitButton';
 
 export const dynamic = 'force-dynamic';
 
-const KINDS: [LeadKind | '', string][] = [['', 'All'], ['interest', 'Interest'], ['request', 'Location requests'], ['host', 'Host a league'], ['contact', 'Contact'], ['assistance', 'Assistance']];
+const KINDS: [LeadKind | '', string][] = [['', 'All'], ['interest', 'Interest'], ['apply', 'Team applications'], ['request', 'Location requests'], ['host', 'Host a league'], ['contact', 'Contact'], ['assistance', 'Assistance']];
 const fmt = (iso: string) => new Date(iso).toLocaleString('en-CA', { timeZone: 'America/Toronto', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
 
 /** Leads from every public form, with consent on record and a follow-up status. Export is a CSV link. */

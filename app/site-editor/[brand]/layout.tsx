@@ -61,7 +61,7 @@ export default async function EditorLayout({ children, params }: { children: Rea
   const st = STATUS[site.status];
   const tabs = [
     ['', 'Overview'], ['pages', 'Pages'], ['nav', 'Menu'], ['stories', 'Stories'], ['media', 'Media'], ['locations', 'Locations'], ['programs', 'Programs'],
-    ['leads', 'Leads'], ['seo', 'SEO'], ['analytics', 'Analytics'], ...(canManage(role) ? [['members', 'Members'], ['settings', 'Settings']] : []),
+    ['league', 'Circuit'], ['leads', 'Leads'], ['seo', 'SEO'], ['analytics', 'Analytics'], ...(canManage(role) ? [['members', 'Members'], ['settings', 'Settings']] : []),
   ] as [string, string][];
   const who = session.email ?? 'you';
   return (
