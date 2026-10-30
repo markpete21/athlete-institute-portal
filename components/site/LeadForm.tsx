@@ -60,11 +60,15 @@ export default function LeadForm(p: LeadFormProps) {
       {p.heading && <h3>{p.heading}</h3>}
       {p.variant === 'interest' && <p className="note">Registration isn&apos;t open yet. Leave your details and we&apos;ll email you when it opens. This doesn&apos;t hold a spot.</p>}
       {p.variant === 'location' && (
-        <fieldset className="rq-switch">
-          <legend className="sr">I am</legend>
-          <label><input type="radio" name="mode" value="request" checked={mode === 'request'} onChange={() => setMode('request')} /><span>Request ALL CAN near me</span></label>
-          <label><input type="radio" name="mode" value="host" checked={mode === 'host'} onChange={() => setMode('host')} /><span>Host a program</span></label>
-        </fieldset>
+        <div className="rq-switch">
+          <div className="rq-btns" role="group" aria-label="What would you like to do?">
+            <button type="button" className={`pill ${mode === 'request' ? 'pill--ink' : 'pill--line'}`} aria-pressed={mode === 'request'} onClick={() => setMode('request')}>Request near me</button>
+            <button type="button" className={`pill ${mode === 'host' ? 'pill--ink' : 'pill--line'}`} aria-pressed={mode === 'host'} onClick={() => setMode('host')}>Host a program</button>
+          </div>
+          <p className="rq-desc">{mode === 'host'
+            ? `${p.siteName.replace(/\s+Sport$/, '')} partners in underserved areas. We're looking for program, skill development and facility partners across Canada.`
+            : 'Request a location or facility near you. Tell us where, and we\'ll look at what it would take to bring a program there.'}</p>
+        </div>
       )}
       {p.variant === 'location' && (
         <>

@@ -176,11 +176,8 @@ async function LocationsFinder({ ctx, page, sport }: { ctx: Ctx; page: SitePage 
         <SplitGrid rowGap={40}
           left={<>
             <h2>Bring {ctx.site.name.replace(/\s+Sport$/, '')}<br />to your area.</h2>
-            <p className="muted" style={{ marginTop: 14 }}>Families can ask for a new location. Schools, community centres and facilities can host a program.</p>
-            <div id="host" style={{ marginTop: 36 }}>
-              <h3 style={{ marginBottom: 12 }}>Hosting a program.</h3>
-              <FactsDl preview={ctx.preview} facts={[['You provide', 'Gym time at your school or facility, and a court that suits the program.'], ['We provide', 'Coaching, the program plan, registration and scheduling [TBC].'], ['Sports', 'Basketball now. Volleyball, soccer and flag football as they launch.'], ['Insurance', '[TBC]'], ['Rental or revenue terms', '[TBC]'], ['Next step', 'We reply within [TBC] business days to set up a call and a site visit.']]} />
-            </div>
+            <p className="muted" style={{ marginTop: 14 }}>Families can ask for a location or facility near them. Schools, community centres and facilities can host a program.</p>
+            <span id="host" />
           </>}
           right={<LeadForm brandKey={ctx.brandKey} variant="location" initialSport={sport} siteName={ctx.site.name} />}
         />
