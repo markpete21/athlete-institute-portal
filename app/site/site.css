@@ -140,6 +140,11 @@
 .site .mega-feature{grid-column:10/span 3;border-top:1px solid var(--rule-strong);padding-top:14px;display:grid;gap:10px}
 .site .mega-feature .well{aspect-ratio:4/3;background:var(--ink) var(--grain);background-size:180px;color:var(--white);padding:16px;display:flex;flex-direction:column;justify-content:flex-end;max-width:100%}
 .site .mega-feature a{text-decoration:none}
+/* Featured card with a photo: image fills the well, text sits on a scrim at the bottom */
+.site .mega-feature .well{position:relative;overflow:hidden}
+.site .mega-feature .well>img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;z-index:0}
+.site .mega-feature .well>img+.kicker::before{content:"";position:absolute;inset:0;background:linear-gradient(0deg,rgba(0,0,0,.72) 0%,rgba(0,0,0,.25) 55%,rgba(0,0,0,0) 100%);z-index:0}
+.site .mega-feature .well>.kicker, .site .mega-feature .well>h3{position:relative;z-index:1}
 
 /* Drawer */
 .site .scrim{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:70;display:none}

@@ -244,7 +244,7 @@ function MegaPanel({ n, p, tab, setTab }: { n: NavItem; p: SiteHeaderProps; tab:
         <div className="well on-dark">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           {feat.imageUrl ? <img src={feat.imageUrl} alt="" /> : null}
-          <p className="kicker" style={{ color: 'var(--silver)' }}>Featured</p>
+          <p className="kicker" style={{ color: 'var(--silver)' }}>{feat.meta.note || 'Featured'}</p>
           <h3 style={{ marginTop: 6 }}>{withPeriod(feat.label)}</h3>
         </div>
       )}
