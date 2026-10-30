@@ -85,7 +85,8 @@ export default async function SiteLayout({ children, params }: { children: React
 
   // Password gate: on for everyone except previews and signed-in site members.
   const gate = site.settings.gate_password ?? null;
-  if (gate && site.status !== 'off' && !preview && !canEdit && !gateUnlocked(cookies().get(gateCookieName(site.brandKey))?.value, site.brandKey, gate)) {
+  const unlocked = !!gate && gateUnlocked(cookies().get(gateCookieName(site.brandKey))?.value, site.brandKey, gate);
+  if (gate && site.status !== 'off' && !preview && !canEdit && !unlocked) {
     const back = h.get('x-portal-path') ?? '/';
     const wrong = back.includes('gate=wrong');
     return (
@@ -112,7 +113,9 @@ export default async function SiteLayout({ children, params }: { children: React
     );
   }
 
-  if (site.status !== 'live' && !preview) {
+  // Someone who got past the password sees the whole (published) site even
+  // while the launch switch sits at Coming soon: the password is the gate.
+  if (site.status !== 'live' && !preview && !unlocked && !(gate && canEdit)) {
     void bumpView(site.brandKey, '/coming-soon');
     return (
       <div className="site" style={themeVars as React.CSSProperties}>

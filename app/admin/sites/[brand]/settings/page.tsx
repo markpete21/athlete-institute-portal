@@ -67,7 +67,7 @@ export default async function SettingsPage({ params }: { params: { brand: string
 
       <section className="card flex flex-col gap-4 p-5">
         <div className="card-head"><h2>Password protection</h2><span className={`card-head-lbl ${site.settings.gate_password ? 'text-[#8a6d1f]' : ''}`}>{site.settings.gate_password ? 'On · visitors need the password' : 'Off'}</span></div>
-        <p className="text-body text-sm">Keep the live domain private while you finish. Visitors see a password page; you and other site members never do. Search engines are told to stay out while it&apos;s on.</p>
+        <p className="text-body text-sm">Keep the domain private while you finish. Visitors see a password page and, once through, the whole published site, even while the launch switch is at Coming soon. You and other site members never see the password page. Search engines are told to stay out while it&apos;s on.</p>
         <form action={saveSettingsAction} className="grid gap-3 sm:grid-cols-2">
           <input type="hidden" name="brand" value={brand} /><input type="hidden" name="section" value="gate" />
           <F id="st-gate-pw" label={site.settings.gate_password ? 'New password (blank keeps the current one)' : 'Password'} name="password" type="text" hint="Share it with the people who should see the site. Changing it signs everyone out." />
