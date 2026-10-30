@@ -442,6 +442,9 @@ Member invite emails now point at `<site>/admin`. `/admin` was already a reserve
 ### 10.5g Menu order (Oct 30, 2026; migration 0070)
 Locations first, then Play, Compete, Families. (Reverses the earlier "lead with Play" decision; the order is data, draggable in the Menu editor.)
 
+### 10.5h Circuit schedule and standings as day cards (Oct 30, 2026)
+The Circuit page's Schedule and results and Standings use the Blue Arrow Classic schedule structure (`markpete21/blue-arrow-classic`, `app/schedule` + `components/game-row.tsx`) in ALL CAN colours and type: a card per night with a black header (date, game count, division and round), a Paper column-header row (Home team (Light) / Away team (Dark)), then rows of time · Game n · home + score · vs · away + score · status pill (Final on black, Postponed in red, Upcoming outlined). Winning score in red. Standings use the same card per division (#, Team, GP, W, L, PF, PA, Diff; leader in red). Phone: stacked rows with the jersey labels inline; PF/PA hidden.
+
 ### 10.6 Still manual before launch
 Run 0064 → upload the real photos → replace every `[TBC]` in Programs → Settings › Domains (Vercel project + DNS; Clerk satellite only with Clerk Pro) → Verify DNS → Coming soon → SEO setup, Search Console, sitemap → Live. The §9 legal list is unchanged. Registration on the brand host, the Accessibility and Concussion pages, and Futura hosting remain later stages.
 

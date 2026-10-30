@@ -487,12 +487,47 @@
 .site .circuit-facts dd{font-size:var(--fs-list)}
 .site .circuit-teams{display:flex;flex-wrap:wrap;gap:8px}
 .site .circuit-teams span{border:1px solid var(--rule-strong);padding:6px 12px;font-size:14px;font-weight:600}
-.site .night{display:grid;grid-template-columns:150px minmax(0,1fr);gap:8px 28px;padding:18px 0;border-bottom:1px solid var(--rule)}
-.site .night .d{font-weight:700;font-size:20px;line-height:1.05}
-.site .night .d small{display:block;font-size:12px;text-transform:uppercase;letter-spacing:.05em;color:var(--cg11);font-weight:600;margin-bottom:4px}
-.site .night .div{font-weight:700;margin-bottom:6px}
-.site .night .div .muted{font-weight:400;margin-left:6px}
-.site .night .g{display:grid;grid-template-columns:72px minmax(0,1fr) auto;gap:6px 16px;align-items:baseline;padding:6px 0;font-size:var(--fs-list)}
-.site .night .g .sc{font-weight:700;white-space:nowrap}
-.site .night .g .w{font-weight:700}
-@media (max-width:640px){.site .night{grid-template-columns:1fr}.site .night .g{grid-template-columns:64px minmax(0,1fr)}.site .night .g .sc{grid-column:2}}
+/* Day cards: the Blue Arrow Classic schedule structure in ALL CAN colours and type */
+.site .sched-list{display:grid;gap:28px}
+.site .sched-day{border:1px solid var(--rule-strong);border-top:4px solid var(--red);background:var(--white)}
+.site .sched-head{display:flex;flex-wrap:wrap;align-items:baseline;justify-content:space-between;gap:6px 20px;background:var(--black);color:var(--white);padding:14px 20px}
+.site .sched-head h3{font-size:22px;font-weight:700;letter-spacing:-.01em;color:var(--white)}
+.site .sched-count{margin-left:12px;font-size:var(--fs-micro);font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:var(--silver)}
+.site .sched-div{font-size:13px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:var(--silver)}
+.site .sched-cols, .site .sched-row{display:grid;grid-template-columns:64px 76px minmax(0,1fr) 40px minmax(0,1fr) 104px;gap:0 20px;align-items:center;padding:0 20px}
+.site .sched-cols{background:var(--paper);padding-top:9px;padding-bottom:9px;font-size:10px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:var(--cg11)}
+.site .sched-cols b{color:var(--red);font-weight:600}
+.site .sched-row{padding-top:16px;padding-bottom:16px;border-top:1px solid var(--rule);font-size:16px;font-weight:600}
+.site .sched-row:nth-child(odd){background:#FAFAFA}
+.site .sched-time, .site .sched-no, .site .sched-vs{font-size:var(--fs-micro);font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:var(--cg11)}
+.site .sched-no{color:var(--red)}
+.site .sched-vs{text-align:center}
+.site .sched-team{display:flex;align-items:center;justify-content:space-between;gap:14px;min-width:0}
+.site .sched-team .nm{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.site .sched-team .nm small{display:none;margin-left:8px;font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--cg11);font-weight:600}
+.site .sched-team .sc{font-size:28px;font-weight:700;line-height:1;color:var(--cg9);flex-shrink:0}
+.site .sched-team .sc.w{color:var(--red)}
+.site .sched-status{justify-self:end;display:inline-flex;align-items:center;min-height:24px;padding:0 10px;border:1px solid var(--rule-strong);font-size:10px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:var(--cg11);white-space:nowrap}
+.site .sched-status.is-final{background:var(--black);border-color:var(--black);color:var(--white)}
+.site .sched-status.is-ppd{border-color:var(--red);color:var(--red)}
+/* Standings in the same card */
+.site .stand-cols, .site .stand-row{display:grid;grid-template-columns:36px minmax(0,1fr) repeat(6,56px);gap:0 12px;align-items:center;padding:0 20px;text-align:right}
+.site .stand-cols span:nth-child(-n+2), .site .stand-row span:nth-child(-n+2){text-align:left}
+.site .stand-cols{background:var(--paper);padding-top:9px;padding-bottom:9px;font-size:10px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:var(--cg11)}
+.site .stand-row{padding-top:14px;padding-bottom:14px;border-top:1px solid var(--rule);font-size:16px;font-weight:600}
+.site .stand-row:nth-child(odd){background:#FAFAFA}
+.site .stand-row .rk{font-size:var(--fs-micro);letter-spacing:.12em;color:var(--cg11)}
+.site .stand-row .w{color:var(--red);font-weight:700}
+.site .stand-row.is-first .nm{color:var(--red)}
+@media (max-width:760px){
+  .site .sched-cols{display:none}
+  .site .sched-row{grid-template-columns:64px 1fr auto;grid-template-areas:"time no status" "home home home" "away away away";row-gap:8px}
+  .site .sched-time{grid-area:time}.site .sched-no{grid-area:no}.site .sched-status{grid-area:status}
+  .site .sched-row>span:nth-child(3){grid-area:home}.site .sched-row>span:nth-child(5){grid-area:away}
+  .site .sched-vs{display:none}
+  .site .sched-team .nm small{display:inline}
+  .site .sched-team .sc{font-size:24px}
+  .site .stand-cols, .site .stand-row{grid-template-columns:28px minmax(0,1fr) repeat(4,40px);gap:0 8px}
+  .site .sched-head h3{font-size:18px}.site .sched-count{display:block;margin:4px 0 0}
+  .site .stand-cols span:nth-child(n+6):nth-child(-n+7), .site .stand-row span:nth-child(n+6):nth-child(-n+7){display:none}
+}

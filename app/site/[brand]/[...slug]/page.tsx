@@ -274,26 +274,39 @@ async function Circuit({ ctx, page, division }: { ctx: Ctx; page: SitePage | nul
   const upcoming = nights.filter((n) => !n.iso || new Date(n.iso).getTime() >= now - 4 * 3600_000);
   const played = nights.filter((n) => n.iso && new Date(n.iso).getTime() < now - 4 * 3600_000).reverse();
   const apply = <ApplyDialog brandKey={ctx.brandKey} siteName={ctx.site.name} season={nextSeason} divisions={divs.length ? divs : ['U13 Boys', 'U14 Boys', 'U15 Boys']} label={`Apply for ${nextSeason}`} />;
+  const venueLine = loc?.venue ?? 'Athlete Institute Dome';
+  // Day cards (Blue Arrow Classic schedule layout, ALL CAN colours and type):
+  // black header bar with the date and game count, a light column-header
+  // row, then one row per game: time, game number, home + score, vs,
+  // away + score, status pill. Winner's score in red.
+  let gameNo = 0;
+  const numbered = new Map<number, number>();
+  for (const g of games) numbered.set(g.id, ++gameNo);
   const Night = ({ n }: { n: (typeof nights)[number] }) => {
     const [wd, md, yr] = fmtDateStacked(n.iso);
     return (
-      <div className="night">
-        <div className="d"><small>{n.iso ? wd : 'Date'}</small>{n.iso ? `${md.replace(/\s\d+$/, '')} ${md.split(' ').pop()}` : 'To be confirmed'}<small style={{ marginTop: 4 }}>{yr}</small></div>
-        <div>
-          <p className="div">{n.division || 'All divisions'}{n.note && <span className="muted">{n.note}</span>}</p>
-          {n.games.map((g) => {
-            const fin = g.status === 'final' && g.homeScore != null && g.awayScore != null;
-            const hw = fin && g.homeScore! > g.awayScore!, aw = fin && g.awayScore! > g.homeScore!;
-            return (
-              <div key={g.id} className="g">
-                <span className="muted">{g.status === 'postponed' ? 'PPD' : fmtTime(g.startsAt).replace(' ET', '')}</span>
-                <span><span className={hw ? 'w' : ''}>{g.home}</span> <span className="muted">v</span> <span className={aw ? 'w' : ''}>{g.away}</span>{g.venue && g.venue !== (loc?.venue ?? '') ? <span className="muted"> · {g.venue}</span> : null}</span>
-                <span className="sc">{fin ? `${g.homeScore}–${g.awayScore}` : g.status === 'postponed' ? 'Postponed' : ''}</span>
-              </div>
-            );
-          })}
+      <section className="sched-day">
+        <div className="sched-head">
+          <h3>{n.iso ? `${wd}, ${md}` : 'Date to be confirmed'}<span className="sched-count">{n.games.length} game{n.games.length === 1 ? '' : 's'}{n.iso ? ` · ${yr}` : ''}</span></h3>
+          <span className="sched-div">{n.division || 'All divisions'}{n.note ? ` · ${n.note}` : ''}</span>
         </div>
-      </div>
+        <div className="sched-cols" aria-hidden="true"><span /><span /><span>Home team <b>(Light)</b></span><span /><span>Away team <b>(Dark)</b></span><span /></div>
+        {n.games.map((g) => {
+          const fin = g.status === 'final' && g.homeScore != null && g.awayScore != null;
+          const hw = fin && g.homeScore! > g.awayScore!, aw = fin && g.awayScore! > g.homeScore!;
+          const ppd = g.status === 'postponed';
+          return (
+            <div key={g.id} className="sched-row">
+              <span className="sched-time">{fmtTime(g.startsAt).replace(' ET', '')}</span>
+              <span className="sched-no">Game {numbered.get(g.id)}</span>
+              <span className="sched-team"><span className="nm">{g.home}<small>(Light)</small></span>{fin && <span className={`sc${hw ? ' w' : ''}`}>{g.homeScore}</span>}</span>
+              <span className="sched-vs">vs</span>
+              <span className="sched-team"><span className="nm">{g.away}<small>(Dark)</small></span>{fin && <span className={`sc${aw ? ' w' : ''}`}>{g.awayScore}</span>}</span>
+              <span className={`sched-status${fin ? ' is-final' : ppd ? ' is-ppd' : ''}`}>{fin ? 'Final' : ppd ? 'Postponed' : 'Upcoming'}</span>
+            </div>
+          );
+        })}
+      </section>
     );
   };
   return (
@@ -325,8 +338,9 @@ async function Circuit({ ctx, page, division }: { ctx: Ctx; page: SitePage | nul
         <SecHead label="Schedule and results" right={divs.length > 1 ? <span className="tabs" style={{ margin: 0 }}><Link href="/circuit#schedule" className="tab" role="button" aria-pressed={!sel}>All</Link>{divs.map((d) => <Link key={d} href={`/circuit?division=${encodeURIComponent(d)}#schedule`} className="tab" role="button" aria-pressed={sel === d}>{d}</Link>)}</span> : undefined} />
         {games.length === 0 ? <p className="muted">The schedule is <T preview={ctx.preview}>[TBC]</T>.</p> : (
           <>
-            {upcoming.length > 0 && <><h2 style={{ marginBottom: 6 }}>Upcoming.</h2><p className="muted" style={{ marginBottom: 8 }}>{loc?.venue ?? 'Athlete Institute Dome'}{loc?.address ? ` · ${loc.address}` : ''}. Times ET.</p>{upcoming.map((n) => <Night key={n.key} n={n} />)}</>}
-            {played.length > 0 && <><h2 style={{ margin: '40px 0 6px' }}>Results.</h2>{played.map((n) => <Night key={n.key} n={n} />)}</>}
+            <p className="muted" style={{ marginBottom: 20 }}>{venueLine}{loc?.address ? ` · ${loc.address}` : ''}. Times ET.</p>
+            {upcoming.length > 0 && <div className="sched-list">{upcoming.map((n) => <Night key={n.key} n={n} />)}</div>}
+            {played.length > 0 && <><h2 style={{ margin: '48px 0 16px' }}>Results.</h2><div className="sched-list">{played.map((n) => <Night key={n.key} n={n} />)}</div></>}
           </>
         )}
       </Section>
@@ -334,13 +348,13 @@ async function Circuit({ ctx, page, division }: { ctx: Ctx; page: SitePage | nul
       <Section id="standings" tight>
         <SecHead label="Standings" />
         {table.size === 0 || [...table.values()].every((rows) => rows.every((r) => r.gp === 0)) ? <p className="muted">Standings appear after the first final score. Wins first, then point difference.</p> : (
-          <div className="grid" style={{ rowGap: 32 }}>
+          <div className="sched-list">
             {[...table.entries()].filter(([d]) => !sel || d === sel).map(([div, rows]) => (
-              <div key={div} className="left" style={{ gridColumn: 'span 6' }}>
-                <h3 style={{ marginBottom: 8 }}>{div || 'League'}.</h3>
-                <div className="tbl-wrap"><table><thead><tr><th>#</th><th>Team</th><th className="num">GP</th><th className="num">W</th><th className="num">L</th><th className="num">PF</th><th className="num">PA</th><th className="num">Diff</th></tr></thead>
-                  <tbody>{rows.map((r, i) => <tr key={r.team}><td>{i + 1}</td><td className="team">{r.team}</td><td className="num">{r.gp}</td><td className="num">{r.w}</td><td className="num">{r.l}</td><td className="num">{r.pf}</td><td className="num">{r.pa}</td><td className="num">{r.diff > 0 ? `+${r.diff}` : r.diff}</td></tr>)}</tbody></table></div>
-              </div>
+              <section key={div} className="sched-day">
+                <div className="sched-head"><h3>{div || 'League'}<span className="sched-count">{rows.length} teams</span></h3><span className="sched-div">Wins, then point difference</span></div>
+                <div className="stand-cols" aria-hidden="true"><span>#</span><span>Team</span><span>GP</span><span>W</span><span>L</span><span>PF</span><span>PA</span><span>Diff</span></div>
+                {rows.map((r, i) => <div key={r.team} className={`stand-row${i === 0 && r.gp > 0 ? ' is-first' : ''}`}><span className="rk">{i + 1}</span><span className="nm">{r.team}</span><span>{r.gp}</span><span className="w">{r.w}</span><span>{r.l}</span><span>{r.pf}</span><span>{r.pa}</span><span className="df">{r.diff > 0 ? `+${r.diff}` : r.diff}</span></div>)}
+              </section>
             ))}
           </div>
         )}
