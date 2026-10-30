@@ -52,6 +52,8 @@ export interface SiteProgram {
   description: string | null;
   facts: [string, string][];
   programId: number | null;
+  /** External registration page (e.g. Playbook). Shown as the Register button while the program is open and no Play program is linked. */
+  registerUrl: string | null;
   sortOrder: number;
 }
 
@@ -67,7 +69,7 @@ export const SPORTS: SportDef[] = [
 export const sportBySlug = (slug: string) => SPORTS.find((s) => s.slug === slug) ?? null;
 
 const LCOLS = 'id, slug, name, city, region, venue, address, parking, arrival, contact, social_url, status, launch_label, sports, note, photo_url, photo_alt, calendar, sort_order';
-const PCOLS = 'id, slug, location_slug, sport, league_type, name, status, status_label, description, facts, program_id, sort_order';
+const PCOLS = 'id, slug, location_slug, sport, league_type, name, status, status_label, description, facts, program_id, register_url, sort_order';
 
 const pairs = (v: unknown): [string, string][] => (Array.isArray(v) ? v.filter((p) => Array.isArray(p) && p.length >= 2).map((p) => [String(p[0]), String(p[1])]) : []);
 
@@ -84,7 +86,7 @@ function toProg(r: Record<string, unknown>): SiteProgram {
   return {
     id: r.id as number, slug: r.slug as string, locationSlug: r.location_slug as string, sport: r.sport as string, leagueType: r.league_type as string,
     name: r.name as string, status: (r.status as SiteProgram['status']) ?? 'coming_soon', statusLabel: (r.status_label as string) ?? null,
-    description: (r.description as string) ?? null, facts: pairs(r.facts), programId: (r.program_id as number) ?? null, sortOrder: (r.sort_order as number) ?? 100,
+    description: (r.description as string) ?? null, facts: pairs(r.facts), programId: (r.program_id as number) ?? null, registerUrl: (r.register_url as string) ?? null, sortOrder: (r.sort_order as number) ?? 100,
   };
 }
 
@@ -166,7 +168,7 @@ export async function saveProgram(brandKey: string, input: Partial<SiteProgram> 
   const db = supabaseAdmin();
   const row: Record<string, unknown> = {
     brand_key: brandKey, name: input.name.trim(), location_slug: input.locationSlug, sport: input.sport, league_type: input.leagueType, status: input.status ?? 'coming_soon',
-    status_label: input.statusLabel ?? null, description: input.description ?? null, facts: input.facts ?? [], program_id: input.programId ?? null, sort_order: input.sortOrder ?? 100,
+    status_label: input.statusLabel ?? null, description: input.description ?? null, facts: input.facts ?? [], program_id: input.programId ?? null, register_url: input.registerUrl ?? null, sort_order: input.sortOrder ?? 100,
   };
   let data;
   if (input.id) {

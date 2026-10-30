@@ -408,6 +408,13 @@
 .site .sec--full .wrap{max-width:none;padding:0}
 .site .fig figcaption{margin-top:10px}
 .site .gal{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:12px}
+/* Photo spot: a labelled block where a photo will go (image/gallery/hero with no file yet). */
+.site .ph{aspect-ratio:16/9;width:100%;position:relative;overflow:hidden;background:var(--ink) var(--grain);background-size:180px;color:var(--silver);display:flex;flex-direction:column;justify-content:flex-end;gap:6px;padding:14px 16px}
+.site .ph .tbc{color:var(--silver)}
+.site .ph .note{color:var(--silver);opacity:.8}
+.site .gal .ph{aspect-ratio:4/3}
+.site .ph--portrait{aspect-ratio:4/5;max-width:420px}
+.site .reg .pill .chev{margin-left:10px}
 .site .gal img{width:100%;aspect-ratio:4/3;object-fit:cover;display:block}
 .site .video{position:relative;aspect-ratio:16/9;background:var(--black)}
 .site .video iframe,.site .video video{position:absolute;inset:0;width:100%;height:100%;border:0}

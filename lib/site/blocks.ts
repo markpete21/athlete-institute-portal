@@ -250,7 +250,7 @@ export function validateBlocks(input: unknown, depth = 0): { blocks: Block[]; is
         if (props.imageUrl && !props.alt) issues.push({ blockId: id, message: 'Photo needs alt text.' });
         break;
       case 'gallery_grid':
-        props = { images: (Array.isArray(p.images) ? p.images.slice(0, 24) : []).map((im) => { const o = (im ?? {}) as Record<string, unknown>; return { url: imageUrl(o.url, issues, id), alt: str(o.alt, 400) }; }).filter((im) => im.url), programId: num(p.programId, 0, 0, 1e9) || '' };
+        props = { images: (Array.isArray(p.images) ? p.images.slice(0, 24) : []).map((im) => { const o = (im ?? {}) as Record<string, unknown>; return { url: imageUrl(o.url, issues, id), alt: str(o.alt, 400) }; }).filter((im) => im.url || im.alt), programId: num(p.programId, 0, 0, 1e9) || '' };
         break;
       case 'video': {
         const u = str(p.url, 2000);

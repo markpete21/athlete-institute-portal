@@ -7,7 +7,7 @@ import LeadForm from '@/components/site/LeadForm';
 import ApplyDialog from '@/components/site/ApplyDialog';
 import { fmtDateStacked, fmtTime } from '@/lib/site/context';
 import { divisionsOf, listGames, listTeams, standings, type LeagueGame } from '@/lib/site/league';
-import { Chev, FactsDl, PageHead, Row, SecHead, Section, SplitGrid, StatusPill, T } from '@/components/site/ui';
+import { Chev, Crumbs, FactsDl, PageHead, Row, SecHead, Section, SplitGrid, StatusPill, T } from '@/components/site/ui';
 import { GameCard } from '@/components/compete/DivisionPage';
 import { siteContext, type SiteContext } from '@/lib/site/context';
 import { getPageBySlug, listPages, type SitePage } from '@/lib/site/pages';
@@ -248,15 +248,31 @@ async function LocationSport({ ctx, loc, sport, page }: { ctx: Ctx; loc: SiteLoc
   const guide = (await listPages(ctx.brandKey)).find((p) => p.template === 'parent-guide');
   const faq = ((guide?.blocksPublished ?? []).find((b) => b.type === 'faq')?.props.items as { q: string; a: string; note?: string }[] | undefined)?.slice(0, 4) ?? [];
   const blocks = page ? (ctx.preview ? page.blocksDraft : page.blocksPublished ?? []) : [];
+  // Landing-page mode: when the editor has put a hero on this page, the hero
+  // leads, the program record(s) follow, then the rest of the blocks. The
+  // generic head and the parent-guide FAQ step aside (the page brings its own).
+  const heroIdx = blocks.findIndex((b) => b.type === 'hero' && !b.hidden);
+  const landing = heroIdx >= 0;
+  const lead = landing ? blocks.slice(0, heroIdx + 1) : [];
+  const rest = landing ? blocks.slice(heroIdx + 1) : blocks;
+  const ownFaq = blocks.some((b) => b.type === 'faq' && !b.hidden);
+  const crumbs: [string, string][] = [['Home', '/'], ['Locations', '/locations'], [loc.name, `/${loc.slug}`], [sport.name, '']];
   return (
     <>
-      <PhotoHead loc={loc} ctx={ctx} kicker={`${loc.name} · ${sport.name}`} title={`${sport.name} in ${loc.name}.`} lede={`Every ${sport.name.toLowerCase()} program at ${loc.venue ?? loc.name}.`} crumbs={[['Home', '/'], ['Locations', '/locations'], [loc.name, `/${loc.slug}`], [sport.name, '']]} />
-      <Section tight><SecHead label="Programs" right={<span className="note">{progs.length} program{progs.length === 1 ? '' : 's'}</span>} />
+      {landing ? (
+        <>
+          <BlockRenderer blocks={lead} ctx={ctx} />
+          <div className="wrap"><Crumbs items={crumbs} /></div>
+        </>
+      ) : (
+        <PhotoHead loc={loc} ctx={ctx} kicker={`${loc.name} · ${sport.name}`} title={`${sport.name} in ${loc.name}.`} lede={`Every ${sport.name.toLowerCase()} program at ${loc.venue ?? loc.name}.`} crumbs={crumbs} />
+      )}
+      <Section tight><SecHead label={progs.length === 1 ? 'The program' : 'Programs'} right={progs.length > 1 ? <span className="note">{progs.length} programs</span> : undefined} />
         {progs.map((p, i) => <ProgramBlock key={p.id} program={p} location={loc} ctx={ctx} primary={i === 0} />)}
         {progs.length === 0 && <p className="muted">No programs published here yet.</p>}
       </Section>
-      {faq.length > 0 && <Section><SecHead label="Before you register" /><SplitGrid left={<h2>Good to know.</h2>} right={<div className="acc">{faq.map((f, i) => <details key={i}><summary>{f.q}<span className="chev down" aria-hidden="true" /></summary><div className="body"><p><T preview={ctx.preview}>{f.a}</T></p>{f.note && <p className="muted"><T preview={ctx.preview}>{f.note}</T></p>}</div></details>)}</div>} /></Section>}
-      <BlockRenderer blocks={blocks} ctx={ctx} />
+      {!ownFaq && faq.length > 0 && <Section><SecHead label="Before you register" /><SplitGrid left={<h2>Good to know.</h2>} right={<div className="acc">{faq.map((f, i) => <details key={i}><summary>{f.q}<span className="chev down" aria-hidden="true" /></summary><div className="body"><p><T preview={ctx.preview}>{f.a}</T></p>{f.note && <p className="muted"><T preview={ctx.preview}>{f.note}</T></p>}</div></details>)}</div>} /></Section>}
+      <BlockRenderer blocks={rest} ctx={ctx} />
     </>
   );
 }

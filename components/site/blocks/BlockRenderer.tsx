@@ -50,6 +50,17 @@ async function renderBlock(b: Block, ctx: RenderCtx): Promise<JSX.Element | null
       );
     }
     case 'image': {
+      // No photo yet: a labelled spot (the caption is the brief) so the page
+      // reads complete while media is gathered. Editors see the brief; the
+      // public sees "Photo coming".
+      if (!s(p.imageUrl)) {
+        return (
+          <section key={key} className={`sec sec--img sec--${s(p.size) || 'wide'}`}><div className="wrap"><figure className="fig">
+            <div className={`ph ${s(p.size) === 'narrow' ? 'ph--portrait' : ''}`}><span className="kicker">Photo <em className="tbc">{ctx.preview ? '[TBC]' : 'coming'}</em></span></div>
+            {s(p.caption) && <figcaption className="note">{ctx.preview ? s(p.caption) : s(p.caption).replace(/^Photo spot:\s*/i, '')}</figcaption>}
+          </figure></div></section>
+        );
+      }
       const img = (
         // eslint-disable-next-line @next/next/no-img-element
         <img src={s(p.imageUrl)} alt={s(p.alt)} loading="lazy" />
@@ -65,8 +76,10 @@ async function renderBlock(b: Block, ctx: RenderCtx): Promise<JSX.Element | null
       const images = (p.images as unknown as { url: string; alt: string }[]) ?? [];
       return (
         <section key={key} className="sec"><div className="wrap"><div className="gal">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          {images.map((im, i) => <img key={i} src={im.url} alt={im.alt} loading="lazy" />)}
+          {images.map((im, i) => im.url
+            // eslint-disable-next-line @next/next/no-img-element
+            ? <img key={i} src={im.url} alt={im.alt} loading="lazy" />
+            : <div key={i} className="ph"><span className="kicker">Photo <em className="tbc">{ctx.preview ? '[TBC]' : 'coming'}</em></span>{ctx.preview && im.alt && <span className="note">{im.alt}</span>}</div>)}
         </div></div></section>
       );
     }
@@ -86,7 +99,7 @@ async function renderBlock(b: Block, ctx: RenderCtx): Promise<JSX.Element | null
       return (
         <section key={key} className={`cta-band cta-band--${bg} ${bg !== 'white' ? 'on-dark' : ''}`}><div className="wrap"><div className="grid" style={{ rowGap: 20 }}>
           <div className="left"><h2>{s(p.heading)}</h2>{s(p.body) && <p className="muted" style={{ marginTop: 12 }}><T preview={ctx.preview}>{s(p.body)}</T></p>}</div>
-          <div className="right cta-btns">{btns.map((x, i) => <a key={i} className={`pill ${x.style === 'red' ? 'pill--red' : x.style === 'line' ? 'pill--line' : bg === 'white' ? 'pill--ink' : 'pill--white'}`} href={x.href}>{x.label}</a>)}</div>
+          <div className="right cta-btns">{btns.map((x, i) => <a key={i} className={`pill ${x.style === 'red' ? 'pill--red' : x.style === 'line' ? 'pill--line' : bg === 'white' ? 'pill--ink' : 'pill--white'}`} href={x.href} {...extLink(x.href)}>{x.label}</a>)}</div>
         </div></div></section>
       );
     }
@@ -254,6 +267,11 @@ async function renderBlock(b: Block, ctx: RenderCtx): Promise<JSX.Element | null
   }
 }
 
+/** Links off the site (registration partner, socials) open in a new tab. */
+function extLink(href: string): { target?: string; rel?: string } {
+  return /^https?:\/\//i.test(href) ? { target: '_blank', rel: 'noopener' } : {};
+}
+
 function tbc(html: string, preview: boolean): string {
   return html.replace(/\[TBC\]/g, `<em class="tbc">${preview ? '[TBC]' : 'To be confirmed'}</em>`);
 }
@@ -271,6 +289,7 @@ function toEmbed(url: string): string {
 /** Home hero (ALL CAN §4.1): full-bleed photo, wordmark, two-line tagline, one red pill. */
 function Hero({ p, ctx }: { p: Record<string, never>; ctx: RenderCtx }) {
   const photo = s(p.style) === 'photo' && s(p.imageUrl);
+  const photoSpot = s(p.style) === 'photo' && !s(p.imageUrl);
   const lines = (p.headingLines as unknown as string[] | undefined)?.filter(Boolean) ?? (s(p.heading) ? [s(p.heading)] : []);
   const accent = s(p.accentWord);
   const full = s(p.height) === 'full';
@@ -279,7 +298,7 @@ function Hero({ p, ctx }: { p: Record<string, never>; ctx: RenderCtx }) {
       {/* eslint-disable-next-line @next/next/no-img-element */}
       {photo && <img className="hero-img" src={s(p.imageUrl)} alt={s(p.imageAlt)} />}
       {photo && <span className="hero-scrim" aria-hidden="true" />}
-      {(s(p.credit) || photo) && <span className="vcredit">Photo <T preview={ctx.preview}>{s(p.credit) || '[TBC]'}</T></span>}
+      {(s(p.credit) || photo || photoSpot) && <span className="vcredit">Photo <T preview={ctx.preview}>{s(p.credit) || '[TBC]'}</T></span>}
       <div className="wrap"><div className="grid">
         <div className="left" style={{ gridColumn: '1 / span 8' }}>
           {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -301,8 +320,8 @@ function Hero({ p, ctx }: { p: Record<string, never>; ctx: RenderCtx }) {
         </div>
         {(s(p.ctaLabel) || s(p.ctaSecondaryLabel)) && (
           <div className="cta">
-            {s(p.ctaLabel) && <Link className="pill pill--red" href={s(p.ctaHref) || '/'}>{s(p.ctaLabel)}</Link>}
-            {s(p.ctaSecondaryLabel) && <Link className="pill pill--white" href={s(p.ctaSecondaryHref) || '/'}>{s(p.ctaSecondaryLabel)}</Link>}
+            {s(p.ctaLabel) && <Link className="pill pill--red" href={s(p.ctaHref) || '/'} {...extLink(s(p.ctaHref))}>{s(p.ctaLabel)}</Link>}
+            {s(p.ctaSecondaryLabel) && <Link className="pill pill--white" href={s(p.ctaSecondaryHref) || '/'} {...extLink(s(p.ctaSecondaryHref))}>{s(p.ctaSecondaryLabel)}</Link>}
           </div>
         )}
       </div></div>

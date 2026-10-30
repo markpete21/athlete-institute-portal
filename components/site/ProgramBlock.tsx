@@ -10,7 +10,8 @@ import type { RenderCtx } from '@/components/site/blocks/BlockRenderer';
  * block in its fixed order, a financial-assistance line beside the price, and
  * on the right the interest form while registration is closed (or the
  * Circuit details link for the rep program). When Module 4 registration is
- * connected the right column becomes the Register action.
+ * connected the right column becomes the Register action; until then an
+ * external registration link (Playbook) does the same job in a new tab.
  */
 export default function ProgramBlock({ program, location, ctx, primary }: { program: SiteProgram; location: SiteLocation | null; ctx: RenderCtx; primary?: boolean }) {
   const st = programStatusLabel(program);
@@ -39,6 +40,11 @@ export default function ProgramBlock({ program, location, ctx, primary }: { prog
             </>
           ) : program.status === 'open' && program.programId ? (
             <div><Link className="pill pill--red" href={`/programs/${program.programId}`}>Register</Link></div>
+          ) : program.status === 'open' && program.registerUrl ? (
+            <div className="reg">
+              <a className="pill pill--red" href={program.registerUrl} target="_blank" rel="noopener">Register now<span className="chev" aria-hidden="true" /></a>
+              <p className="note" style={{ marginTop: 12 }}>Opens our registration partner in a new tab. Create a family account, add your player and choose this program.</p>
+            </div>
           ) : (
             <LeadForm brandKey={ctx.brandKey} variant="interest" context={program.name} siteName={ctx.site.name} />
           )}
