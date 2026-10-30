@@ -98,6 +98,7 @@ function satelliteHosts(manifest: SitesManifest | null): string[] {
 
 const PRIMARY_SIGN_IN = process.env.CLERK_PRIMARY_SIGN_IN_URL
   ?? `${process.env.NEXT_PUBLIC_PLAY_URL ?? 'https://play.athleteinstitute.ca'}/sign-in`;
+const PRIMARY_SIGN_UP = PRIMARY_SIGN_IN.replace(/\/sign-in$/, '/sign-up');
 
 /**
  * Host-aware Clerk options (Module 23 §1.3): a brand apex is a satellite of
@@ -109,7 +110,7 @@ function clerkOptionsFor(req: NextRequest): ClerkMiddlewareOptions {
   const host = (req.headers.get('host') ?? '').toLowerCase().split(':')[0];
   const sats = satelliteHosts(manifestCache.value);
   if (host && sats.includes(host)) {
-    return { isSatellite: true, domain: host, signInUrl: PRIMARY_SIGN_IN };
+    return { isSatellite: true, domain: host, signInUrl: PRIMARY_SIGN_IN, signUpUrl: PRIMARY_SIGN_UP };
   }
   return {};
 }
@@ -129,7 +130,21 @@ export default clerkMiddleware(async (auth, req) => {
   // app/play/layout.tsx needs it).
   const requestHeaders = new Headers(req.headers);
   requestHeaders.set('x-portal-app', app);
-  requestHeaders.set('x-portal-path', pathname);
+  // Path WITH the query: the brand-site layout reads ?preview= and ?gate=wrong
+  // from it, and the editor reads ?expired=1. Readers that want the bare path
+  // split on '?'.
+  requestHeaders.set('x-portal-path', `${pathname}${req.nextUrl.search}`);
+  // Every brand-site origin, for the primary's Clerk allowedRedirectOrigins:
+  // Clerk only sends a signed-in visitor back to a satellite it was told about.
+  // Plain strings only (the root layout hands them to a client component);
+  // dev adds each brand's <brand>.site.localhost host on this port.
+  const allHosts = { ...SEEDED_SITE_HOSTS, ...(manifest?.hosts ?? {}) };
+  const siteOrigins = new Set(Object.keys(allHosts).map((h) => `https://${h}`));
+  if (process.env.NODE_ENV !== 'production') {
+    const port = (hostHeader ?? '').split(':')[1];
+    for (const brand of new Set(Object.values(allHosts))) siteOrigins.add(`http://${brand}.site.localhost${port ? `:${port}` : ''}`);
+  }
+  requestHeaders.set('x-site-origins', [...siteOrigins].join(','));
   if (app === 'site' && resolved.brandKey) {
     requestHeaders.set('x-site-brand', resolved.brandKey);
     requestHeaders.set('x-site-host', (hostHeader ?? '').toLowerCase());

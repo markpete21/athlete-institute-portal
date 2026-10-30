@@ -6,11 +6,11 @@
 // flipping to enforcing Content-Security-Policy.
 const csp = [
   "default-src 'self'",
-  "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://*.clerk.accounts.dev https://clerk.athleteinstitute.ca https://challenges.cloudflare.com https://js.stripe.com",
+  "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://*.clerk.accounts.dev https://clerk.athleteinstitute.ca https://clerk.allcansport.ca https://challenges.cloudflare.com https://js.stripe.com",
   "style-src 'self' 'unsafe-inline'",
   "img-src 'self' blob: data: https://img.clerk.com https://*.supabase.co",
   "font-src 'self' data:",
-  "connect-src 'self' https://*.clerk.accounts.dev https://clerk.athleteinstitute.ca https://*.supabase.co https://api.stripe.com",
+  "connect-src 'self' https://*.clerk.accounts.dev https://clerk.athleteinstitute.ca https://clerk.allcansport.ca https://*.supabase.co https://api.stripe.com",
   "frame-src https://challenges.cloudflare.com https://js.stripe.com https://hooks.stripe.com",
   "worker-src 'self' blob:",
   "frame-ancestors 'none'",

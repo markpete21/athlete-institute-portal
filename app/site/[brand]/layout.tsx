@@ -68,10 +68,11 @@ export default async function SiteLayout({ children, params }: { children: React
     const { userId } = accountOnHost ? await auth() : { userId: null };
     if (userId) {
       const u = await currentUser();
-      const session = await getPortalSession();
-      canEdit = !!(await siteRoleFor(session, site.brandKey));
+      // The editor role is a bonus on top of the account button: a profile
+      // lookup failure must not hide the button itself.
+      try { canEdit = !!(await siteRoleFor(await getPortalSession(), site.brandKey)); } catch { canEdit = false; }
       const name = [u?.firstName, u?.lastName].filter(Boolean).join(' ') || u?.primaryEmailAddress?.emailAddress || 'You';
-      user = { initials: name.split(/\s+/).slice(0, 2).map((w) => w[0]).join('').toUpperCase(), first: u?.firstName ?? name, name, email: u?.primaryEmailAddress?.emailAddress ?? '', canEdit };
+      user = { initials: name.split(/\s+/).slice(0, 2).map((w) => w[0]).join('').toUpperCase(), first: u?.firstName ?? name.split('@')[0], name, email: u?.primaryEmailAddress?.emailAddress ?? '', canEdit , via: 'clerk' };
     }
   } catch {
     user = null;
@@ -84,7 +85,7 @@ export default async function SiteLayout({ children, params }: { children: React
       if (es.via === 'cookie' && es.userId && (await siteRoleFor(es, site.brandKey))) {
         canEdit = true;
         const name = es.email ?? 'Editor';
-        user = { initials: name.slice(0, 2).toUpperCase(), first: name.split('@')[0], name, email: es.email ?? '', canEdit: true };
+        user = { initials: name.slice(0, 2).toUpperCase(), first: name.split('@')[0], name, email: es.email ?? '', canEdit: true , via: 'editor' };
       }
     } catch { /* no editor cookie */ }
   }
@@ -150,6 +151,8 @@ export default async function SiteLayout({ children, params }: { children: React
   void bumpView(site.brandKey, path);
   const askName = site.name.replace(/\s+Sport$/i, '');
   const jsonLd = await organizationJsonLd(site, ctx.origin);
+  // Server-side fallback only: on a satellite the client swaps it for Clerk's
+  // buildSignInUrl() (components/site/SignInLink), which adds the sync marker.
   const signIn = `${PLAY_URL}/sign-in?redirect_url=${encodeURIComponent(`${ctx.origin}${path}`)}`;
 
   return (

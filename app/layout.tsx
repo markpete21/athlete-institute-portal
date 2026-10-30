@@ -35,7 +35,14 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   const satellite = h.get('x-site-satellite') === '1';
   const siteHost = (h.get('x-site-host') ?? '').split(':')[0];
   const playUrl = process.env.NEXT_PUBLIC_PLAY_URL ?? 'https://play.athleteinstitute.ca';
-  const clerkProps = satellite && siteHost ? { isSatellite: true, domain: siteHost, signInUrl: `${playUrl}/sign-in`, signUpUrl: `${playUrl}/sign-up` } : {};
+  // On the primary hosts, Clerk must be told which satellites it may send a
+  // signed-in visitor back to (Clerk docs: allowedRedirectOrigins is required
+  // for the primary -> satellite return). Middleware lists every brand-site
+  // origin (plus <brand>.site.localhost in dev) in x-site-origins.
+  const siteOrigins = (h.get('x-site-origins') ?? '').split(',').filter(Boolean);
+  const clerkProps = satellite && siteHost
+    ? { isSatellite: true, domain: siteHost, signInUrl: `${playUrl}/sign-in`, signUpUrl: `${playUrl}/sign-up` }
+    : { allowedRedirectOrigins: siteOrigins };
 
   return (
     <ClerkProvider {...clerkProps}>

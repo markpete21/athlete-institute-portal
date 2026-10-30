@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
+import SignInLink from '@/components/site/SignInLink';
 import { notFound } from 'next/navigation';
 import { Chev, FactsDl, PageHead, Section, SecHead, SplitGrid } from '@/components/site/ui';
 import { siteContext } from '@/lib/site/context';
@@ -32,7 +33,7 @@ export default async function MyTeamsPage({ params }: { params: { brand: string 
     return (
       <>
         <PageHead kicker="Account" title="My teams." lede="Sign in to see the teams you follow and their schedule." crumbs={[['Home', '/'], ['My teams', '']]} />
-        <div className="wrap" style={{ margin: '24px 0 80px' }}><a className="pill pill--ink" href={`${PLAY_URL}/sign-in?redirect_url=${encodeURIComponent(`${ctx.origin}/my-teams`)}`}>Sign in</a></div>
+        <div className="wrap" style={{ margin: '24px 0 80px' }}><SignInLink className="pill pill--ink" fallbackHref={`${PLAY_URL}/sign-in?redirect_url=${encodeURIComponent(`${ctx.origin}/my-teams`)}`} redirectPath="/my-teams">Sign in</SignInLink></div>
       </>
     );
   }
