@@ -66,6 +66,18 @@ export default async function SettingsPage({ params }: { params: { brand: string
       </section>
 
       <section className="card flex flex-col gap-4 p-5">
+        <div className="card-head"><h2>Password protection</h2><span className={`card-head-lbl ${site.settings.gate_password ? 'text-[#8a6d1f]' : ''}`}>{site.settings.gate_password ? 'On · visitors need the password' : 'Off'}</span></div>
+        <p className="text-body text-sm">Keep the live domain private while you finish. Visitors see a password page; you and other site members never do. Search engines are told to stay out while it&apos;s on.</p>
+        <form action={saveSettingsAction} className="grid gap-3 sm:grid-cols-2">
+          <input type="hidden" name="brand" value={brand} /><input type="hidden" name="section" value="gate" />
+          <F id="st-gate-pw" label={site.settings.gate_password ? 'New password (blank keeps the current one)' : 'Password'} name="password" type="text" hint="Share it with the people who should see the site. Changing it signs everyone out." />
+          <F id="st-gate-msg" label="Message on the password page" name="message" value={site.settings.gate_message} />
+          <div className="flex gap-2 sm:col-span-2"><SubmitButton className="btn-gold btn-sm">{site.settings.gate_password ? 'Update' : 'Turn on'}</SubmitButton>
+            {site.settings.gate_password && <button type="submit" name="clear" value="on" className="btn-ghost btn-sm">Turn off</button>}</div>
+        </form>
+      </section>
+
+      <section className="card flex flex-col gap-4 p-5">
         <div className="card-head"><h2>Coming-soon page</h2><span className="card-head-lbl">Shown while the site is not live</span></div>
         <form action={saveSettingsAction} className="grid gap-3">
           <input type="hidden" name="brand" value={brand} /><input type="hidden" name="section" value="coming_soon" />

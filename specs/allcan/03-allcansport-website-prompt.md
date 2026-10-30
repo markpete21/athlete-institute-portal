@@ -396,6 +396,9 @@ Compete sharing: `components/compete/DivisionPage.tsx`, `PlayerPage.tsx`, `Progr
 - `lib/site/claude.ts`: Write a block, Build a page (validated against the schema), Write SEO, Draft a story, Describe an image, Suggest keywords, unanswered-question digest. Every helper has a records-only fallback when `ANTHROPIC_API_KEY` is absent, marks unknown facts `[TBC]`, and writes an audit row.
 - `lib/site/analytics.ts`: Vercel Web Analytics (`VERCEL_ANALYTICS_TOKEN` / `PROJECT_ID` / `TEAM_ID`), Search Console (`GOOGLE_SERVICE_ACCOUNT_JSON`), AI citation checks (assistants without a key are skipped). Both API readers are written to the documented shapes and degrade to the built-in counters until the keys are in; confirm them on the first live run.
 
+### 10.5a Password protection (added Oct 30, 2026)
+Settings › **Password protection** sets `brand_sites.settings.gate_password`. While it is on, every visitor to the live domain sees a password page (shield, "Almost ready.", an optional message, the field); a correct entry sets a 30-day cookie holding an HMAC of the password (so changing or turning off the password signs everyone out). Staff previews and signed-in site members bypass it; search engines get `noindex` and `robots.txt` says `Disallow: /` while it is on; 20 wrong tries per IP pause for 15 minutes (`/api/site/gate`). The editor shows a "Password on" pill next to the status.
+
 ### 10.6 Still manual before launch
 Run 0064 → upload the real photos → replace every `[TBC]` in Programs → Settings › Domains (Vercel project + DNS + Clerk satellite domain + `CLERK_SATELLITE_HOSTS`) → Verify DNS → Coming soon → SEO setup, Search Console, sitemap → Live. The §9 legal list is unchanged. Registration on the brand host, the Accessibility and Concussion pages, and Futura hosting remain later stages.
 

@@ -41,7 +41,7 @@ export interface BrandSite {
   comingSoon: { headline?: string; body?: string; show_email_capture?: boolean };
   footer: { columns?: FooterColumn[]; tagline?: string; legal_text?: string; partners?: boolean };
   analytics: Record<string, unknown>;
-  settings: { ask_enabled?: boolean; ask_handoff_email?: string; ask_handoff_phone?: string };
+  settings: { ask_enabled?: boolean; ask_handoff_email?: string; ask_handoff_phone?: string; gate_password?: string | null; gate_message?: string };
   homePageId: number | null;
   launchedAt: string | null;
   updatedAt: string;

@@ -646,6 +646,9 @@ redirects — with the site switched **off**.
   `/api/site/signout`, `/api/ecosystem/sites` (public manifest for sibling
   apps); crons `site-posts` (hourly) and `site-ai-checks` (weekly) in
   `vercel.json`.
+- **Password protection** — Settings › Password protection gates the live
+  domain for visitors (30-day cookie, HMAC of the password; previews and site
+  members bypass; noindex + robots Disallow while on).
 - **Tests** — `npm run test:sites` (host resolution) and `npm run test:blocks`
   (validator, sanitiser, slugs, public filtering).
 

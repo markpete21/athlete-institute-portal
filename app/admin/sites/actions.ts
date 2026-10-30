@@ -65,6 +65,10 @@ export async function saveSettingsAction(fd: FormData): Promise<void> {
     }, actor);
   } else if (section === 'ask') {
     await updateSiteSettings(brand, { settings: { ask_enabled: bool(fd.get('askEnabled')), ask_handoff_email: str(fd.get('askEmail')), ask_handoff_phone: str(fd.get('askPhone')) } }, actor);
+  } else if (section === 'gate') {
+    const pw = str(fd.get('password'));
+    if (pw && pw.length < 4) throw new Error('Use a password of at least 4 characters.');
+    await updateSiteSettings(brand, { settings: { gate_password: bool(fd.get('clear')) ? null : pw || undefined, gate_message: str(fd.get('message')) } }, actor);
   } else if (section === 'coming_soon') {
     await updateSiteSettings(brand, { comingSoon: { headline: str(fd.get('headline')), body: str(fd.get('body')), show_email_capture: bool(fd.get('capture')) } }, actor);
   } else if (section === 'footer') {

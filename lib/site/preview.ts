@@ -39,3 +39,24 @@ export function verifyPreviewToken(token: string | null | undefined, brandKey: s
   if (a.length !== b.length || !timingSafeEqual(a, b)) return { ok: false };
   return { ok: true, profileId: Number(pid) };
 }
+
+/**
+ * Password gate (owner request, Oct 2026): while finishing touches happen on
+ * the live domain, a site admin sets a password in Settings. Visitors see a
+ * password page; a correct entry sets a 30-day cookie holding an HMAC of the
+ * password, so changing or clearing the password locks everyone out again.
+ * Staff previews and signed-in site members bypass it. Search engines get
+ * noindex and a robots Disallow while the gate is on.
+ */
+export const gateCookieName = (brandKey: string) => `site_gate_${brandKey.replace(/[^a-z0-9]/g, '_')}`;
+
+export function gateToken(brandKey: string, password: string): string {
+  return sign(`gate.${brandKey}.${password}`);
+}
+
+export function gateUnlocked(cookieValue: string | null | undefined, brandKey: string, password: string | null | undefined): boolean {
+  if (!password) return true;
+  if (!cookieValue) return false;
+  const a = Buffer.from(cookieValue), b = Buffer.from(gateToken(brandKey, password));
+  return a.length === b.length && timingSafeEqual(a, b);
+}

@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import { headers } from 'next/headers';
+import { cookies, headers } from 'next/headers';
 import { notFound } from 'next/navigation';
 import { auth, currentUser } from '@clerk/nextjs/server';
 import SiteHeader, { type HeaderUser } from '@/components/site/SiteHeader';
@@ -12,6 +12,7 @@ import { siteRoleFor } from '@/lib/site/scopes';
 import { getPortalSession } from '@/lib/auth';
 import { bumpView } from '@/lib/site/views';
 import { organizationJsonLd } from '@/lib/site/seo';
+import { gateCookieName, gateUnlocked } from '@/lib/site/preview';
 import '../site.css';
 
 export const dynamic = 'force-dynamic';
@@ -43,7 +44,7 @@ export async function generateMetadata({ params }: { params: { brand: string } }
     title: { default: site.seo.title || site.name, template: site.seo.title_formats?.page?.replace('{Page}', '%s') ?? `%s · ${site.name}` },
     description: site.seo.default_description,
     metadataBase: new URL(ctx.origin),
-    robots: site.status === 'live' ? undefined : { index: false, follow: false },
+    robots: site.status === 'live' && !site.settings.gate_password ? undefined : { index: false, follow: false },
     openGraph: { siteName: site.name, type: 'website', images: site.seo.og_image_url ? [site.seo.og_image_url] : undefined },
     icons: { icon: [{ url: `/favicons/play.svg`, type: 'image/svg+xml' }] },
   };
@@ -81,6 +82,35 @@ export default async function SiteLayout({ children, params }: { children: React
   const drawerLogo = logo('sport-horizontal-leaf-red.png') ?? logo('sport-horizontal-on-black.png') ?? shield;
   const footerLogo = logo('sport-horizontal-on-black.png');
   const partners = media.filter((m) => m.folder === 'Partners' && !m.decorative).map((m) => ({ name: m.alt ?? m.name, logoUrl: m.url, factor: m.name.includes('athlete-institute') ? 0.58 : m.name.includes('nccp') ? 0.661 : m.name.includes('safe-sport') ? 0.579 : 1 }));
+
+  // Password gate: on for everyone except previews and signed-in site members.
+  const gate = site.settings.gate_password ?? null;
+  if (gate && site.status !== 'off' && !preview && !canEdit && !gateUnlocked(cookies().get(gateCookieName(site.brandKey))?.value, site.brandKey, gate)) {
+    const back = h.get('x-portal-path') ?? '/';
+    const wrong = back.includes('gate=wrong');
+    return (
+      <div className="site" style={themeVars as React.CSSProperties}>
+        {theme.fontsHref && <link rel="stylesheet" href={theme.fontsHref} />}
+        <main className="soon on-dark">
+          <div className="wrap">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={shield} alt={site.name} style={{ height: 96, width: 'auto' }} />
+            <h1>Almost ready.</h1>
+            <p className="sub">{site.settings.gate_message || `${site.name} is being finished. Enter the password to take a look.`}</p>
+            <form method="post" action="/api/site/gate" className="soon-form" style={{ display: 'grid', gap: 10 }}>
+              <input type="hidden" name="brandKey" value={site.brandKey} />
+              <input type="hidden" name="back" value={back.replace(/[?&]gate=wrong/, '')} />
+              <label htmlFor="gate-pw" className="label">Password</label>
+              <input id="gate-pw" name="password" type="password" autoComplete="current-password" required autoFocus style={{ padding: '12px 14px', fontSize: 16, border: '1px solid var(--silver)', background: 'transparent', color: 'var(--white)' }} />
+              {wrong && <p className="note" role="alert" style={{ color: 'var(--site-accent)' }}>That password isn&apos;t right.</p>}
+              <button type="submit" className="pill pill--red" style={{ justifySelf: 'start' }}>Enter</button>
+            </form>
+            <p className="note">Team member? <a href={`${ADMIN_URL}/sites/${site.brandKey}`}>Open the editor</a> and use Preview.</p>
+          </div>
+        </main>
+      </div>
+    );
+  }
 
   if (site.status !== 'live' && !preview) {
     void bumpView(site.brandKey, '/coming-soon');

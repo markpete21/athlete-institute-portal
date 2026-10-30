@@ -33,7 +33,7 @@ export default async function SiteLayout({ children, params }: { children: React
       <header className="flex flex-wrap items-end justify-between gap-4 border-b border-hairline pb-4">
         <div className="flex flex-col gap-1">
           <p className="label text-[11px]"><Link href="/sites" className="no-underline">Websites</Link> · {role}</p>
-          <div className="flex items-baseline gap-3"><h1 className="text-3xl">{site.name}<span style={{ color: 'var(--accent)' }}>.</span></h1><span className={`pill-status ${st.cls}`}>{st.label}</span></div>
+          <div className="flex items-baseline gap-3"><h1 className="text-3xl">{site.name}<span style={{ color: 'var(--accent)' }}>.</span></h1><span className={`pill-status ${st.cls}`}>{st.label}</span>{site.settings.gate_password && <span className="pill-status warn">Password on</span>}</div>
           <p className="text-body text-sm">{site.primaryHost ? <a href={origin} target="_blank" rel="noopener" className="text-ink">{site.primaryHost}</a> : 'No domain yet'}{site.status !== 'live' && site.primaryHost ? ' · visitors see the coming-soon page' : ''}</p>
         </div>
       </header>
