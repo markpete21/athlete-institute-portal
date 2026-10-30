@@ -259,10 +259,9 @@ async function Circuit({ ctx, page }: { ctx: Ctx; page: SitePage | null }) {
         <div className="wrap"><div className="grid"><div className="left" style={{ gridColumn: '1 / span 8' }}>
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src={`/sites/${ctx.brandKey}/logos/circuit-on-dark.png`} alt={`${ctx.site.name.replace(/\s+Sport$/, '')} Circuit`} style={{ width: 'min(320px,80%)', height: 'auto', display: 'block', marginBottom: 28 }} />
-          <p className="kicker" style={{ color: 'var(--silver)' }}>Basketball · Rep{loc ? ` · ${loc.name}` : ''}</p>
+          <p className="kicker" style={{ color: 'var(--silver)' }}>Rep Basketball League{loc ? ` · ${loc.name}` : ''}</p>
           <div className="lane" aria-hidden="true"><i /><i /><i /></div>
-          <h1>The Circuit.</h1>
-          <p className="sub">Rep basketball{loc ? ` based at ${loc.venue ?? loc.name}${loc.address ? `, ${loc.address.split(',').slice(-2).join(',').trim()}` : ''}` : ''}.</p>
+          <h1>Rep your city.<br />Run the Circuit.</h1>
         </div></div></div>
       </section>
       <div className="wrap"><nav className="crumbs" aria-label="Breadcrumb"><Link href="/">Home</Link><span aria-hidden="true">/</span><Link href="/basketball">Basketball</Link><span aria-hidden="true">/</span><span aria-current="page">Circuit</span></nav></div>

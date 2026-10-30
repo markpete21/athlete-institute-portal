@@ -15,6 +15,7 @@ export interface SiteSeo {
   title?: string;
   default_description?: string;
   og_image_url?: string;
+  favicon_url?: string;
   keywords?: string[];
   business?: { name?: string; offer?: string; location_slugs?: string[] };
   title_formats?: { page?: string; location?: string; sport?: string; team?: string };

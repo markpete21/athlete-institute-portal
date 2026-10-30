@@ -461,3 +461,8 @@
 .site .pp-body p b{font-weight:600}
 @media (max-width:860px){.site .pp-toc{position:static}}
 .site .pp-body .rich{gap:10px}
+
+/* Play tab: a coming-soon sport shows one line instead of a list; featured logo card on white */
+.site .ppanel .soon-line{font-size:var(--fs-list);font-weight:600;margin:6px 0 0}
+.site .mega-feature .well--logo{background:var(--white);border:1px solid var(--rule-strong);display:grid;place-items:center;padding:22px}
+.site .mega-feature .well--logo img{width:100%;height:auto;max-height:100%;object-fit:contain;display:block}

@@ -23,7 +23,7 @@ export interface NavItem {
   featured: boolean;
   sortOrder: number;
   visible: boolean;
-  meta: { soon?: boolean; sport?: string; note?: string };
+  meta: { soon?: boolean; sport?: string; note?: string; card?: 'logo' };
   children: NavItem[];
 }
 

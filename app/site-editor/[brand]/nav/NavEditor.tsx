@@ -89,6 +89,7 @@ function ItemForm({ brand, item, pages, images, onDone }: { brand: string; item:
           <div className="flex flex-col"><label className="field-label" htmlFor="nv-desc">Line under it (dropdown)</label><input id="nv-desc" className="input text-sm" value={v.description ?? ''} onChange={(e) => set({ description: e.target.value })} /></div>
           <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={!!v.featured} onChange={(e) => set({ featured: e.target.checked })} /> Featured card in the dropdown</label>
           {v.featured && <div className="flex flex-col"><label className="field-label" htmlFor="nv-img">Card image</label><select id="nv-img" className="input text-xs" value={v.imageUrl ?? ''} onChange={(e) => set({ imageUrl: e.target.value })}><option value="">None</option>{images.map((m) => <option key={m.url} value={m.url}>{m.name}</option>)}</select></div>}
+          {v.featured && <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={v.meta?.card === 'logo'} onChange={(e) => set({ meta: { ...v.meta, card: e.target.checked ? 'logo' : undefined } })} /> Show the image alone on white (a logo card)</label>}
         </>
       )}
       {item.kind === 'folder' && (

@@ -414,6 +414,14 @@ Two ways to be signed in on the brand host (`lib/site/editor-session.ts`):
 
 Member invite emails now point at `<site>/admin`. `/admin` was already a reserved slug.
 
+### 10.5e First walk-through changes (Oct 30, 2026; migration 0065)
+- Play › Basketball lists **League** and **Rep Circuit** ("League in Orangeville, ON") only; the "All basketball" line is gone. Menu item descriptions now come from the item itself (editable in Menu), with the old defaults as fallback.
+- Volleyball, Soccer and Flag Football tabs show one line, **"Coming Spring 2027."** (the folder's note, editable), plus "Request <sport> near you".
+- Play featured card: **Toronto Midtown, De La Salle** · ALL CAN Youth Basketball League → `/toronto-midtown/basketball`.
+- Compete menu: **ALL CAN Circuit** above Schedules & Results; the featured card is the Circuit lockup on white (a featured item can be a "logo card": `meta.card = logo`, checkbox in the Menu editor). The Circuit is set up as a league on the site (program record + Circuit page), not through the Compete portal yet.
+- Circuit page: h1 "Rep your city. Run the Circuit.", no line under it; under the logo "Rep Basketball League · Orangeville".
+- Share image: the crest on black, 1200×630 (`/sites/all-can/share.png`, `seo.og_image_url`). Favicon: the red maple leaf (`/sites/all-can/favicon.png`, `seo.favicon_url`; apple-touch-icon on black).
+
 ### 10.6 Still manual before launch
 Run 0064 → upload the real photos → replace every `[TBC]` in Programs → Settings › Domains (Vercel project + DNS; Clerk satellite only with Clerk Pro) → Verify DNS → Coming soon → SEO setup, Search Console, sitemap → Live. The §9 legal list is unchanged. Registration on the brand host, the Accessibility and Concussion pages, and Futura hosting remain later stages.
 

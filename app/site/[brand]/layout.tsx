@@ -47,7 +47,9 @@ export async function generateMetadata({ params }: { params: { brand: string } }
     metadataBase: new URL(ctx.origin),
     robots: site.status === 'live' && !site.settings.gate_password ? undefined : { index: false, follow: false },
     openGraph: { siteName: site.name, type: 'website', images: site.seo.og_image_url ? [site.seo.og_image_url] : undefined },
-    icons: { icon: [{ url: `/favicons/play.svg`, type: 'image/svg+xml' }] },
+    icons: site.seo.favicon_url
+      ? { icon: [{ url: site.seo.favicon_url, type: 'image/png' }], apple: [{ url: site.seo.favicon_url.replace(/[^/]+$/, 'apple-touch-icon.png') }] }
+      : { icon: [{ url: `/favicons/play.svg`, type: 'image/svg+xml' }] },
   };
 }
 

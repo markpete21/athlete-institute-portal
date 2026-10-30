@@ -42,7 +42,7 @@ export interface SiteHeaderProps {
 
 const withPeriod = (l: string) => (/[.!?]$/.test(l) ? l : `${l}.`);
 const hrefOf = (n: NavItem) => n.href ?? '#';
-const PDESC: Record<string, string> = { League: 'Youth league. Skills block, then games.', Skills: 'Skill sessions for every level.', Circuit: 'Rep teams, based in Orangeville.' };
+const PDESC: Record<string, string> = { League: 'Youth league. Skills block, then games.', Skills: 'Skill sessions for every level.', Circuit: 'Rep teams, based in Orangeville.', 'Rep Circuit': 'League in Orangeville, ON' };
 
 export default function SiteHeader(p: SiteHeaderProps) {
   const [open, setOpen] = useState<number | null>(null);
@@ -151,8 +151,10 @@ export default function SiteHeader(p: SiteHeaderProps) {
                   <div className="sub">
                     {n.children.filter((c) => c.kind === 'folder').map((f) => (
                       <div key={f.id}>
-                        <h4>{f.label}{f.meta.soon ? ' · Coming soon' : ''}</h4>
-                        {f.children.map((g) => <a key={g.id} href={f.meta.soon && f.meta.sport ? `/locations?sport=${f.meta.sport}#request` : hrefOf(g)}>{g.label}<span className="chev" aria-hidden="true" /></a>)}
+                        <h4>{f.label}{f.meta.soon ? ` · ${f.meta.note || 'Coming soon.'}` : ''}</h4>
+                        {f.meta.soon
+                          ? <a href={`/locations?sport=${f.meta.sport ?? ''}#request`}>Request {f.label.toLowerCase()} near you<span className="chev" aria-hidden="true" /></a>
+                          : f.children.map((g) => <a key={g.id} href={hrefOf(g)}>{g.label}<span className="chev" aria-hidden="true" /></a>)}
                       </div>
                     ))}
                     {n.children.some((c) => c.kind === 'folder') && n.children.some((c) => c.kind !== 'folder' && !c.featured) && <span className="sub-gap" aria-hidden="true" />}
@@ -190,14 +192,21 @@ function MegaPanel({ n, p, tab, setTab }: { n: NavItem; p: SiteHeaderProps; tab:
   const folders = n.children.filter((c) => c.kind === 'folder');
   const loose = n.children.filter((c) => c.kind !== 'folder' && !c.featured);
   const feat = n.children.find((c) => c.featured);
+  // A featured card is either the ink well with a title, or (meta.card = logo)
+  // the item's image alone on white, e.g. the ALL CAN Circuit lockup.
   const featHTML = feat && (
     <a className="mega-feature" href={hrefOf(feat)}>
-      <div className="well on-dark">
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        {feat.imageUrl ? <img src={feat.imageUrl} alt="" /> : null}
-        <p className="kicker" style={{ color: 'var(--silver)' }}>Featured</p>
-        <h3 style={{ marginTop: 6 }}>{withPeriod(feat.label)}</h3>
-      </div>
+      {feat.meta.card === 'logo' && feat.imageUrl ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <div className="well well--logo"><img src={feat.imageUrl} alt={feat.label} /></div>
+      ) : (
+        <div className="well on-dark">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          {feat.imageUrl ? <img src={feat.imageUrl} alt="" /> : null}
+          <p className="kicker" style={{ color: 'var(--silver)' }}>Featured</p>
+          <h3 style={{ marginTop: 6 }}>{withPeriod(feat.label)}</h3>
+        </div>
+      )}
       <span style={{ fontSize: 15 }}>{feat.description}<span className="chev" aria-hidden="true" /></span>
     </a>
   );
@@ -227,17 +236,23 @@ function MegaPanel({ n, p, tab, setTab }: { n: NavItem; p: SiteHeaderProps; tab:
           </div>
           {cur && (
             <div className="ppanel" role="tabpanel" id={`pp-${cur.f.id}`} aria-labelledby={`pt-${cur.f.id}`}>
-              <div className="mega-col">
-                {cur.f.children.map((g) => (
-                  <a key={g.id} href={cur.f.meta.soon ? `/locations?sport=${cur.sp?.slug ?? ''}#request` : hrefOf(g)}>
-                    <span><b>{g.label}</b>{!cur.f.meta.soon && PDESC[g.label] ? <> <span className="muted">{PDESC[g.label]}</span></> : null}</span>
-                    {cur.f.meta.soon ? <span className="soon">Soon</span> : <span className="chev" aria-hidden="true" />}
-                  </a>
-                ))}
-              </div>
-              <a className="sport-req" href={cur.f.meta.soon ? `/locations?sport=${cur.sp?.slug ?? ''}#request` : `/${cur.sp?.slug ?? ''}`}>
-                {cur.f.meta.soon ? `Request ${cur.f.label.toLowerCase()} near you` : `All of ${cur.f.label.toLowerCase()}`}<span className="chev" aria-hidden="true" />
-              </a>
+              {cur.f.meta.soon ? (
+                <p className="soon-line">{cur.f.meta.note || 'Coming soon.'}</p>
+              ) : (
+                <div className="mega-col">
+                  {cur.f.children.map((g) => (
+                    <a key={g.id} href={hrefOf(g)}>
+                      <span><b>{g.label}</b>{(g.description || PDESC[g.label]) ? <> <span className="muted">{g.description || PDESC[g.label]}</span></> : null}</span>
+                      <span className="chev" aria-hidden="true" />
+                    </a>
+                  ))}
+                </div>
+              )}
+              {cur.f.meta.soon && (
+                <a className="sport-req" href={`/locations?sport=${cur.sp?.slug ?? ''}#request`}>
+                  Request {cur.f.label.toLowerCase()} near you<span className="chev" aria-hidden="true" />
+                </a>
+              )}
             </div>
           )}
         </div>
