@@ -686,7 +686,14 @@ One Vercel project serves both subdomains (middleware routes by host).
 6. **Stripe webhook** — dashboard → Webhooks → add endpoint
    `https://play.athleteinstitute.ca/api/webhooks/stripe` (events:
    payment_intent.*, invoice.*, setup_intent.*); paste the signing secret as
-   `STRIPE_WEBHOOK_SECRET` and redeploy.
+   `STRIPE_WEBHOOK_SECRET` and redeploy. **Per organization:** Athlete
+   Institute and Orangeville Prep are separate Stripe accounts under one
+   login — repeat this in the Orangeville Prep account and store its secret as
+   `STRIPE_WEBHOOK_SECRET_OP` (plus `STRIPE_SECRET_KEY_OP` /
+   `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY_OP`). Programs pick their organization
+   on the program page (default: follow the brand — Orangeville Prep programs
+   → OP account), rentals on the quote form; orders stamp the account they
+   were charged on (migration `0066_stripe_accounts.sql`).
 7. **Post-deploy checks** — `/api/dev/*` verify routes 404 in production (by
    design); confirm sign-in on admin., the public catalog on play., and one
    cron run in the Vercel cron logs the next morning.

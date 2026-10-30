@@ -1,6 +1,7 @@
 'use server';
 
 import { redirect } from 'next/navigation';
+import { stripeAccountOrNull } from '@ai/foundation';
 import { revalidatePath } from 'next/cache';
 import { getPortalSession } from '@/lib/auth';
 import {
@@ -26,6 +27,7 @@ export async function createRentalAction(formData: FormData): Promise<void> {
     title: String(formData.get('title') ?? '').trim() || 'Untitled rental',
     isInternal,
     businessUnitId: formData.get('businessUnitId') ? Number(formData.get('businessUnitId')) : null,
+    stripeAccount: stripeAccountOrNull(formData.get('stripeAccount')),
     bookingType: String(formData.get('bookingType') ?? '') || null,
     bookingTypeOther: String(formData.get('bookingTypeOther') ?? '').trim() || null,
     contactName: String(formData.get('contactName') ?? '').trim() || null,

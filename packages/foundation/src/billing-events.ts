@@ -12,6 +12,7 @@
  */
 
 import type Stripe from 'stripe';
+import { DEFAULT_STRIPE_ACCOUNT, type StripeAccountId } from './stripe-accounts';
 
 export type BillingEventType =
   | 'payment.succeeded'
@@ -34,6 +35,8 @@ export interface BillingEvent {
   /** Failure detail when type is *.failed. */
   failureMessage: string | null;
   metadata: Record<string, string>;
+  /** Stripe account (organization) whose endpoint delivered the event. */
+  account: StripeAccountId;
 }
 
 export type BillingEventHandler = (event: BillingEvent) => void | Promise<void>;
@@ -83,8 +86,11 @@ const customerIdOf = (c: string | Stripe.Customer | Stripe.DeletedCustomer | nul
  * Normalize a verified Stripe event into a BillingEvent, or null for event
  * types the platform doesn't consume (fine to ignore — Stripe sends many).
  */
-export function mapStripeEvent(event: Stripe.Event): BillingEvent | null {
-  const base = { stripeEventId: event.id, failureMessage: null as string | null };
+export function mapStripeEvent(
+  event: Stripe.Event,
+  account: StripeAccountId = DEFAULT_STRIPE_ACCOUNT,
+): BillingEvent | null {
+  const base = { stripeEventId: event.id, failureMessage: null as string | null, account };
 
   switch (event.type) {
     case 'payment_intent.succeeded':

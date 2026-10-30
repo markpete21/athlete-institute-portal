@@ -1,5 +1,5 @@
 import 'server-only';
-import { audit } from '@ai/foundation';
+import { audit, singleStripeAccount, stripeAccountLabel, type StripeAccountId } from '@ai/foundation';
 import { createHostedCheckout, getHostedCheckout } from '@ai/foundation/stripe';
 import { supabaseAdmin } from '@ai/foundation/supabase';
 import { markProgramInstallmentPaid } from '@/lib/programs/checkout';
@@ -118,7 +118,8 @@ export async function startInstallmentCheckout(input: {
   installmentIds: number[];
   familyId: number;
   origin: string;
-  customerId?: string | null;
+  /** Stripe customer for the account the payment settles in (null = guest). */
+  customerIdFor?: (account: StripeAccountId) => Promise<string | null>;
   actorClerkId: string;
 }): Promise<{ url: string }> {
   const ids = [...new Set(input.installmentIds)].filter(Boolean);
@@ -127,7 +128,7 @@ export async function startInstallmentCheckout(input: {
 
   const { data: rows, error } = await db
     .from('program_installments')
-    .select('id, amount_cents, status, label, program_orders(id, family_id)')
+    .select('id, amount_cents, status, label, program_orders(id, family_id, stripe_account)')
     .in('id', ids);
   if (error) throw new Error(error.message);
   if ((rows ?? []).length !== ids.length) throw new Error('Installment not found.');
@@ -137,18 +138,30 @@ export async function startInstallmentCheckout(input: {
     if (!UNPAID.includes(r.status)) throw new Error('That installment is already settled.');
   }
 
+  // Every selected installment must settle in the same organization's
+  // Stripe account (one hosted page = one account). Orders placed before the
+  // column existed read as the default account.
+  const account = singleStripeAccount(
+    (rows ?? []).map((r) => (r.program_orders as unknown as { stripe_account: string | null } | null)?.stripe_account),
+    'payments',
+  );
+  const customerId = input.customerIdFor ? await input.customerIdFor(account) : null;
+
   const amount = (rows ?? []).reduce((a, r) => a + r.amount_cents, 0);
   const label = rows!.length === 1 ? rows![0].label : `${rows!.length} payment plan installments`;
   const session = await createHostedCheckout({
-    customerId: input.customerId ?? null,
+    customerId,
     amountCents: amount,
-    description: `Athlete Institute — ${label}`,
+    description: `${stripeAccountLabel(account)} — ${label}`,
     metadata: {
       program_installment_ids: ids.join(','),
       family_id: String(input.familyId),
+      stripe_account: account,
     },
-    successUrl: `${input.origin}/account/pay?session_id={CHECKOUT_SESSION_ID}`,
+    // The return path needs the account to retrieve the session.
+    successUrl: `${input.origin}/account/pay?session_id={CHECKOUT_SESSION_ID}&acct=${account}`,
     cancelUrl: `${input.origin}/account/pay`,
+    account,
   });
   if (!session.url) throw new Error('Stripe did not return a checkout URL.');
 
@@ -156,7 +169,7 @@ export async function startInstallmentCheckout(input: {
     actorId: input.actorClerkId,
     action: 'program_installment.checkout-started',
     target: `family:${input.familyId}`,
-    meta: { installment_ids: ids, amount_cents: amount, stripe_session: session.id },
+    meta: { installment_ids: ids, amount_cents: amount, stripe_session: session.id, stripe_account: account },
   });
   return { url: session.url };
 }
@@ -166,10 +179,10 @@ export async function startInstallmentCheckout(input: {
  * bogus or unpaid session — it settles only what Stripe confirms paid, and
  * marking is idempotent. Returns the number of installments settled.
  */
-export async function settleCheckoutReturn(sessionId: string): Promise<number> {
+export async function settleCheckoutReturn(sessionId: string, account?: string | null): Promise<number> {
   let session;
   try {
-    session = await getHostedCheckout(sessionId);
+    session = await getHostedCheckout(sessionId, account);
   } catch {
     return 0; // bad/foreign id — the webhook remains the source of truth
   }

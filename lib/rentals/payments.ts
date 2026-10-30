@@ -136,12 +136,14 @@ export async function processInstallment(installmentId: number, actorClerkId: st
 
   const { data: rental } = await db
     .from('rentals')
-    .select('id, title, stripe_customer_id, pad_agreed, contact_email')
+    .select('id, title, stripe_customer_id, pad_agreed, contact_email, stripe_account')
     .eq('id', inst.rental_id)
     .single();
+  // Every Stripe call for this rental happens in ITS organization's account.
+  const account = (rental as { stripe_account?: string | null } | null)?.stripe_account ?? null;
 
   const padReady = rental!.stripe_customer_id && rental!.pad_agreed
-    ? (await padStatus(rental!.stripe_customer_id)).ready
+    ? (await padStatus(rental!.stripe_customer_id, account)).ready
     : false;
 
   if (padReady) {
@@ -152,6 +154,7 @@ export async function processInstallment(installmentId: number, actorClerkId: st
         methodType: 'acss_debit',
         description: `${rental!.title} - ${inst.label}`,
         metadata: { rental_id: String(inst.rental_id), installment_id: String(inst.id) },
+        account,
       });
       // PAD settles asynchronously; 'processing' is normal. Final state is set
       // by the Stripe webhook (billing-events) -> markInstallmentPaid/Failed.
@@ -172,6 +175,7 @@ export async function processInstallment(installmentId: number, actorClerkId: st
       items: [{ description: `${rental!.title} - ${inst.label}`, amountCents: inst.amount_cents }],
       daysUntilDue: 5,
       metadata: { rental_id: String(inst.rental_id), installment_id: String(inst.id) },
+      account,
     });
     invoiceId = inv.id ?? null;
   }
