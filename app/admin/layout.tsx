@@ -1,4 +1,5 @@
 import { redirect } from 'next/navigation';
+import { headers } from 'next/headers';
 import { ECOSYSTEM_LINKS } from '@ai/foundation';
 import AdminShell from '@/components/nav/AdminShell';
 import { getPortalSession } from '@/lib/auth';
@@ -23,12 +24,17 @@ const STATS_DAYS = 7; // pinned-program key stats default to the last 7 days
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
   const session = await getPortalSession();
 
-  // Brand-site editors (Module 23 §2.6) may not be staff: they reach only
-  // /sites/<brand>, which the sites layout gates per brand.
+  // Brand-site members (Module 23 §2.6) may not be staff: on admin.* they
+  // reach ONLY Websites (/sites), the list with the Open editor hand-off into
+  // their site's own editor. Any other admin path bounces them back there.
   const siteEditor = !session.isStaff && session.profileId ? (await editableSites(session)).length > 0 : false;
   if (!session.isStaff && !siteEditor) {
     const playUrl = process.env.NEXT_PUBLIC_PLAY_URL ?? ECOSYSTEM_LINKS.hub;
     redirect(playUrl);
+  }
+  if (!session.isStaff) {
+    const path = (headers().get('x-portal-path') ?? '/').split('?')[0];
+    if (path !== '/sites' && !path.startsWith('/sites/')) redirect('/sites');
   }
 
   const prefs = await getNavPrefs(session.profileId);
