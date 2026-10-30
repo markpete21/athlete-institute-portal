@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { formatCAD, RENTAL_STATUS_COLOR, type RentalStatus } from '@ai/foundation';
+import { formatCAD, RENTAL_STATUS_COLOR, type RentalStatus, STRIPE_ACCOUNTS, configuredStripeAccounts } from '@ai/foundation';
 import { supabaseAdmin } from '@ai/foundation/supabase';
 import { searchRentals, type RentalSearchFilters } from '@/lib/rentals/search';
 import { createRentalAction } from './actions';
@@ -246,6 +246,14 @@ export default async function RentalsListPage({
               <option value="">business unit…</option>
               {(units ?? []).map((u) => (
                 <option key={u.id} value={u.id}>{u.name}</option>
+              ))}
+            </select>
+            <select name="stripeAccount" className="input" defaultValue="" title="Organization (Stripe account) the rental's payments settle in">
+              <option value="">organization (Stripe)…</option>
+              {STRIPE_ACCOUNTS.map((a) => (
+                <option key={a.id} value={a.id} disabled={!configuredStripeAccounts().includes(a.id)}>
+                  {a.label}{configuredStripeAccounts().includes(a.id) ? '' : ' (keys not set)'}
+                </option>
               ))}
             </select>
           </div>

@@ -24,19 +24,23 @@ export async function payInstallmentsAction(formData: FormData): Promise<void> {
 
   const ids = formData.getAll('installmentId').map((v) => Number(v)).filter(Boolean);
 
-  // Attach the payment to the household's Stripe customer when possible so
-  // the card is reusable later; a missing email just means a guest payment.
-  let customerId: string | null = null;
-  try {
-    const { getOrCreateStripeCustomerId } = await import('@/lib/billing');
-    customerId = await getOrCreateStripeCustomerId();
-  } catch { /* guest checkout is fine */ }
+  // Attach the payment to the household's Stripe customer IN THE ACCOUNT the
+  // installments settle in (a customer exists in one account only) so the
+  // card is reusable later; a missing email just means a guest payment.
+  const customerIdFor = async (account: string) => {
+    try {
+      const { getOrCreateStripeCustomerId } = await import('@/lib/billing');
+      return await getOrCreateStripeCustomerId(account);
+    } catch {
+      return null; // guest checkout is fine
+    }
+  };
 
   const { url } = await startInstallmentCheckout({
     installmentIds: ids,
     familyId: session.familyId,
     origin: requestOrigin(),
-    customerId,
+    customerIdFor,
     actorClerkId: session.userId,
   });
   redirect(url);

@@ -17,7 +17,7 @@ export const dynamic = 'force-dynamic';
 const dateLabel = (d: string) =>
   new Date(`${d}T12:00:00Z`).toLocaleDateString('en-CA', { month: 'short', day: 'numeric', year: 'numeric' });
 
-export default async function PayPage({ searchParams }: { searchParams: { session_id?: string } }) {
+export default async function PayPage({ searchParams }: { searchParams: { session_id?: string; acct?: string } }) {
   const session = await getPortalSession();
   if (!session.userId) redirect('/sign-in');
   if (!session.familyId) redirect('/account');
@@ -26,7 +26,7 @@ export default async function PayPage({ searchParams }: { searchParams: { sessio
   let justSettled = 0;
   if (searchParams.session_id) {
     const { settleCheckoutReturn } = await import('@/lib/programs/pay');
-    justSettled = await settleCheckoutReturn(searchParams.session_id);
+    justSettled = await settleCheckoutReturn(searchParams.session_id, searchParams.acct ?? null);
   }
 
   const view = await householdOutstanding(session.familyId, torontoToday());
