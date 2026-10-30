@@ -405,6 +405,15 @@ Satellite domains are a Clerk Pro feature and the production instance is on Hobb
 ### 10.5c Host redirects follow the primary host (Oct 30, 2026)
 First live hit of allcansport.ca looped: Vercel's own domain redirect sent the apex to `www` while the middleware sent `www` to the apex. The middleware now redirects every alias host to the site's **Primary host** (published in the manifest as `primary`), so Settings › Domains must name the same host Vercel keeps. Decision for ALL CAN: apex `allcansport.ca` is canonical; in Vercel › Domains the `www` entry redirects to the apex.
 
+### 10.5d The editor lives at the site's own domain (Oct 30, 2026)
+Owner decision: each brand site is edited at its own domain, not inside the portal Admin. The editor is served at **`<brand host>/admin`** (e.g. `allcansport.ca/admin`; the middleware maps it to `app/site-editor/[brand]`), with its own shell (the site's shield and name, status, tabs, who is signed in, View site, Sign out). Portal Admin › **Websites** keeps only the list of sites and, for super admins, Add a site; each row has **Open editor**.
+
+Two ways to be signed in on the brand host (`lib/site/editor-session.ts`):
+1. **Clerk satellite** (Clerk Pro, the Settings › Domains checkbox): the usual session, sign-in on Play.
+2. **Hand-off from Admin** (works now, before the satellite): Open editor mints a 5-minute signed token for the signed-in person and sends them to `<site>/admin/auth`, which sets a 12-hour httpOnly editor cookie bound to their profile. Every role check accepts either. The editor cookie also lights the account chip on the public site (with the Site editor link) and bypasses the password page. Sign out clears it.
+
+Member invite emails now point at `<site>/admin`. `/admin` was already a reserved slug.
+
 ### 10.6 Still manual before launch
 Run 0064 → upload the real photos → replace every `[TBC]` in Programs → Settings › Domains (Vercel project + DNS; Clerk satellite only with Clerk Pro) → Verify DNS → Coming soon → SEO setup, Search Console, sitemap → Live. The §9 legal list is unchanged. Registration on the brand host, the Accessibility and Concussion pages, and Futura hosting remain later stages.
 

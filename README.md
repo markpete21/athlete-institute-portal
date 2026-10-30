@@ -630,7 +630,10 @@ redirects — with the site switched **off**.
   `listDivisions/upcomingGames/recentResults` take a `brandKey` filter;
   compete.* pages carry a canonical to the brand site when one is live.
   Score entry fans out to followers (`notifyFollowers`, best effort).
-- **Editor** (`app/admin/sites/*`) — overview with launch checks and the
+- **Editor** (`app/site-editor/[brand]/*`, served at `<brand host>/admin`,
+  e.g. allcansport.ca/admin; portal Admin › Websites only lists sites with an
+  **Open editor** hand-off that signs you in there for 12 hours until the host
+  is a Clerk satellite) — overview with launch checks and the
   Off → Coming soon → Live switch; page builder (block list, typed inspector,
   **Write with Claude** from the site's own records, SEO panel, 1-hour preview
   tokens); menu tree with drag-to-reorder (max two folder levels); stories
