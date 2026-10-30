@@ -45,6 +45,8 @@ function isExempt(pathname: string): boolean {
 
 interface SitesManifest {
   hosts: SiteHostMap;
+  /** brandKey -> the host every alias redirects to (Settings › Domains › Primary host). */
+  primary: Record<string, string>;
   /** brandKey -> { fromPath: toPath } */
   redirects: Record<string, Record<string, string>>;
   /** Hosts configured as Clerk satellite domains. */
@@ -72,6 +74,7 @@ async function sitesManifest(): Promise<SitesManifest | null> {
         const json = (await res.json()) as Partial<SitesManifest>;
         value = {
           hosts: json.hosts && typeof json.hosts === 'object' ? json.hosts : {},
+          primary: json.primary && typeof json.primary === 'object' ? json.primary : {},
           redirects: json.redirects && typeof json.redirects === 'object' ? json.redirects : {},
           satellites: Array.isArray(json.satellites) ? json.satellites : [],
         };
@@ -168,10 +171,15 @@ export default clerkMiddleware(async (auth, req) => {
   }
 
   if (app === 'site' && resolved.brandKey) {
-    // www.allcansport.ca -> allcansport.ca (308 keeps method + body).
-    if (resolved.wwwAlias) {
-      const apex = (hostHeader ?? '').toLowerCase().split(':')[0].replace(/^www\./, '');
-      return NextResponse.redirect(`https://${apex}${pathname}${req.nextUrl.search}`, 308);
+    // Alias hosts -> the site's primary host (308 keeps method + body). The
+    // primary comes from Settings › Domains so it can match whichever host
+    // Vercel's own domain redirect prefers; a mismatch there is a redirect
+    // loop. Without a manifest: www -> apex.
+    const bare = (hostHeader ?? '').toLowerCase().split(':')[0];
+    const primary = manifest?.primary?.[resolved.brandKey];
+    if (primary ? bare !== primary && manifest?.hosts?.[bare] === resolved.brandKey : resolved.wwwAlias) {
+      const target = primary ?? bare.replace(/^www\./, '');
+      return NextResponse.redirect(`https://${target}${pathname}${req.nextUrl.search}`, 308);
     }
     // Staff-managed redirects (old addresses, slug changes): 301 before routing.
     const to = manifest?.redirects?.[resolved.brandKey]?.[pathname.replace(/\/+$/, '') || '/'];

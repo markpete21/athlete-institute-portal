@@ -101,12 +101,14 @@ export function siteOrigin(site: BrandSite, fallbackHost?: string | null): strin
 export async function publishHostsManifest(): Promise<void> {
   const db = supabaseAdmin();
   const [{ data: sites }, { data: redirects }] = await Promise.all([
-    db.from('brand_sites').select('brand_key, status, hostnames, settings'),
+    db.from('brand_sites').select('brand_key, status, hostnames, settings, primary_host'),
     db.from('site_redirects').select('brand_key, from_path, to_path'),
   ]);
   const hosts: Record<string, string> = {};
+  const primary: Record<string, string> = {};
   const satellites: string[] = [];
   for (const s of sites ?? []) {
+    if (s.primary_host) primary[s.brand_key] = String(s.primary_host).toLowerCase();
     for (const h of (s.hostnames as string[]) ?? []) {
       hosts[h.toLowerCase()] = s.brand_key;
       // Clerk satellites are opt-in per site (a Clerk Pro feature): a host
@@ -119,7 +121,7 @@ export async function publishHostsManifest(): Promise<void> {
     if (!r.to_path) continue;
     (rmap[r.brand_key] = rmap[r.brand_key] ?? {})[r.from_path] = r.to_path;
   }
-  const body = JSON.stringify({ hosts, redirects: rmap, satellites, updatedAt: new Date().toISOString() });
+  const body = JSON.stringify({ hosts, primary, redirects: rmap, satellites, updatedAt: new Date().toISOString() });
   try {
     await uploadFile(BUCKETS.brandAssets, 'sites/hosts.json', new Blob([body], { type: 'application/json' }), { contentType: 'application/json', upsert: true });
   } catch (err) {

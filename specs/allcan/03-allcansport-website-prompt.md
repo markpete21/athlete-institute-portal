@@ -402,6 +402,9 @@ Settings › **Password protection** sets `brand_sites.settings.gate_password`. 
 ### 10.5b Clerk satellite is opt-in (Oct 30, 2026)
 Satellite domains are a Clerk Pro feature and the production instance is on Hobby. Settings › Domains has a "Clerk satellite domain" checkbox (`settings.clerk_satellite`, default off); only ticked hosts go into the manifest's `satellites` list and get satellite Clerk options in middleware. No env var is involved, so the switch needs no redeploy. While it is off, the brand host never tries to read a session: no Sign in link or account chip, no Follow this team, and `/my-teams` points to Schedules and results, Play and Compete. Tick it (and add the domain under Clerk › Domains › Satellites) after upgrading Clerk; nothing else changes.
 
+### 10.5c Host redirects follow the primary host (Oct 30, 2026)
+First live hit of allcansport.ca looped: Vercel's own domain redirect sent the apex to `www` while the middleware sent `www` to the apex. The middleware now redirects every alias host to the site's **Primary host** (published in the manifest as `primary`), so Settings › Domains must name the same host Vercel keeps. Decision for ALL CAN: apex `allcansport.ca` is canonical; in Vercel › Domains the `www` entry redirects to the apex.
+
 ### 10.6 Still manual before launch
 Run 0064 → upload the real photos → replace every `[TBC]` in Programs → Settings › Domains (Vercel project + DNS; Clerk satellite only with Clerk Pro) → Verify DNS → Coming soon → SEO setup, Search Console, sitemap → Live. The §9 legal list is unchanged. Registration on the brand host, the Accessibility and Concussion pages, and Futura hosting remain later stages.
 
