@@ -439,6 +439,9 @@ Member invite emails now point at `<site>/admin`. `/admin` was already a reserve
 - Locations mega panel uses the shared grid: title at left, venue cards from the column where the other panels' lists start, links at right. Hairline rows: the name column fits the longest name so venues align at one left edge.
 - Home page: the Schedules/Standings big buttons are removed for now (0069); Locations stays.
 
+### 10.5g Menu order (Oct 30, 2026; migration 0070)
+Locations first, then Play, Compete, Families. (Reverses the earlier "lead with Play" decision; the order is data, draggable in the Menu editor.)
+
 ### 10.6 Still manual before launch
 Run 0064 → upload the real photos → replace every `[TBC]` in Programs → Settings › Domains (Vercel project + DNS; Clerk satellite only with Clerk Pro) → Verify DNS → Coming soon → SEO setup, Search Console, sitemap → Live. The §9 legal list is unchanged. Registration on the brand host, the Accessibility and Concussion pages, and Futura hosting remain later stages.
 
