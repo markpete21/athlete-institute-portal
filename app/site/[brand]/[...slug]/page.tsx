@@ -197,7 +197,7 @@ async function LocationHub({ ctx, loc, page }: { ctx: Ctx; loc: SiteLocation; pa
   const blocks = page ? (ctx.preview ? page.blocksDraft : page.blocksPublished ?? []) : [];
   return (
     <>
-      <PageHead kicker={`${loc.city ?? loc.region} · ${st.label}`} title={`${loc.name}.`} lede={progs.length ? `${progs.map((p) => p.name).join(' and ')} at ${loc.venue ?? loc.name}.` : loc.note ?? ''} crumbs={[['Home', '/'], ['Locations', '/locations'], [loc.name, '']]} preview={ctx.preview} />
+      <PhotoHead loc={loc} ctx={ctx} kicker={`${loc.city ?? loc.region} · ${st.label}`} title={`${loc.name}.`} lede={progs.length ? `${progs.map((p) => p.name).join(' and ')} at ${loc.venue ?? loc.name}.` : loc.note ?? ''} crumbs={[['Home', '/'], ['Locations', '/locations'], [loc.name, '']]} />
       <Section tight><SecHead label="Venue" /><SplitGrid
         left={<><h2>{loc.venue ?? loc.name}.</h2>{loc.address && <p className="muted" style={{ marginTop: 12 }}>{loc.address}</p>}{loc.note && <p className="note" style={{ marginTop: 8 }}><T preview={ctx.preview}>{loc.note}</T></p>}</>}
         right={<FactsDl preview={ctx.preview} facts={[['Address', loc.address ?? '[TBC]'], ['Parking', loc.parking ?? '[TBC]'], ['Arrival', loc.arrival ?? '[TBC]'], ['Contact', loc.contact ?? ctx.site.contact.email ?? '[TBC]'], ['Local updates', loc.socialUrl ?? '[TBC]']]} />}
@@ -221,7 +221,7 @@ async function LocationSport({ ctx, loc, sport, page }: { ctx: Ctx; loc: SiteLoc
   const blocks = page ? (ctx.preview ? page.blocksDraft : page.blocksPublished ?? []) : [];
   return (
     <>
-      <PageHead kicker={`${loc.name} · ${sport.name}`} title={`${sport.name} in ${loc.name}.`} lede={`Every ${sport.name.toLowerCase()} program at ${loc.venue ?? loc.name}. Facts come from the program record, so they match registration.`} crumbs={[['Home', '/'], ['Locations', '/locations'], [loc.name, `/${loc.slug}`], [sport.name, '']]} />
+      <PhotoHead loc={loc} ctx={ctx} kicker={`${loc.name} · ${sport.name}`} title={`${sport.name} in ${loc.name}.`} lede={`Every ${sport.name.toLowerCase()} program at ${loc.venue ?? loc.name}.`} crumbs={[['Home', '/'], ['Locations', '/locations'], [loc.name, `/${loc.slug}`], [sport.name, '']]} />
       <Section tight><SecHead label="Programs" right={<span className="note">{progs.length} program{progs.length === 1 ? '' : 's'}</span>} />
         {progs.map((p, i) => <ProgramBlock key={p.id} program={p} location={loc} ctx={ctx} primary={i === 0} />)}
         {progs.length === 0 && <p className="muted">No programs published here yet.</p>}
@@ -381,6 +381,27 @@ async function Circuit({ ctx, page, division }: { ctx: Ctx; page: SitePage | nul
         <SplitGrid left={<h2>Bring your team.</h2>} right={<><p className="muted" style={{ marginBottom: 16 }}>Applications for the {nextSeason} Circuit are open to rep teams and clubs. Tell us who you are and which divisions you&apos;d enter; we reply to every application.</p>{apply}</>} />
       </Section>
       <BlockRenderer blocks={blocks} ctx={ctx} />
+    </>
+  );
+}
+
+/** Location pages: the venue photo as a full-bleed hero when one is set, otherwise the plain page head. */
+function PhotoHead({ loc, ctx, kicker, title, lede, crumbs }: { loc: SiteLocation; ctx: Ctx; kicker: string; title: string; lede: string; crumbs: [string, string][] }) {
+  if (!loc.photoUrl) return <PageHead kicker={kicker} title={title} lede={lede} crumbs={crumbs} preview={ctx.preview} />;
+  return (
+    <>
+      <section className="hero hero--photo ink on-dark" style={{ minHeight: 'min(62vh,600px)' }}>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img className="hero-img" src={loc.photoUrl} alt={loc.photoAlt ?? `${loc.venue ?? loc.name}`} style={{ objectPosition: '50% 60%' }} />
+        <span className="hero-scrim" aria-hidden="true" />
+        <div className="wrap"><div className="grid"><div className="left" style={{ gridColumn: '1 / span 8' }}>
+          <p className="kicker" style={{ color: 'var(--white)' }}><T preview={ctx.preview}>{kicker}</T></p>
+          <div className="lane" aria-hidden="true"><i /><i /><i /></div>
+          <h1><T preview={ctx.preview}>{title}</T></h1>
+          {lede && <p className="sub"><T preview={ctx.preview}>{lede}</T></p>}
+        </div></div></div>
+      </section>
+      <div className="wrap"><nav className="crumbs" aria-label="Breadcrumb">{crumbs.map(([l, h], i) => <span key={i} style={{ display: 'contents' }}>{i > 0 && <span aria-hidden="true">/</span>}{h ? <Link href={h}>{l}</Link> : <span aria-current="page">{l}</span>}</span>)}</nav></div>
     </>
   );
 }
