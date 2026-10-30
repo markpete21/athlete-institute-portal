@@ -84,9 +84,13 @@ async function sitesManifest(): Promise<SitesManifest | null> {
   return value;
 }
 
+/**
+ * Satellite hosts come ONLY from the manifest, i.e. the per-site "Clerk
+ * satellite domain" checkbox. One switch, in the editor, no redeploy: a
+ * satellite flag on a Clerk Hobby instance bounces every visitor to Play.
+ */
 function satelliteHosts(manifest: SitesManifest | null): string[] {
-  const env = (process.env.CLERK_SATELLITE_HOSTS ?? '').split(/[,\s]+/).map((h) => h.trim().toLowerCase()).filter(Boolean);
-  return [...new Set([...env, ...(manifest?.satellites ?? [])])];
+  return [...new Set(manifest?.satellites ?? [])];
 }
 
 const PRIMARY_SIGN_IN = process.env.CLERK_PRIMARY_SIGN_IN_URL

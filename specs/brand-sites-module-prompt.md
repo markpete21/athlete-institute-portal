@@ -74,7 +74,7 @@ The shared Clerk instance gains one **satellite domain** per brand site. Per Cle
 
 - Clerk dashboard: add the satellite domain; note the `CLERK_PROXY`/`isSatellite` requirements for the current Clerk SDK version pinned in `package.json` — read the Clerk docs at build time rather than from memory.
 - `clerkMiddleware` options become host-aware: `isSatellite: true`, `domain`, and `signInUrl` pointing at the **brand host's own** `/sign-in` (served by the exempt shared sign-in page, which already picks its lockup from `x-portal-app`; add a `site` variant that shows the brand's wordmark).
-- Env: a list of satellite hostnames (`CLERK_SATELLITE_HOSTS`) so the middleware knows which hosts are satellites. Store the same list in `brand_sites.hostnames` as the source of truth; the env list is the edge mirror.
+- Satellite hosts are flagged per site (`brand_sites.settings.clerk_satellite`, a checkbox in Settings › Domains) and published in the hosts manifest, which the middleware reads; no env list. (Changed Oct 30, 2026: satellites are a Clerk Pro feature, so the flag is opt-in and needs no redeploy.)
 - Verify: sign in on `allcansport.ca`, open `play.athleteinstitute.ca` — already signed in; and the reverse.
 
 ### 1.4 Stripe and absolute URLs on a brand host

@@ -657,7 +657,7 @@ run migration 0064 → upload the real photos in Websites › Media → confirm
 program facts (replace every `[TBC]`) → Settings › Domains: add
 `allcansport.ca` + `www` to the Vercel project and the A/CNAME records, add the
 host to the prod Clerk instance as a satellite domain and to
-`CLERK_SATELLITE_HOSTS` → Verify DNS → flip to **Coming soon** (email capture)
+(optional, Clerk Pro) tick Clerk satellite → Verify DNS → flip to **Coming soon** (email capture)
 → SEO › Site setup, Search Console, submit sitemap → flip to **Live**.
 
 ## Deploying to Vercel
@@ -693,9 +693,8 @@ apps' envs so they can call `/api/ecosystem/points`.
 
 Brand sites (Module 23): add each brand domain (apex + `www`) to the same
 Vercel project. Clerk satellite domains are optional (Clerk Pro): tick
-"Clerk satellite domain" in the site's Settings › Domains (or set
-`CLERK_SATELLITE_HOSTS`) only after adding the domain under Clerk › Domains ›
-Satellites — on a Hobby instance leave it off, or visitors are bounced to
+"Clerk satellite domain" in the site's Settings › Domains only after adding
+the domain under Clerk › Domains › Satellites — on a Hobby instance leave it off, or visitors are bounced to
 Play. Without a satellite the site runs fully for signed-out visitors and
 account features (Sign in, My teams, Follow) stay on Play/Compete.
 Middleware serves it from `app/site/[brand]` once the site is switched on in
