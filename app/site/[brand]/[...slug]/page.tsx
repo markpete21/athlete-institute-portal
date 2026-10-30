@@ -332,7 +332,7 @@ async function Circuit({ ctx, page, division }: { ctx: Ctx; page: SitePage | nul
         <div className="wrap"><div className="grid"><div className="left" style={{ gridColumn: '1 / span 8' }}>
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src={`/sites/${ctx.brandKey}/logos/circuit-on-dark.png`} alt={`${ctx.site.name.replace(/\s+Sport$/, '')} Circuit`} style={{ width: 'min(320px,80%)', height: 'auto', display: 'block', marginBottom: 28 }} />
-          <p className="kicker" style={{ color: 'var(--silver)' }}>Rep Basketball League{loc ? ` · ${loc.name}` : ''}</p>
+          <p className="kicker" style={{ color: 'var(--white)' }}>Rep Basketball League{loc ? ` · ${loc.name}` : ''}</p>
           <div className="lane" aria-hidden="true"><i /><i /><i /></div>
           <h1>Rep your city.<br />Run the Circuit.</h1>
           <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginTop: 28 }}>{apply}<a className="pill pill--line" href="#schedule">Schedule and results</a><a className="pill pill--line" href="#standings">Standings</a></div>
