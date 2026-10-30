@@ -1,5 +1,5 @@
 import { redirect } from 'next/navigation';
-import { getPortalSession } from '@/lib/auth';
+import { getSiteSession } from '@/lib/site/editor-session';
 import { accessLog, canManage, listMembers, siteRoleFor, superAdmins } from '@/lib/site/scopes';
 import { changeRoleAction, inviteMemberAction, removeMemberAction, resendInviteAction } from '../../actions';
 import { SubmitButton } from '@/app/admin/brands/SubmitButton';
@@ -11,8 +11,8 @@ const fmt = (iso: string | null) => (iso ? new Date(iso).toLocaleString('en-CA',
 /** Members (ALL CAN §6.9): who can work on this site and at what level; invite by email; access log. */
 export default async function MembersPage({ params }: { params: { brand: string } }) {
   const brand = params.brand;
-  const role = await siteRoleFor(await getPortalSession(), brand);
-  if (!role || !canManage(role)) redirect(`/sites/${brand}`);
+  const role = await siteRoleFor(await getSiteSession(brand), brand);
+  if (!role || !canManage(role)) redirect('/admin');
   const [members, supers, log] = await Promise.all([listMembers(brand), superAdmins(), accessLog(brand, 10)]);
   return (
     <div className="grid gap-5 lg:grid-cols-3">

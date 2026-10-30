@@ -5,7 +5,7 @@ import { usePathname } from 'next/navigation';
 
 export function SiteTabs({ base, tabs }: { base: string; tabs: [string, string][] }) {
   const path = usePathname() ?? '';
-  const rel = path.replace(/^\/admin/, '').slice(base.length).replace(/^\//, '');
+  const rel = path.startsWith(base) ? path.slice(base.length).replace(/^\//, '') : '';
   const current = rel.split('/')[0] ?? '';
   return (
     <nav className="seg flex flex-wrap" aria-label="Site sections">

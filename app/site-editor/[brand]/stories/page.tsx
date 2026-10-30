@@ -17,8 +17,8 @@ export default async function StoriesAdmin({ params, searchParams }: { params: {
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="card-head"><h2>Stories</h2><span className="card-head-lbl">{posts.length}</span></div>
         <div className="flex items-center gap-2">
-          <nav className="seg">{[['', 'All'], ['draft', 'Drafts'], ['scheduled', 'Scheduled'], ['published', 'Published']].map(([k, l]) => <Link key={k} href={`/sites/${brand}/stories${k ? `?status=${k}` : ''}`} className={(searchParams.status ?? '') === k ? 'on' : ''}>{l}</Link>)}</nav>
-          <Link href={`/sites/${brand}/stories/new`} className="btn-gold btn-sm no-underline">New story</Link>
+          <nav className="seg">{[['', 'All'], ['draft', 'Drafts'], ['scheduled', 'Scheduled'], ['published', 'Published']].map(([k, l]) => <Link key={k} href={`/admin/stories${k ? `?status=${k}` : ''}`} className={(searchParams.status ?? '') === k ? 'on' : ''}>{l}</Link>)}</nav>
+          <Link href={`/admin/stories/new`} className="btn-gold btn-sm no-underline">New story</Link>
         </div>
       </div>
       {posts.length === 0 ? <p className="text-body text-sm">No stories yet. Announcements and features live here; the newest three show on the home page.</p> : (
@@ -26,7 +26,7 @@ export default async function StoriesAdmin({ params, searchParams }: { params: {
           <thead><tr><th>Title</th><th>Type</th><th>Status</th><th>Date</th><th></th></tr></thead>
           <tbody>{posts.map((p) => (
             <tr key={p.id}>
-              <td><Link href={`/sites/${brand}/stories/${p.id}`} className="font-bold no-underline text-ink">{p.title}</Link><br /><span className="mono text-xs text-silver">/stories/{p.slug}</span></td>
+              <td><Link href={`/admin/stories/${p.id}`} className="font-bold no-underline text-ink">{p.title}</Link><br /><span className="mono text-xs text-silver">/stories/{p.slug}</span></td>
               <td>{p.type}{p.locationSlug ? <span className="text-silver"> · {p.locationSlug}</span> : ''}</td>
               <td><span className={`pill-status ${ST[p.status].cls}`}>{ST[p.status].label}</span></td>
               <td className="text-xs text-silver">{fmt(p.publishedAt)}</td>

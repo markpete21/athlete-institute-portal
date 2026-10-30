@@ -48,7 +48,7 @@ export default async function AnalyticsPage({ params, searchParams }: { params: 
   return (
     <div className="flex flex-col gap-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <nav className="seg">{RANGES.map((d) => <Link key={d} href={`/sites/${brand}/analytics?days=${d}`} className={days === d ? 'on' : ''}>Last {d} days</Link>)}</nav>
+        <nav className="seg">{RANGES.map((d) => <Link key={d} href={`/admin/analytics?days=${d}`} className={days === d ? 'on' : ''}>Last {d} days</Link>)}</nav>
         <span className="text-xs text-silver">{ov.source === 'vercel' ? 'Vercel Web Analytics' : 'Built-in page counters (connect Vercel Analytics for visitors, sources and geography)'}</span>
       </div>
 

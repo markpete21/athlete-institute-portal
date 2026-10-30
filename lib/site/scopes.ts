@@ -1,7 +1,8 @@
 import 'server-only';
 import { audit } from '@ai/foundation';
 import { supabaseAdmin } from '@ai/foundation/supabase';
-import { getPortalSession, type PortalSession } from '@/lib/auth';
+import type { PortalSession } from '@/lib/auth';
+import { getSiteSession } from '@/lib/site/editor-session';
 
 /**
  * Who may work on which brand site (Module 23 §2.6, ALL CAN §6.9).
@@ -53,7 +54,7 @@ export async function editableSites(session: PortalSession): Promise<string[]> {
 
 /** Guard for every admin action: throws unless the role is allowed. */
 export async function requireSiteRole(brandKey: string, allowed: SiteRole[] = ['super', 'admin', 'editor', 'writer']): Promise<SiteAccess> {
-  const session = await getPortalSession();
+  const session = await getSiteSession(brandKey);
   const role = await siteRoleFor(session, brandKey);
   if (!role || !allowed.includes(role)) throw new Error('You don\'t have access to this site.');
   if (session.profileId && role !== 'super') {
@@ -106,8 +107,11 @@ export async function inviteMember(brandKey: string, email: string, role: SiteMe
   if (profile) await grantSiteEditorRole(profile.id, actorClerkId);
   await audit({ actorId: actorClerkId, action: 'scope.grant', target: `site:${brandKey}`, meta: { email: em, role, status: row.status } });
   const { notify } = await import('@ai/foundation/notify');
+  const { getSite, siteOrigin } = await import('@/lib/site/sites');
+  const site = await getSite(brandKey);
   const adminUrl = process.env.NEXT_PUBLIC_ADMIN_URL ?? 'https://admin.athleteinstitute.ca';
-  await notify({ to: { email: em }, channels: ['email'], brandKey, template: 'generic', data: { heading: 'You can now edit the website', body: `You've been added as ${role === 'admin' ? 'a Site admin' : role === 'editor' ? 'an Editor' : 'a Writer'}. Sign in with your Athlete Institute account (or create one with this email) and open Websites.`, ctaLabel: 'Open the editor', ctaUrl: `${adminUrl}/sites/${brandKey}` } }).catch(() => {});
+  const editorUrl = site?.primaryHost ? `${siteOrigin(site)}/admin` : `${adminUrl}/sites`;
+  await notify({ to: { email: em }, channels: ['email'], brandKey, template: 'generic', data: { heading: `You can now edit ${site?.name ?? 'the website'}`, body: `You've been added as ${role === 'admin' ? 'a Site admin' : role === 'editor' ? 'an Editor' : 'a Writer'}. Sign in with your Athlete Institute account (or create one with this email) at ${adminUrl}, open Websites and click Open editor.`, ctaLabel: 'Open the editor', ctaUrl: editorUrl } }).catch(() => {});
   return (await listMembers(brandKey)).find((m) => m.id === data.id)!;
 }
 

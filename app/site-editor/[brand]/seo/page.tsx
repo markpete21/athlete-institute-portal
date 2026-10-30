@@ -23,7 +23,7 @@ export default async function SeoPage({ params, searchParams }: { params: { bran
   const origin = siteOrigin(site);
   const done = checklist.filter((c) => c.done).length;
   const groups = [...new Set(checklist.map((c) => c.group))];
-  const href = (action: string) => action === 'wizard' ? `/sites/${brand}/seo?wizard=1#wizard` : action === 'gsc' ? '#google' : action === 'alt' ? `/sites/${brand}/media` : action === 'redirects' ? '#redirects' : action === 'gbp' ? '#google' : action.startsWith('page:') ? `/sites/${brand}/pages/${action.slice(5)}?panel=seo` : null;
+  const href = (action: string) => action === 'wizard' ? `/admin/seo?wizard=1#wizard` : action === 'gsc' ? '#google' : action === 'alt' ? `/admin/media` : action === 'redirects' ? '#redirects' : action === 'gbp' ? '#google' : action.startsWith('page:') ? `/admin/pages/${action.slice(5)}?panel=seo` : null;
   const showWizard = searchParams.wizard === '1' || !site.seo.setup_done;
   return (
     <div className="grid gap-5 lg:grid-cols-3">
@@ -57,7 +57,7 @@ export default async function SeoPage({ params, searchParams }: { params: { bran
 
       <section className="card flex flex-col gap-4 p-5 lg:col-span-3" id="wizard">
         <div className="card-head"><h2>Site setup</h2><span className="card-head-lbl">{site.seo.setup_done ? 'Done · edit any time' : 'Three short steps'}</span></div>
-        {showWizard ? <SeoWizard brand={brand} site={{ title: site.seo.title ?? site.name, description: site.seo.default_description ?? '', ogImage: site.seo.og_image_url ?? '', keywords: site.seo.keywords ?? [], business: site.seo.business ?? {}, formats: site.seo.title_formats ?? {}, indexTeams: site.seo.index_team_pages !== false, ai: site.seo.ai ?? { answers: true, training: false } }} locations={locs.map((l) => ({ slug: l.slug, name: l.name }))} suggestions={suggestions} siteName={site.name} /> : <Link className="btn-ghost btn-sm self-start" href={`/sites/${brand}/seo?wizard=1#wizard`}>Edit site setup</Link>}
+        {showWizard ? <SeoWizard brand={brand} site={{ title: site.seo.title ?? site.name, description: site.seo.default_description ?? '', ogImage: site.seo.og_image_url ?? '', keywords: site.seo.keywords ?? [], business: site.seo.business ?? {}, formats: site.seo.title_formats ?? {}, indexTeams: site.seo.index_team_pages !== false, ai: site.seo.ai ?? { answers: true, training: false } }} locations={locs.map((l) => ({ slug: l.slug, name: l.name }))} suggestions={suggestions} siteName={site.name} /> : <Link className="btn-ghost btn-sm self-start" href={`/admin/seo?wizard=1#wizard`}>Edit site setup</Link>}
       </section>
 
       <section className="card flex flex-col gap-3 p-5 lg:col-span-3">
@@ -69,7 +69,7 @@ export default async function SeoPage({ params, searchParams }: { params: { bran
             const t = pageTitle(site, p), d = pageDescription(site, p);
             return (
               <tr key={p.id}>
-                <td><Link href={`/sites/${brand}/pages/${p.id}?panel=seo`}>{p.title}</Link><br /><span className="mono text-xs text-silver">/{p.slug}</span></td>
+                <td><Link href={`/admin/pages/${p.id}?panel=seo`}>{p.title}</Link><br /><span className="mono text-xs text-silver">/{p.slug}</span></td>
                 <td className="text-xs">{t}<br /><span className={t.length > TITLE_MAX ? 'text-[#b4483c]' : 'text-silver'}>{t.length} chars</span></td>
                 <td className="max-w-[28ch] text-xs">{d ? d : <span className="text-silver">None</span>}</td>
                 <td className="text-xs">{issues.length === 0 ? <span className="pill-status pos">OK</span> : issues.map((i) => <div key={i.key + i.message}>{i.message}</div>)}</td>

@@ -7,7 +7,7 @@ import { topPaths } from '@/lib/site/views';
 import { listMedia, needsAlt } from '@/lib/site/media';
 import { unansweredQuestions } from '@/lib/site/claude';
 import { seoChecklist } from '@/lib/site/seo';
-import { getPortalSession } from '@/lib/auth';
+import { getSiteSession } from '@/lib/site/editor-session';
 import { siteRoleFor, canManage } from '@/lib/site/scopes';
 import { LaunchSwitch } from './LaunchSwitch';
 import { PreviewButton } from './PreviewButton';
@@ -19,7 +19,7 @@ const fmt = (iso: string) => new Date(iso).toLocaleString('en-CA', { timeZone: '
 /** Site overview (Module 23 §2.2): launch state and checks, what needs attention, traffic, leads, recent edits. */
 export default async function SiteOverview({ params }: { params: { brand: string } }) {
   const brand = params.brand;
-  const session = await getPortalSession();
+  const session = await getSiteSession(brand);
   const role = (await siteRoleFor(session, brand))!;
   const site = await getSite(brand);
   if (!site) return null;
@@ -48,33 +48,33 @@ export default async function SiteOverview({ params }: { params: { brand: string
       <section className="card flex flex-col gap-3 p-5">
         <div className="card-head"><h2>Needs attention</h2></div>
         <ul className="flex flex-col gap-2 text-sm">
-          <li><Link href={`/sites/${brand}/pages`}>{counts.changes} page{counts.changes === 1 ? '' : 's'} with unpublished changes</Link></li>
-          <li><Link href={`/sites/${brand}/pages`}>{counts.draft} draft page{counts.draft === 1 ? '' : 's'}</Link></li>
-          <li><Link href={`/sites/${brand}/media`}>{missingAlt} photo{missingAlt === 1 ? '' : 's'} missing alt text</Link></li>
-          <li><Link href={`/sites/${brand}/seo`}>{seoLeft} SEO checklist item{seoLeft === 1 ? '' : 's'} left</Link></li>
-          <li><Link href={`/sites/${brand}/leads`}>{leads.new ?? 0} new lead{(leads.new ?? 0) === 1 ? '' : 's'} to follow up</Link></li>
-          {scheduled.length > 0 && <li><Link href={`/sites/${brand}/stories`}>{scheduled.length} scheduled stor{scheduled.length === 1 ? 'y' : 'ies'}</Link></li>}
+          <li><Link href={`/admin/pages`}>{counts.changes} page{counts.changes === 1 ? '' : 's'} with unpublished changes</Link></li>
+          <li><Link href={`/admin/pages`}>{counts.draft} draft page{counts.draft === 1 ? '' : 's'}</Link></li>
+          <li><Link href={`/admin/media`}>{missingAlt} photo{missingAlt === 1 ? '' : 's'} missing alt text</Link></li>
+          <li><Link href={`/admin/seo`}>{seoLeft} SEO checklist item{seoLeft === 1 ? '' : 's'} left</Link></li>
+          <li><Link href={`/admin/leads`}>{leads.new ?? 0} new lead{(leads.new ?? 0) === 1 ? '' : 's'} to follow up</Link></li>
+          {scheduled.length > 0 && <li><Link href={`/admin/stories`}>{scheduled.length} scheduled stor{scheduled.length === 1 ? 'y' : 'ies'}</Link></li>}
         </ul>
       </section>
 
       <section className="card flex flex-col gap-3 p-5">
-        <div className="card-head"><h2>Last 7 days</h2><Link className="card-head-lbl" href={`/sites/${brand}/analytics`}>Analytics</Link></div>
+        <div className="card-head"><h2>Last 7 days</h2><Link className="card-head-lbl" href={`/admin/analytics`}>Analytics</Link></div>
         {top.length === 0 ? <p className="text-body text-sm">No visits recorded yet.</p> : (
           <table className="data-table"><tbody>{top.map((r) => <tr key={r.path}><td className="mono text-xs">{r.path}</td><td className="text-right">{r.views}</td></tr>)}</tbody></table>
         )}
       </section>
 
       <section className="card flex flex-col gap-3 p-5">
-        <div className="card-head"><h2>Leads · 30 days</h2><Link className="card-head-lbl" href={`/sites/${brand}/leads`}>{totalLeads} total</Link></div>
+        <div className="card-head"><h2>Leads · 30 days</h2><Link className="card-head-lbl" href={`/admin/leads`}>{totalLeads} total</Link></div>
         {recentLeads.length === 0 ? <p className="text-body text-sm">No leads yet. Interest forms and requests land here.</p> : (
           <ul className="flex flex-col gap-1.5 text-sm">{recentLeads.map((l) => <li key={l.id} className="flex justify-between gap-2"><span>{l.name || l.email} <span className="text-silver">· {l.kind}</span></span><span className="text-silver">{fmt(l.createdAt)}</span></li>)}</ul>
         )}
       </section>
 
       <section className="card flex flex-col gap-3 p-5">
-        <div className="card-head"><h2>Recent edits</h2><Link className="card-head-lbl" href={`/sites/${brand}/pages`}>Pages</Link></div>
+        <div className="card-head"><h2>Recent edits</h2><Link className="card-head-lbl" href={`/admin/pages`}>Pages</Link></div>
         {changed.length === 0 ? <p className="text-body text-sm">Everything is published.</p> : (
-          <ul className="flex flex-col gap-1.5 text-sm">{changed.map((p) => <li key={p.id} className="flex justify-between gap-2"><Link href={`/sites/${brand}/pages/${p.id}`}>{p.title}</Link><span className={`pill-status ${p.state === 'draft' ? 'muted' : 'warn'}`}>{p.state === 'draft' ? 'Draft' : 'Changes'}</span></li>)}</ul>
+          <ul className="flex flex-col gap-1.5 text-sm">{changed.map((p) => <li key={p.id} className="flex justify-between gap-2"><Link href={`/admin/pages/${p.id}`}>{p.title}</Link><span className={`pill-status ${p.state === 'draft' ? 'muted' : 'warn'}`}>{p.state === 'draft' ? 'Draft' : 'Changes'}</span></li>)}</ul>
         )}
         {unanswered.length > 0 && (
           <>

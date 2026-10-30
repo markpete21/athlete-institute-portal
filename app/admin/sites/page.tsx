@@ -1,10 +1,9 @@
-import Link from 'next/link';
 import { getPortalSession } from '@/lib/auth';
 import { brandsWithoutSite, listSites, siteOrigin } from '@/lib/site/sites';
 import { editableSites } from '@/lib/site/scopes';
 import { pageCounts } from '@/lib/site/pages';
 import { THEMES } from '@ai/foundation';
-import { createSiteAction } from './actions';
+import { createSiteAction, openEditorAction } from './actions';
 import { SubmitButton } from '@/app/admin/brands/SubmitButton';
 
 export const dynamic = 'force-dynamic';
@@ -12,10 +11,9 @@ export const dynamic = 'force-dynamic';
 const STATUS: Record<string, { label: string; cls: string }> = { live: { label: 'Live', cls: 'pos' }, coming_soon: { label: 'Coming soon', cls: 'warn' }, off: { label: 'Off', cls: 'muted' } };
 
 /**
- * Websites index (Module 23 §2.1): one row per brand site the signed-in user
- * may open, with status, domain, page counts and last edit. Super admins can
- * add a site for a brand that has none; everything else happens inside the
- * site.
+ * Websites (Module 23 §2.1): the list of brand sites the signed-in person may
+ * edit, each with an Open editor button into the site's own editor at its
+ * domain (<site>/admin). Editing never happens here; super admins add sites.
  */
 export default async function SitesIndex() {
   const session = await getPortalSession();
@@ -28,7 +26,7 @@ export default async function SitesIndex() {
       <header className="flex flex-col gap-1 border-b border-hairline pb-4">
         <p className="label text-[11px]">Engagement</p>
         <h1 className="text-4xl">Websites<span style={{ color: 'var(--accent)' }}>.</span></h1>
-        <p className="text-body max-w-[65ch] text-sm">Each brand&apos;s public website: pages, menu, stories, media, SEO and the launch switch. Compete standings, Play registration and Watch links are shared automatically.</p>
+        <p className="text-body max-w-[65ch] text-sm">Each brand&apos;s public website is edited at its own domain. Open editor signs you into that site&apos;s editor for 12 hours.</p>
       </header>
 
       {mine.length === 0 && <p className="text-body text-sm">You don&apos;t have access to any site yet. Ask a site admin to add you under Members.</p>}
@@ -38,17 +36,16 @@ export default async function SitesIndex() {
           const c = counts[i];
           const st = STATUS[s.status];
           return (
-            <Link key={s.brandKey} href={`/sites/${s.brandKey}`} className="card flex flex-wrap items-center gap-5 p-5 no-underline hover:bg-paper-panel">
+            <section key={s.brandKey} className="card flex flex-wrap items-center gap-5 p-5">
               <div className="flex min-w-[200px] flex-1 flex-col gap-1">
-                <div className="flex items-baseline gap-3"><h2 className="text-xl">{s.name}</h2><span className="mono text-xs text-silver">{s.brandKey}</span></div>
-                <p className="text-body text-sm">{s.primaryHost ? siteOrigin(s) : 'No domain yet'} · {THEMES[s.themeKey]?.name ?? s.themeKey} theme</p>
+                <div className="flex items-baseline gap-3"><h2 className="text-xl">{s.name}</h2><span className="mono text-xs text-silver">{s.brandKey}</span><span className={`pill-status ${st.cls}`}>{st.label}</span>{s.settings.gate_password && <span className="pill-status warn">Password on</span>}</div>
+                <p className="text-body text-sm">{s.primaryHost ? <a href={siteOrigin(s)} target="_blank" rel="noopener">{s.primaryHost}</a> : 'No domain yet'} · {THEMES[s.themeKey]?.name ?? s.themeKey} theme · <b>{c.published}</b> published{c.changes ? ` · ${c.changes} with changes` : ''}{c.draft ? ` · ${c.draft} draft` : ''}{c.lastEdit ? ` · edited ${new Date(c.lastEdit.at).toLocaleDateString('en-CA', { month: 'short', day: 'numeric' })}` : ''}</p>
               </div>
-              <div className="flex items-center gap-6 text-sm">
-                <span><b>{c.published}</b> published{c.changes ? <span className="text-silver"> · {c.changes} with changes</span> : null}{c.draft ? <span className="text-silver"> · {c.draft} draft</span> : null}</span>
-                {c.lastEdit && <span className="text-silver">Edited {new Date(c.lastEdit.at).toLocaleDateString('en-CA', { month: 'short', day: 'numeric' })}</span>}
-                <span className={`pill-status ${st.cls}`}>{st.label}</span>
-              </div>
-            </Link>
+              <form action={openEditorAction}>
+                <input type="hidden" name="brand" value={s.brandKey} />
+                <SubmitButton className="btn-gold btn-sm" pendingLabel="Opening…" doneLabel="Opened">{s.primaryHost ? 'Open editor' : 'Add a domain first'}</SubmitButton>
+              </form>
+            </section>
           );
         })}
       </div>
@@ -64,7 +61,7 @@ export default async function SitesIndex() {
               <select id="ns-theme" name="themeKey" className="input text-sm" defaultValue="vanguard">{Object.values(THEMES).map((t) => <option key={t.key} value={t.key}>{t.name}</option>)}</select></div>
             <SubmitButton className="btn-gold btn-sm" pendingLabel="Creating…" doneLabel="Created">Create site (off)</SubmitButton>
           </form>
-          <p className="text-body text-xs">A new site starts switched off with a home page and the standard system pages. Nothing is public until an admin flips it to Coming soon or Live.</p>
+          <p className="text-body text-xs">A new site starts switched off with a home page and the standard system pages. Its editor lives at the site&apos;s domain once one is set, so a super admin sets the domain here first — until then the site can&apos;t be opened.</p>
         </section>
       )}
     </main>

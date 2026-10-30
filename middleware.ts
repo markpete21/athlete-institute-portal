@@ -133,6 +133,8 @@ export default clerkMiddleware(async (auth, req) => {
   if (app === 'site' && resolved.brandKey) {
     requestHeaders.set('x-site-brand', resolved.brandKey);
     requestHeaders.set('x-site-host', (hostHeader ?? '').toLowerCase());
+    // Tells the root layout to mount Clerk in satellite mode on this host.
+    if (satelliteHosts(manifest).includes((hostHeader ?? '').toLowerCase().split(':')[0])) requestHeaders.set('x-site-satellite', '1');
   }
 
   if (isExempt(pathname)) {
@@ -188,6 +190,12 @@ export default clerkMiddleware(async (auth, req) => {
       return NextResponse.redirect(dest, 301);
     }
     const url = req.nextUrl.clone();
+    // <brand host>/admin is the site's own editor (app/site-editor); everything
+    // else is the public site (app/site).
+    if (pathname === '/admin' || pathname.startsWith('/admin/')) {
+      url.pathname = `/site-editor/${resolved.brandKey}${pathname.slice('/admin'.length)}`;
+      return NextResponse.rewrite(url, { request: { headers: requestHeaders } });
+    }
     url.pathname = `/site/${resolved.brandKey}${pathname === '/' ? '' : pathname}`;
     const res = NextResponse.rewrite(url, { request: { headers: requestHeaders } });
     // Preview hosts: remember the forced brand so asset-less navigation keeps working.

@@ -29,8 +29,16 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   // under Orangeville Prep / ALL CAN / Bears) override --accent on a wrapper.
   const brandVars = brandCssVars(DEFAULT_BRAND) as React.CSSProperties;
 
+  // Brand hosts flagged as Clerk satellites (Module 23 §1.3) mount Clerk in
+  // satellite mode: sign-in happens on Play, the session syncs back here.
+  const h = headers();
+  const satellite = h.get('x-site-satellite') === '1';
+  const siteHost = (h.get('x-site-host') ?? '').split(':')[0];
+  const playUrl = process.env.NEXT_PUBLIC_PLAY_URL ?? 'https://play.athleteinstitute.ca';
+  const clerkProps = satellite && siteHost ? { isSatellite: true, domain: siteHost, signInUrl: `${playUrl}/sign-in`, signUpUrl: `${playUrl}/sign-up` } : {};
+
   return (
-    <ClerkProvider>
+    <ClerkProvider {...clerkProps}>
       <html lang="en" data-portal-app={app}>
         <body style={brandVars}>{children}</body>
       </html>

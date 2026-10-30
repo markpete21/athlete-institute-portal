@@ -44,7 +44,7 @@ export function StoryEditor({ brand, post, canPublish, locations, programs, imag
     const at = mode === 'schedule' ? new Date(when).toISOString() : null;
     const r = await savePostAction(brand, input(), mode, at);
     setMsg(mode === 'draft' ? 'Draft saved.' : mode === 'publish' ? 'Published.' : `Scheduled for ${new Date(when).toLocaleString('en-CA')}.`);
-    if (!post) router.replace(`/sites/${brand}/stories/${r.id}`);
+    if (!post) router.replace(`/admin/stories/${r.id}`);
   });
   const cmd = (c: string, arg?: string) => { document.execCommand(c, false, arg); ref.current && setHtml(ref.current.innerHTML); };
   const tbcCount = (html.match(/\[TBC\]/g) ?? []).length;
@@ -52,7 +52,7 @@ export function StoryEditor({ brand, post, canPublish, locations, programs, imag
     <div className="grid gap-5 lg:grid-cols-[1fr_340px]">
       <section className="card flex flex-col gap-3 p-5">
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <div className="flex items-center gap-2"><Link href={`/sites/${brand}/stories`} className="text-xs text-silver no-underline">← Stories</Link><h2 className="text-xl">{post ? 'Edit story' : 'New story'}</h2>{post && <span className={`pill-status ${post.status === 'published' ? 'pos' : post.status === 'scheduled' ? 'warn' : 'muted'}`}>{post.status}</span>}</div>
+          <div className="flex items-center gap-2"><Link href={`/admin/stories`} className="text-xs text-silver no-underline">← Stories</Link><h2 className="text-xl">{post ? 'Edit story' : 'New story'}</h2>{post && <span className={`pill-status ${post.status === 'published' ? 'pos' : post.status === 'scheduled' ? 'warn' : 'muted'}`}>{post.status}</span>}</div>
           {post && <PreviewButton brand={brand} path={`/stories/${post.slug}?id=${post.id}`} label="Preview" />}
         </div>
         <div className="grid gap-3 sm:grid-cols-2">

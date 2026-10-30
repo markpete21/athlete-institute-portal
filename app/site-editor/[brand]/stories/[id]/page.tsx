@@ -2,7 +2,7 @@ import { notFound } from 'next/navigation';
 import { getPostAdmin } from '@/lib/site/posts';
 import { listLocations, listPrograms } from '@/lib/site/records';
 import { listMedia } from '@/lib/site/media';
-import { getPortalSession } from '@/lib/auth';
+import { getSiteSession } from '@/lib/site/editor-session';
 import { canPublish, siteRoleFor } from '@/lib/site/scopes';
 import { StoryEditor } from './StoryEditor';
 
@@ -11,7 +11,7 @@ export const dynamic = 'force-dynamic';
 /** Story editor (ALL CAN §6.7): one story, draft with Claude, publish now or schedule. */
 export default async function StoryPage({ params }: { params: { brand: string; id: string } }) {
   const brand = params.brand;
-  const role = await siteRoleFor(await getPortalSession(), brand);
+  const role = await siteRoleFor(await getSiteSession(brand), brand);
   if (!role) notFound();
   const post = params.id === 'new' ? null : await getPostAdmin(brand, Number(params.id));
   if (params.id !== 'new' && !post) notFound();

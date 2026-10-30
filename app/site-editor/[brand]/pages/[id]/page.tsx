@@ -6,7 +6,7 @@ import { listMedia } from '@/lib/site/media';
 import { listDivisions } from '@/lib/compete/compete';
 import { recordSources } from '@/lib/site/claude';
 import { pageIssues, pageTitle, pageDescription } from '@/lib/site/seo';
-import { getPortalSession } from '@/lib/auth';
+import { getSiteSession } from '@/lib/site/editor-session';
 import { canPublish, siteRoleFor } from '@/lib/site/scopes';
 import { PageBuilder } from './PageBuilder';
 
@@ -15,7 +15,7 @@ export const dynamic = 'force-dynamic';
 /** The page builder (Module 23 §2.4): block list, inspector, Claude, SEO panel, save/publish, preview. */
 export default async function PageEditor({ params, searchParams }: { params: { brand: string; id: string }; searchParams: { panel?: string } }) {
   const brand = params.brand;
-  const [site, page, role] = await Promise.all([getSite(brand), getPage(brand, Number(params.id)), siteRoleFor(await getPortalSession(), brand)]);
+  const [site, page, role] = await Promise.all([getSite(brand), getPage(brand, Number(params.id)), siteRoleFor(await getSiteSession(brand), brand)]);
   if (!site || !page || !role) notFound();
   const [pages, locs, progs, media, divisions, sources] = await Promise.all([listPages(brand), listLocations(brand), listPrograms(brand), listMedia(brand), listDivisions(brand).catch(() => []), recordSources(brand)]);
   return (

@@ -13,6 +13,7 @@ import { getPortalSession } from '@/lib/auth';
 import { bumpView } from '@/lib/site/views';
 import { organizationJsonLd } from '@/lib/site/seo';
 import { gateCookieName, gateUnlocked } from '@/lib/site/preview';
+import { getSiteSession } from '@/lib/site/editor-session';
 import '../site.css';
 
 export const dynamic = 'force-dynamic';
@@ -75,6 +76,18 @@ export default async function SiteLayout({ children, params }: { children: React
   } catch {
     user = null;
   }
+  // An editor signed in through the Admin hand-off (no Clerk session here yet)
+  // still gets the editor chip and skips the password page.
+  if (!user) {
+    try {
+      const es = await getSiteSession(site.brandKey);
+      if (es.via === 'cookie' && es.userId && (await siteRoleFor(es, site.brandKey))) {
+        canEdit = true;
+        const name = es.email ?? 'Editor';
+        user = { initials: name.slice(0, 2).toUpperCase(), first: name.split('@')[0], name, email: es.email ?? '', canEdit: true };
+      }
+    } catch { /* no editor cookie */ }
+  }
 
   const [locations, media] = await Promise.all([listLocations(site.brandKey), listMedia(site.brandKey)]);
   const logo = (n: string) => media.find((m) => m.name === n)?.url ?? null;
@@ -106,7 +119,7 @@ export default async function SiteLayout({ children, params }: { children: React
               {wrong && <p className="note" role="alert" style={{ color: 'var(--site-accent)' }}>That password isn&apos;t right.</p>}
               <button type="submit" className="pill pill--red" style={{ justifySelf: 'start' }}>Enter</button>
             </form>
-            <p className="note">Team member? <a href={`${ADMIN_URL}/sites/${site.brandKey}`}>Open the editor</a> and use Preview.</p>
+            <p className="note">Team member? <a href="/admin">Open the editor</a>.</p>
           </div>
         </main>
       </div>
@@ -156,12 +169,12 @@ export default async function SiteLayout({ children, params }: { children: React
         signOutHref="/api/site/signout"
         accountHref={`${site.links.play_url ?? PLAY_URL}/account`}
         myTeamsHref="/my-teams"
-        editorHref={`${ADMIN_URL}/sites/${site.brandKey}`}
+        editorHref="/admin"
         askEnabled={site.settings.ask_enabled !== false}
         askPrompts={['When does registration open?', 'What ages can play?', 'Where is the closest location?', 'Is there financial help?']}
         brandKey={site.brandKey}
         preview={preview}
-        previewBack={preview ? `${ADMIN_URL}/sites/${site.brandKey}/pages` : null}
+        previewBack={preview ? '/admin/pages' : null}
       />
       <main id="main" tabIndex={-1}>{children}</main>
       <SiteFooter site={site} logoUrl={footerLogo} partners={partners} />

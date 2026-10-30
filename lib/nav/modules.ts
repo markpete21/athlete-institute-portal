@@ -123,9 +123,6 @@ export const MODULES: ModuleDef[] = [
   ] },
   { key: 'sites', label: 'Websites', group: 'Engagement', href: '/sites', actions: [
     { label: 'All sites', href: '/sites' },
-    { label: 'ALL CAN Sport', href: '/sites/all-can' },
-    { label: 'ALL CAN pages', href: '/sites/all-can/pages' },
-    { label: 'ALL CAN stories', href: '/sites/all-can/stories' },
   ] },
 
   { key: 'reports', label: 'Dashboard & Reports', group: 'Business & Insight', href: '/reports', actions: [

@@ -24,7 +24,7 @@ export default async function PagesList({ params, searchParams }: { params: { br
     <div className="flex flex-col gap-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <form className="flex items-center gap-2"><input name="q" defaultValue={searchParams.q ?? ''} placeholder="Search pages" className="input text-sm" aria-label="Search pages" />
-          <nav className="seg">{[['', 'All'], ['published', 'Published'], ['changes', 'Changes'], ['draft', 'Drafts']].map(([k, l]) => <Link key={k} href={`/sites/${brand}/pages${k ? `?state=${k}` : ''}`} className={(searchParams.state ?? '') === k ? 'on' : ''}>{l}</Link>)}</nav></form>
+          <nav className="seg">{[['', 'All'], ['published', 'Published'], ['changes', 'Changes'], ['draft', 'Drafts']].map(([k, l]) => <Link key={k} href={`/admin/pages${k ? `?state=${k}` : ''}`} className={(searchParams.state ?? '') === k ? 'on' : ''}>{l}</Link>)}</nav></form>
         <div className="flex gap-2"><PreviewButton brand={brand} label="Preview site" /><NewPageDialog brand={brand} /></div>
       </div>
       {groups.filter(([, g]) => g.length).map(([name, g]) => (
@@ -36,11 +36,11 @@ export default async function PagesList({ params, searchParams }: { params: { br
               const st = STATE[p.state]; const issues = pageIssues(site, p, pages);
               return (
                 <tr key={p.id} className="clickable">
-                  <td><Link href={`/sites/${brand}/pages/${p.id}`} className="font-bold no-underline text-ink">{p.title}</Link>{p.hiddenFromMenu && <span className="tag ml-2 text-[10px]">hidden</span>}</td>
+                  <td><Link href={`/admin/pages/${p.id}`} className="font-bold no-underline text-ink">{p.title}</Link>{p.hiddenFromMenu && <span className="tag ml-2 text-[10px]">hidden</span>}</td>
                   <td className="mono text-xs text-silver">/{p.slug}</td>
                   <td><span className={`pill-status ${st.cls}`}>{st.label}</span></td>
                   <td className="text-xs text-silver">{fmt(p.updatedAt)}</td>
-                  <td className="text-xs">{issues.length ? <Link href={`/sites/${brand}/pages/${p.id}?panel=seo`} className="text-[#8a6d1f]">{issues.length} issue{issues.length === 1 ? '' : 's'}</Link> : <span className="text-silver">OK</span>}</td>
+                  <td className="text-xs">{issues.length ? <Link href={`/admin/pages/${p.id}?panel=seo`} className="text-[#8a6d1f]">{issues.length} issue{issues.length === 1 ? '' : 's'}</Link> : <span className="text-silver">OK</span>}</td>
                 </tr>
               );
             })}</tbody>

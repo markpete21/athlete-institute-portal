@@ -18,7 +18,7 @@ export default async function LeadsPage({ params, searchParams }: { params: { br
     <section className="card flex flex-col gap-4 p-5">
       <div className="card-head"><h2>Leads</h2><span className="card-head-lbl">{Object.values(counts).reduce((a, b) => a + b, 0)} in the last 30 days</span></div>
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <nav className="seg">{KINDS.map(([k, l]) => <Link key={k} href={k ? `/sites/${brand}/leads?kind=${k}` : `/sites/${brand}/leads`} className={kind === k ? 'on' : ''}>{l}</Link>)}</nav>
+        <nav className="seg">{KINDS.map(([k, l]) => <Link key={k} href={k ? `/admin/leads?kind=${k}` : `/admin/leads`} className={kind === k ? 'on' : ''}>{l}</Link>)}</nav>
         <a className="btn-ghost btn-sm" href={csv} download={`${brand}-leads.csv`}>Export CSV</a>
       </div>
       {leads.length === 0 ? <p className="text-body text-sm">No leads here yet.</p> : (

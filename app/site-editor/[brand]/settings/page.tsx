@@ -1,6 +1,6 @@
 import { notFound, redirect } from 'next/navigation';
 import { getSite } from '@/lib/site/sites';
-import { getPortalSession } from '@/lib/auth';
+import { getSiteSession } from '@/lib/site/editor-session';
 import { siteRoleFor, canManage } from '@/lib/site/scopes';
 import { THEMES } from '@ai/foundation';
 import { saveSettingsAction } from '../../actions';
@@ -13,8 +13,8 @@ export const dynamic = 'force-dynamic';
 /** Settings (Module 23 §2.9): domains, contact, links, Ask, coming-soon copy, footer, theme. Admins only. */
 export default async function SettingsPage({ params }: { params: { brand: string } }) {
   const brand = params.brand;
-  const role = await siteRoleFor(await getPortalSession(), brand);
-  if (!role || !canManage(role)) redirect(`/sites/${brand}`);
+  const role = await siteRoleFor(await getSiteSession(brand), brand);
+  if (!role || !canManage(role)) redirect('/admin');
   const site = await getSite(brand);
   if (!site) notFound();
   const F = ({ id, label, name, value, type = 'text', hint, wide }: { id: string; label: string; name: string; value?: string; type?: string; hint?: string; wide?: boolean }) => (

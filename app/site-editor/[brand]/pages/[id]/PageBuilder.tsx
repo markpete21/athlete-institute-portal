@@ -114,7 +114,7 @@ export function PageBuilder({ brand, page, seo, canPublish, canDelete, origin, i
     <div className="grid gap-5 lg:grid-cols-[1fr_380px]">
       <div className="flex flex-col gap-3">
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <div className="flex items-center gap-2"><Link href={`/sites/${brand}/pages`} className="text-xs text-silver no-underline">← Pages</Link><h2 className="text-xl">{page.title}</h2><span className="mono text-xs text-silver">/{page.slug}</span><span className={`pill-status ${state === 'published' ? 'pos' : state === 'changes' ? 'warn' : 'muted'}`}>{state === 'published' ? 'Published' : state === 'changes' ? 'Unpublished changes' : 'Draft'}</span></div>
+          <div className="flex items-center gap-2"><Link href={`/admin/pages`} className="text-xs text-silver no-underline">← Pages</Link><h2 className="text-xl">{page.title}</h2><span className="mono text-xs text-silver">/{page.slug}</span><span className={`pill-status ${state === 'published' ? 'pos' : state === 'changes' ? 'warn' : 'muted'}`}>{state === 'published' ? 'Published' : state === 'changes' ? 'Unpublished changes' : 'Draft'}</span></div>
           <div className="flex items-center gap-2 text-xs">
             <span className="text-silver">{saving === 'saving' ? 'Saving…' : saving === 'saved' ? 'Draft saved' : saving === 'error' ? 'Fix the issues below' : dirty ? 'Unsaved' : ''}</span>
             <button type="button" className="btn-ghost btn-sm" onClick={() => void save()} disabled={!dirty}>Save draft</button>
