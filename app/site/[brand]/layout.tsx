@@ -53,7 +53,7 @@ export async function generateMetadata({ params }: { params: { brand: string } }
 export default async function SiteLayout({ children, params }: { children: React.ReactNode; params: { brand: string } }) {
   const ctx = await ctxFromRequest(params.brand);
   if (!ctx) notFound();
-  const { site, theme, themeVars, nav, preview } = ctx;
+  const { site, theme, themeVars, nav, preview, accountOnHost } = ctx;
   const h = headers();
   const path = (h.get('x-portal-path') ?? '/').split('?')[0];
 
@@ -64,7 +64,7 @@ export default async function SiteLayout({ children, params }: { children: React
   let user: HeaderUser | null = null;
   let canEdit = false;
   try {
-    const { userId } = await auth();
+    const { userId } = accountOnHost ? await auth() : { userId: null };
     if (userId) {
       const u = await currentUser();
       const session = await getPortalSession();
@@ -149,7 +149,7 @@ export default async function SiteLayout({ children, params }: { children: React
         locations={locations.map((l) => ({ slug: l.slug, name: l.name, venue: l.venue, status: locationStatusLabel(l), photoUrl: l.photoUrl }))}
         sports={SPORTS.map((s) => ({ slug: s.slug, name: s.name, markUrl: s.markUrl, status: s.status }))}
         user={user}
-        signInHref={signIn}
+        signInHref={accountOnHost ? signIn : null}
         signOutHref="/api/site/signout"
         accountHref={`${site.links.play_url ?? PLAY_URL}/account`}
         myTeamsHref="/my-teams"

@@ -22,7 +22,7 @@ export default async function SettingsPage({ params }: { params: { brand: string
   );
   return (
     <div className="grid gap-5 lg:grid-cols-2">
-      <DomainsPanel brand={brand} hostnames={site.hostnames} primaryHost={site.primaryHost} status={site.status} />
+      <DomainsPanel brand={brand} hostnames={site.hostnames} primaryHost={site.primaryHost} status={site.status} satellite={site.settings.clerk_satellite === true} />
 
       <section className="card flex flex-col gap-4 p-5">
         <div className="card-head"><h2>Contact and legal</h2><span className="card-head-lbl">Footer, contact page, privacy policy, JSON-LD</span></div>

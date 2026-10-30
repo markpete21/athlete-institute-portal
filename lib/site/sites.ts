@@ -41,7 +41,7 @@ export interface BrandSite {
   comingSoon: { headline?: string; body?: string; show_email_capture?: boolean };
   footer: { columns?: FooterColumn[]; tagline?: string; legal_text?: string; partners?: boolean };
   analytics: Record<string, unknown>;
-  settings: { ask_enabled?: boolean; ask_handoff_email?: string; ask_handoff_phone?: string; gate_password?: string | null; gate_message?: string };
+  settings: { ask_enabled?: boolean; ask_handoff_email?: string; ask_handoff_phone?: string; gate_password?: string | null; gate_message?: string; clerk_satellite?: boolean };
   homePageId: number | null;
   launchedAt: string | null;
   updatedAt: string;
@@ -101,7 +101,7 @@ export function siteOrigin(site: BrandSite, fallbackHost?: string | null): strin
 export async function publishHostsManifest(): Promise<void> {
   const db = supabaseAdmin();
   const [{ data: sites }, { data: redirects }] = await Promise.all([
-    db.from('brand_sites').select('brand_key, status, hostnames'),
+    db.from('brand_sites').select('brand_key, status, hostnames, settings'),
     db.from('site_redirects').select('brand_key, from_path, to_path'),
   ]);
   const hosts: Record<string, string> = {};
@@ -109,7 +109,9 @@ export async function publishHostsManifest(): Promise<void> {
   for (const s of sites ?? []) {
     for (const h of (s.hostnames as string[]) ?? []) {
       hosts[h.toLowerCase()] = s.brand_key;
-      if (s.status !== 'off' && !h.startsWith('www.')) satellites.push(h.toLowerCase());
+      // Clerk satellites are opt-in per site (a Clerk Pro feature): a host
+      // marked satellite on a Hobby instance would bounce every visitor.
+      if (s.status !== 'off' && !h.startsWith('www.') && (s.settings as { clerk_satellite?: boolean } | null)?.clerk_satellite === true) satellites.push(h.toLowerCase());
     }
   }
   const rmap: Record<string, Record<string, string>> = {};

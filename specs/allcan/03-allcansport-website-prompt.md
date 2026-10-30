@@ -399,6 +399,9 @@ Compete sharing: `components/compete/DivisionPage.tsx`, `PlayerPage.tsx`, `Progr
 ### 10.5a Password protection (added Oct 30, 2026)
 Settings › **Password protection** sets `brand_sites.settings.gate_password`. While it is on, every visitor to the live domain sees a password page (shield, "Almost ready.", an optional message, the field); a correct entry sets a 30-day cookie holding an HMAC of the password (so changing or turning off the password signs everyone out). Staff previews and signed-in site members bypass it; search engines get `noindex` and `robots.txt` says `Disallow: /` while it is on; 20 wrong tries per IP pause for 15 minutes (`/api/site/gate`). The editor shows a "Password on" pill next to the status.
 
+### 10.5b Clerk satellite is opt-in (Oct 30, 2026)
+Satellite domains are a Clerk Pro feature and the production instance is on Hobby. Settings › Domains has a "Clerk satellite domain" checkbox (`settings.clerk_satellite`, default off); only ticked hosts go into the manifest's `satellites` list and get satellite Clerk options in middleware. While it is off, the brand host never tries to read a session: no Sign in link or account chip, no Follow this team, and `/my-teams` points to Schedules and results, Play and Compete. Tick it (and add the domain under Clerk › Domains › Satellites) after upgrading Clerk; nothing else changes.
+
 ### 10.6 Still manual before launch
 Run 0064 → upload the real photos → replace every `[TBC]` in Programs → Settings › Domains (Vercel project + DNS + Clerk satellite domain + `CLERK_SATELLITE_HOSTS`) → Verify DNS → Coming soon → SEO setup, Search Console, sitemap → Live. The §9 legal list is unchanged. Registration on the brand host, the Accessibility and Concussion pages, and Futura hosting remain later stages.
 

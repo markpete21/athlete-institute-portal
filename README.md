@@ -692,7 +692,12 @@ Cross-app: set the same `ECOSYSTEM_API_KEY` in the live-stream and tickets
 apps' envs so they can call `/api/ecosystem/points`.
 
 Brand sites (Module 23): add each brand domain (apex + `www`) to the same
-Vercel project and as a Clerk satellite domain; set `CLERK_SATELLITE_HOSTS`.
+Vercel project. Clerk satellite domains are optional (Clerk Pro): tick
+"Clerk satellite domain" in the site's Settings › Domains (or set
+`CLERK_SATELLITE_HOSTS`) only after adding the domain under Clerk › Domains ›
+Satellites — on a Hobby instance leave it off, or visitors are bounced to
+Play. Without a satellite the site runs fully for signed-out visitors and
+account features (Sign in, My teams, Follow) stay on Play/Compete.
 Middleware serves it from `app/site/[brand]` once the site is switched on in
 Admin › Websites.
 

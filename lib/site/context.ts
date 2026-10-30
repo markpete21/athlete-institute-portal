@@ -21,6 +21,8 @@ export interface SiteContext {
   host: string;
   preview: boolean;
   previewToken: string | null;
+  /** True when this host is a Clerk satellite, so a session (account chip, My teams, Follow) can exist here. */
+  accountOnHost: boolean;
 }
 
 export async function siteContext(brandKey: string, previewToken?: string | null): Promise<SiteContext | null> {
@@ -34,7 +36,10 @@ export async function siteContext(brandKey: string, previewToken?: string | null
   const preview = token ? verifyPreviewToken(token, brandKey).ok : false;
   const nav = await publicNav(brandKey);
   const origin = siteOrigin(site, host);
-  return { site, theme, themeVars: themeCssVars(theme), nav, origin, host, preview, previewToken: preview ? token : null };
+  const bare = host.toLowerCase().replace(/:\d+$/, '');
+  const envSats = (process.env.CLERK_SATELLITE_HOSTS ?? '').split(/[,\s]+/).map((x) => x.trim().toLowerCase()).filter(Boolean);
+  const accountOnHost = site.settings.clerk_satellite === true || envSats.includes(bare) || bare.endsWith('.localhost') || bare === 'localhost';
+  return { site, theme, themeVars: themeCssVars(theme), nav, origin, host, preview, previewToken: preview ? token : null, accountOnHost };
 }
 
 /** Add the preview token to a site-relative link when previewing. */

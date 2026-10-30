@@ -55,7 +55,7 @@ export async function saveSettingsAction(fd: FormData): Promise<void> {
   const actor = session.userId!;
   if (section === 'domains') {
     const hosts = str(fd.get('hostnames')).split(/[\s,]+/).map((h) => h.toLowerCase().replace(/^https?:\/\//, '').replace(/\/.*$/, '')).filter(Boolean);
-    await updateSiteSettings(brand, { hostnames: hosts, primaryHost: str(fd.get('primaryHost')) || hosts[0] || null }, actor);
+    await updateSiteSettings(brand, { hostnames: hosts, primaryHost: str(fd.get('primaryHost')) || hosts[0] || null, settings: { clerk_satellite: bool(fd.get('satellite')) } }, actor);
   } else if (section === 'contact') {
     await updateSiteSettings(brand, { name: str(fd.get('name')) || undefined, contact: { email: str(fd.get('email')), phone: str(fd.get('phone')), address: str(fd.get('address')), legal_name: str(fd.get('legalName')), map_url: str(fd.get('mapUrl')) } }, actor);
   } else if (section === 'links') {

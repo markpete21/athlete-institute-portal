@@ -27,7 +27,7 @@ export default async function SiteDivisionPage({ params }: { params: { brand: st
   const stats = detail.division.statsEnabled ? await divisionStats(detail.division.id) : null;
   let followed = new Set<number>();
   let signedIn = false;
-  try {
+  if (ctx.accountOnHost) try {
     const s = await getPortalSession();
     signedIn = !!s.userId;
     if (s.profileId) followed = await followedTeamIds(s.profileId);
@@ -39,7 +39,7 @@ export default async function SiteDivisionPage({ params }: { params: { brand: st
         detail={detail}
         stats={stats}
         paths={{ division: (id) => `/standings/${id}`, player: (d, m) => `/standings/${d}/player/${m}`, league: (p) => `/leagues/${p}`, index: '/standings', indexLabel: 'All divisions' }}
-        follow={{ followed, teamIds, signedIn }}
+        follow={ctx.accountOnHost ? { followed, teamIds, signedIn } : undefined}
         footer={<p className="note" style={{ margin: '24px 0 48px' }}>Names follow the division&apos;s privacy setting. Players without guardian permission show as &quot;Team member&quot;. <Link href="/scores">All games</Link></p>}
       />
     </div>

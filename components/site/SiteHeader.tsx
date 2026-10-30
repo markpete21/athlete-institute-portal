@@ -27,7 +27,8 @@ export interface SiteHeaderProps {
   locations: HeaderLocation[];
   sports: HeaderSport[];
   user: HeaderUser | null;
-  signInHref: string;
+  /** Null when the host has no Clerk session (not a satellite): no Sign in link at all. */
+  signInHref: string | null;
   signOutHref: string;
   accountHref: string;
   myTeamsHref: string;
@@ -112,9 +113,9 @@ export default function SiteHeader(p: SiteHeaderProps) {
                   </div>
                 )}
               </span>
-            ) : (
+            ) : p.signInHref ? (
               <a className="signin" href={p.signInHref}>Sign in</a>
-            )}
+            ) : null}
             {p.askEnabled && <button type="button" className="pill pill--line pill--sm" onClick={() => setAsk(true)}>Ask {p.askName}</button>}
           </div>
         </div>
@@ -138,9 +139,9 @@ export default function SiteHeader(p: SiteHeaderProps) {
                 <button type="button" className="pill pill--line" aria-expanded={dacct} aria-controls="dnav-acct" onClick={() => setDacct(!dacct)}>
                   <span className="mini" aria-hidden="true">{p.user.initials}</span>{p.user.first}<span className="chev down" aria-hidden="true" />
                 </button>
-              ) : (
+              ) : p.signInHref ? (
                 <a className="pill pill--line" href={p.signInHref}>Sign in</a>
-              )}
+              ) : <span />}
             </div>
             {p.user && dacct && <div className="dnav-acct" id="dnav-acct"><span className="who">Signed in as {p.user.name}</span><AccountLinks p={p} /></div>}
             {roots.map((n) =>

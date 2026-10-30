@@ -17,6 +17,15 @@ const PLAY_URL = process.env.NEXT_PUBLIC_PLAY_URL ?? 'https://play.athleteinstit
 export default async function MyTeamsPage({ params }: { params: { brand: string } }) {
   const ctx = await siteContext(params.brand);
   if (!ctx) notFound();
+  const COMPETE_URL = process.env.NEXT_PUBLIC_COMPETE_URL ?? 'https://compete.athleteinstitute.ca';
+  if (!ctx.accountOnHost) {
+    return (
+      <>
+        <PageHead kicker="Account" title="My teams." lede="Schedules, results and standings are all here. Your account lives on Play. App." crumbs={[['Home', '/'], ['My teams', '']]} />
+        <div className="wrap" style={{ margin: '24px 0 80px', display: 'flex', gap: 10, flexWrap: 'wrap' }}><Link className="pill pill--ink" href="/scores">Schedules and results</Link><a className="pill pill--line" href={`${PLAY_URL}/account`}>My account on Play. App</a><a className="pill pill--line" href={COMPETE_URL}>Compete</a></div>
+      </>
+    );
+  }
   let session = null as Awaited<ReturnType<typeof getPortalSession>> | null;
   try { session = await getPortalSession(); } catch { session = null; }
   if (!session?.userId || !session.profileId) {
