@@ -11,7 +11,7 @@ import { Chev, FactsDl, PageHead, Row, SecHead, Section, SplitGrid, StatusPill, 
 import { GameCard } from '@/components/compete/DivisionPage';
 import { siteContext, type SiteContext } from '@/lib/site/context';
 import { getPageBySlug, listPages, type SitePage } from '@/lib/site/pages';
-import { getLocation, getProgram, listLocations, listPrograms, locationStatusLabel, programStatusLabel, SPORTS, sportBySlug, type SiteLocation } from '@/lib/site/records';
+import { getLocation, getProgram, getProgramLine, listLocations, listProgramLines, listPrograms, locationStatusLabel, programStatusLabel, SPORTS, sportBySlug, type ProgramLine, type SiteLocation } from '@/lib/site/records';
 import { pageDescription, pageTitle, breadcrumbJsonLd } from '@/lib/site/seo';
 import { PRIVACY_POLICY } from '@/lib/site/privacy-policy';
 import { listDivisions, recentResults, upcomingGames } from '@/lib/compete/compete';
@@ -44,6 +44,10 @@ export async function generateMetadata({ params }: { params: { brand: string; sl
     return { title: { absolute: pageTitle(ctx.site, page) }, description: pageDescription(ctx.site, page), alternates: { canonical: `${ctx.origin}/${slug}` }, robots: page.seo.noindex ? { index: false } : undefined };
   }
   // Location/sport pages without a page row still get a formatted title.
+  if (params.slug.length === 2 && sportBySlug(params.slug[0])) {
+    const line = await getProgramLine(params.brand, params.slug[0], params.slug[1]);
+    if (line) return { title: { absolute: `${line.name} · ${ctx.site.name}` }, description: line.description ?? undefined, alternates: { canonical: `${ctx.origin}/${slug}` } };
+  }
   const loc = await getLocation(params.brand, params.slug[0]);
   if (loc) return { title: { absolute: `${loc.name} · ${ctx.site.name}` }, alternates: { canonical: `${ctx.origin}/${slug}` } };
   return {};
@@ -82,6 +86,13 @@ export default async function SitePage({ params, searchParams }: { params: { bra
       const sport = sportBySlug(sp);
       if (!loc || !sport) notFound();
       return <LocationSport ctx={rctx} loc={loc} sport={sport} page={page} />;
+    }
+    case 'program-line': {
+      const [sp, ln] = (page?.ref ?? slug).split('/');
+      const sport = sportBySlug(sp);
+      const line = sport ? await getProgramLine(params.brand, sport.slug, ln) : null;
+      if (!sport || !line) notFound();
+      return <ProgramLinePage ctx={rctx} sport={sport} line={line} page={page} />;
     }
     case 'sport': {
       const sport = sportBySlug(page?.ref ?? params.slug[0]);
@@ -148,6 +159,7 @@ async function inferTemplate(brand: string, parts: string[]): Promise<string> {
     if (parts[0] === 'privacy-policy') return 'privacy-policy';
   }
   if (parts.length === 2 && sportBySlug(parts[1]) && (await getLocation(brand, parts[0]))) return 'location-sport';
+  if (parts.length === 2 && sportBySlug(parts[0]) && (await getProgramLine(brand, parts[0], parts[1]))) return 'program-line';
   return 'missing';
 }
 
@@ -249,20 +261,58 @@ async function LocationSport({ ctx, loc, sport, page }: { ctx: Ctx; loc: SiteLoc
   );
 }
 
+/**
+ * /<sport>: the program pathway first (one row per program, linking to its
+ * own landing page), then every location offering the sport. The browse-by-
+ * program route from Play; locations are the other route.
+ */
 async function SportOverview({ ctx, sport, page }: { ctx: Ctx; sport: NonNullable<ReturnType<typeof sportBySlug>>; page: SitePage | null }) {
-  const [locs, progs] = await Promise.all([listLocations(ctx.brandKey), listPrograms(ctx.brandKey, { sport: sport.slug })]);
+  const [locs, lines] = await Promise.all([listLocations(ctx.brandKey), listProgramLines(ctx.brandKey, sport.slug)]);
   const blocks = page ? (ctx.preview ? page.blocksDraft : page.blocksPublished ?? []) : [];
-  const pathway = [...progs].sort((a, b) => ['Youth Skills', 'Youth League', 'Adult League', 'Rep'].indexOf(a.leagueType) - ['Youth Skills', 'Youth League', 'Adult League', 'Rep'].indexOf(b.leagueType));
+  const where = (l: ProgramLine) => [...new Set(l.programs.map((p) => locs.find((x) => x.slug === p.locationSlug)?.name ?? p.locationSlug))].join(' · ');
   return (
     <>
-      <PageHead kicker="Sport" title={`${sport.name}.`} lede={`${pathway.length} ways to play: ${pathway.map((p) => p.leagueType.toLowerCase()).join(', ')}.`} crumbs={[['Home', '/'], [sport.name, '']]} />
-      <Section tight><SecHead label="Pathway" /><SplitGrid left={<h2>Where every<br />player fits.</h2>} right={<div className="rows">
-        {pathway.map((p) => { const l = locs.find((x) => x.slug === p.locationSlug); return <Link key={p.id} className="row" href={p.leagueType === 'Rep' ? '/circuit' : `/${p.locationSlug}/${sport.slug}#${p.slug}`}><div><p className="kicker muted">{p.leagueType}</p><h3 style={{ marginTop: 4 }}>{p.name}</h3></div><span className="meta">{l?.name ?? p.locationSlug}{p.description ? ` · ${p.description}` : ''}</span><span className="end"><Chev /></span></Link>; })}
+      <PageHead kicker="Play" title={`${ctx.site.name.replace(/\s+Sport$/, '')} ${sport.name}.`} lede={lines.length ? `${lines.length} program${lines.length === 1 ? '' : 's'}: ${lines.map((l) => l.name).join(', ')}.` : `${sport.name} programs are coming.`} crumbs={[['Home', '/'], [sport.name, '']]} />
+      <Section tight><SecHead label="Programs" /><SplitGrid left={<h2>Where every<br />player fits.</h2>} right={<div className="rows">
+        {lines.map((l) => <Link key={l.path} className="row" href={l.path}><div><p className="kicker muted">{l.type === 'Rep' ? 'Rep' : l.type}</p><h3 style={{ marginTop: 4 }}>{l.name}</h3></div><span className="meta">{l.description ?? ''}{l.description ? <br /> : null}{where(l)}</span><span className="end"><Chev /></span></Link>)}
       </div>} /></Section>
+      {sport.slug === 'basketball' && <DevelopmentArm brandKey={ctx.brandKey} />}
       <Section><SecHead label="Where to play" /><div className="rows">
-        {locs.filter((l) => l.sports.includes(sport.slug)).map((l) => { const st = locationStatusLabel(l); return <Row key={l.slug} href={`/${l.slug}/${sport.slug}`} title={l.name} meta={progs.filter((p) => p.locationSlug === l.slug).map((p) => p.name).join(' · ')} end={<StatusPill label={st.label} live={st.live} />} />; })}
+        {locs.filter((l) => l.sports.includes(sport.slug)).map((l) => { const st = locationStatusLabel(l); return <Row key={l.slug} href={`/${l.slug}/${sport.slug}`} title={l.name} meta={<>{l.venue}{l.city ? ` · ${l.city}` : ''}<br />{lines.filter((x) => x.programs.some((p) => p.locationSlug === l.slug)).map((x) => x.name).join(' · ')}</>} end={<StatusPill label={st.label} live={st.live} />} />; })}
       </div></Section>
       <BlockRenderer blocks={blocks} ctx={ctx} />
+    </>
+  );
+}
+
+/**
+ * /<sport>/<program>: one program's own landing page (e.g. ALL CAN
+ * Basketball Youth League). What it is, then every location running it with
+ * its status, then a request form for anywhere else. Editors add more
+ * through the page's blocks.
+ */
+async function ProgramLinePage({ ctx, sport, line, page }: { ctx: Ctx; sport: NonNullable<ReturnType<typeof sportBySlug>>; line: ProgramLine; page: SitePage | null }) {
+  const locs = await listLocations(ctx.brandKey);
+  const blocks = page ? (ctx.preview ? page.blocksDraft : page.blocksPublished ?? []) : [];
+  const here = line.programs.map((p) => ({ p, loc: locs.find((l) => l.slug === p.locationSlug) ?? null }));
+  const photoLoc = here.find((h) => h.loc?.photoUrl)?.loc ?? null;
+  const first = line.programs[0];
+  const shared = first ? first.facts.filter(([k]) => /age|format|session|level|includes|what/i.test(k)) : [];
+  const head = { kicker: `${sport.name} · ${line.type}`, title: `${line.name}.`, lede: line.description ?? '', crumbs: [['Home', '/'], [sport.name, `/${sport.slug}`], [line.name, '']] as [string, string][] };
+  return (
+    <>
+      {photoLoc ? <PhotoHead loc={photoLoc} ctx={ctx} {...head} /> : <PageHead {...head} preview={ctx.preview} />}
+      <Section tight><SecHead label="The program" /><SplitGrid
+        left={<h2>What it is.</h2>}
+        right={<>{line.description ? <p><T preview={ctx.preview}>{line.description}</T></p> : <p className="muted">Program details are <T preview={ctx.preview}>[TBC]</T>.</p>}{shared.length > 0 && <div style={{ marginTop: 20 }}><FactsDl facts={shared} preview={ctx.preview} /></div>}</>}
+      /></Section>
+      <Section><SecHead label="Locations" right={<span className="note">{here.length} location{here.length === 1 ? '' : 's'}</span>} /><SplitGrid
+        left={<h2>Where it<br />runs.</h2>}
+        right={<div className="rows">{here.map(({ p, loc }) => { const st = programStatusLabel(p); return <Row key={p.id} href={`/${p.locationSlug}/${sport.slug}#${p.slug}`} title={loc?.name ?? p.locationSlug} meta={<>{loc?.venue ?? ''}{loc?.city ? ` · ${loc.city}, ${loc.region}` : ''}</>} end={<StatusPill label={st.label} live={st.live} />} />; })}</div>}
+      /></Section>
+      {sport.slug === 'basketball' && <DevelopmentArm brandKey={ctx.brandKey} />}
+      <BlockRenderer blocks={blocks} ctx={ctx} />
+      <Section id="request"><SecHead label="Not near you yet" /><SplitGrid left={<h2>Bring it<br />to your area.</h2>} right={<LeadForm brandKey={ctx.brandKey} variant="location" initialSport={sport.slug} siteName={ctx.site.name} />} /></Section>
     </>
   );
 }

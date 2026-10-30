@@ -4,7 +4,7 @@ import { supabaseAdmin } from '@ai/foundation/supabase';
 import type { BrandSite } from '@/lib/site/sites';
 import type { SitePage } from '@/lib/site/pages';
 import { listPages } from '@/lib/site/pages';
-import { listLocations, listPrograms, sportBySlug } from '@/lib/site/records';
+import { listLocations, listPrograms, sportBySlug, listProgramLines } from '@/lib/site/records';
 import { publishedPosts } from '@/lib/site/posts';
 
 /**
@@ -150,6 +150,7 @@ export async function sitemapEntries(site: BrandSite, origin: string): Promise<{
     if (!have.has(u)) out.push({ loc: u });
     for (const s of l.sports) { const su = `${origin}/${l.slug}/${s}`; if (!have.has(su)) out.push({ loc: su }); }
   }
+  for (const l of await listProgramLines(site.brandKey)) { const u = `${origin}${l.path}`; if (!have.has(u) && !out.some((o) => o.loc === u)) out.push({ loc: u }); }
   for (const p of posts) out.push({ loc: `${origin}/stories/${p.slug}`, lastmod: p.publishedAt ?? undefined });
   return out;
 }

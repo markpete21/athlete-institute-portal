@@ -460,6 +460,12 @@ The Circuit page's Schedule and results and Standings use the Blue Arrow Classic
 - Toronto Midtown data: area-name note removed, the skills program archived, the league renamed **ALL CAN Basketball Youth League**.
 - Locations finder: the list is grouped under the province heading ("Ontario.") with each location as a row; city sub-headings removed.
 
+### 10.5k Two ways to browse: by program and by location (Oct 30, 2026; migration 0078)
+- **By location** (Locations menu): `/<location>` → `/<location>/<sport>`, every program at that venue with its facts and the interest form.
+- **By program** (Play menu): `/<sport>` describes the programs (one row per program, linking to its page) then lists the locations offering the sport; `/<sport>/<program>` is the program's own landing page — what it is, **where it runs** (each location with its status, linking to that location's program block), the development-arm band for basketball, editor blocks, and a request form for anywhere else.
+- A "program" is every location's record of one program type (sport + league type), so a new location running the Youth League appears on `/basketball/youth-league` automatically, and a new league type gets its own page at `/<sport>/<type>` with no page work. The Rep line is the Circuit (`/circuit`).
+- Each location's program block links back to "About <program>". Program pages are in the sitemap. Play › Basketball › League now goes to `/basketball/youth-league`.
+
 ### 10.6 Still manual before launch
 Run 0064 → upload the real photos → replace every `[TBC]` in Programs → Settings › Domains (Vercel project + DNS; Clerk satellite only with Clerk Pro) → Verify DNS → Coming soon → SEO setup, Search Console, sitemap → Live. The §9 legal list is unchanged. Registration on the brand host, the Accessibility and Concussion pages, and Futura hosting remain later stages.
 

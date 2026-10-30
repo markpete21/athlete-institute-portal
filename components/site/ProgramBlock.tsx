@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import type { SiteLocation, SiteProgram } from '@/lib/site/records';
-import { programStatusLabel } from '@/lib/site/records';
+import { programStatusLabel, programLinePath } from '@/lib/site/records';
 import { FactsDl, StatusPill, T } from '@/components/site/ui';
 import LeadForm from '@/components/site/LeadForm';
 import type { RenderCtx } from '@/components/site/blocks/BlockRenderer';
@@ -28,6 +28,7 @@ export default function ProgramBlock({ program, location, ctx, primary }: { prog
         <div className="left">
           <FactsDl facts={program.facts} preview={ctx.preview} />
           {program.description && <p style={{ marginTop: 14 }}><T preview={ctx.preview}>{program.description}</T></p>}
+          {!isRep && <p style={{ marginTop: 12 }}><Link href={programLinePath(program.sport, program.leagueType)}>About {program.name}</Link></p>}
           <p className="note" style={{ marginTop: 12 }}>Financial help is available. <Link href="/financial-assistance">See financial assistance</Link>.</p>
         </div>
         <div className="right">

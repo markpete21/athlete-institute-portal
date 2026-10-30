@@ -187,3 +187,40 @@ export async function deleteProgram(brandKey: string, id: number, actorClerkId: 
   await supabaseAdmin().from('site_programs').update({ status: 'archived' }).eq('brand_key', brandKey).eq('id', id);
   await audit({ actorId: actorClerkId, action: 'site.program', target: `site:${brandKey}`, meta: { archived: id } });
 }
+
+
+/**
+ * Program lines (owner, Oct 30 2026): a program is browsed two ways —
+ * by location (/toronto-midtown/basketball) and by program, from Play
+ * (/basketball/youth-league). A line is every location's record of one
+ * program type (sport + league type); the Rep line is the Circuit.
+ */
+export interface ProgramLine {
+  sport: string;
+  type: string;
+  slug: string;
+  name: string;
+  description: string | null;
+  programs: SiteProgram[];
+  path: string;
+}
+
+export const programLinePath = (sport: string, type: string) => (type === 'Rep' ? '/circuit' : `/${sport}/${slugify(type)}`);
+
+export async function listProgramLines(brandKey: string, sport?: string): Promise<ProgramLine[]> {
+  const progs = await listPrograms(brandKey, sport ? { sport } : {});
+  const order = ['Youth Skills', 'Youth League', 'Adult League', 'Rep'];
+  const lines = new Map<string, ProgramLine>();
+  for (const p of progs) {
+    const key = `${p.sport}|${p.leagueType}`;
+    const l = lines.get(key) ?? { sport: p.sport, type: p.leagueType, slug: slugify(p.leagueType), name: p.name, description: p.description, programs: [], path: programLinePath(p.sport, p.leagueType) };
+    if (!l.description && p.description) l.description = p.description;
+    l.programs.push(p);
+    lines.set(key, l);
+  }
+  return [...lines.values()].sort((a, b) => (order.indexOf(a.type) + 1 || 99) - (order.indexOf(b.type) + 1 || 99));
+}
+
+export async function getProgramLine(brandKey: string, sport: string, slug: string): Promise<ProgramLine | null> {
+  return (await listProgramLines(brandKey, sport)).find((l) => l.slug === slug) ?? null;
+}
