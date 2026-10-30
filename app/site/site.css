@@ -186,7 +186,7 @@
 .site .dnav-acct>:last-child{border-bottom:0}
 
 /* Sections */
-.site main{display:block}
+.site main{display:block;padding-bottom:var(--section)} /* breathing room before the footer on every page */
 .site .view{padding-bottom:var(--section)}
 .site .sec{padding-top:var(--section)}
 .site .sec-head{display:flex;justify-content:space-between;align-items:baseline;gap:16px;border-bottom:1px solid var(--rule-strong);padding-bottom:10px;margin-bottom:28px;flex-wrap:wrap}
