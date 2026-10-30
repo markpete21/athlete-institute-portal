@@ -200,7 +200,7 @@ function SiteUserButton({ p }: { p: SiteHeaderProps }) {
       appearance={{ elements: { avatarBox: 'site-avatar', avatarImage: 'site-avatar-img' } }}
     >
       <UserButton.MenuItems>
-        <UserButton.Link label="My teams and schedule" labelIcon={<MenuIcon kind="calendar" />} href={p.myTeamsHref} />
+        {/* "My teams and schedule" returns once teams are followable on the site (owner, Oct 30 2026); the href stays wired. */}
         {p.user?.canEdit ? <UserButton.Link label="Site editor" labelIcon={<MenuIcon kind="pencil" />} href={p.editorHref} /> : null}
         <UserButton.Action label="manageAccount" />
         <UserButton.Action label="signOut" />
@@ -209,7 +209,7 @@ function SiteUserButton({ p }: { p: SiteHeaderProps }) {
   );
 }
 
-function MenuIcon({ kind }: { kind: 'calendar' | 'pencil' }) {
+function MenuIcon({ kind }: { kind: 'calendar' | 'pencil' }) { // calendar kept for when My teams returns
   return (
     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
       {kind === 'calendar' ? <><rect x="3" y="5" width="18" height="16" rx="2" /><path d="M3 10h18M8 3v4M16 3v4" /></> : <path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z" />}
@@ -221,7 +221,6 @@ function MenuIcon({ kind }: { kind: 'calendar' | 'pencil' }) {
 function AccountLinks({ p }: { p: SiteHeaderProps }) {
   return (
     <>
-      <a href={p.myTeamsHref} data-keep>My teams and schedule<span className="chev" aria-hidden="true" /></a>
       <a href={p.accountHref} target="_blank" rel="noopener">My account on Play<span className="chev" aria-hidden="true" /></a>
       {p.user?.canEdit && <a href={p.editorHref}>Site editor<span className="chev" aria-hidden="true" /></a>}
       <a href={p.signOutHref}>Sign out</a>
