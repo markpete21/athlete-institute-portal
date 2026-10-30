@@ -1,6 +1,6 @@
 import { listPrograms } from '@/lib/site/records';
-import { divisionsOf, listGames, standings, type LeagueGame } from '@/lib/site/league';
-import { deleteGameAction, saveGameAction } from '../../actions';
+import { divisionsOf, listGames, listTeams, standings, type LeagueGame } from '@/lib/site/league';
+import { deleteGameAction, saveGameAction, saveTeamAction } from '../../actions';
 import { SubmitButton } from '@/app/admin/brands/SubmitButton';
 import { PreviewButton } from '../PreviewButton';
 
@@ -28,6 +28,8 @@ export default async function LeaguePage({ params, searchParams }: { params: { b
   const slug = searchParams.league ?? leagues.find((l) => l.slug === 'circuit')?.slug ?? leagues[0]?.slug ?? 'circuit';
   const league = leagues.find((l) => l.slug === slug);
   const games = await listGames(brand, slug);
+  const teamRows = await listTeams(brand, slug);
+  const teamNames = [...new Set([...games.flatMap((g) => [g.home, g.away]), ...teamRows.map((t) => t.name)])].sort();
   const table = standings(games);
   const divs = divisionsOf(games);
   return (
@@ -54,6 +56,23 @@ export default async function LeaguePage({ params, searchParams }: { params: { b
             <input type="hidden" name="status" value="scheduled" />
             <div className="col-span-2"><SubmitButton className="btn-gold btn-sm" pendingLabel="Adding…" doneLabel="Added">Add game</SubmitButton></div>
           </form>
+        </section>
+        <section className="card flex flex-col gap-3 p-5">
+          <div className="card-head"><h2>Teams</h2><span className="card-head-lbl">Logos show on the schedule and standings</span></div>
+          {teamNames.map((name) => {
+            const t = teamRows.find((x) => x.name === name);
+            return (
+              <form key={name} action={saveTeamAction} className="flex flex-wrap items-center gap-2 border-t border-hairline pt-3">
+                <input type="hidden" name="brand" value={brand} /><input type="hidden" name="leagueSlug" value={slug} /><input type="hidden" name="name" value={name} />
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                {t?.logoUrl ? <img src={t.logoUrl} alt="" className="h-9 w-9 object-contain" /> : <span className="inline-block h-9 w-9 rounded-full border border-dashed border-hairline" aria-hidden="true" />}
+                <span className="min-w-[120px] flex-1 text-sm font-bold">{name}</span>
+                <input name="logo" type="file" accept="image/png,image/jpeg,image/webp" className="input text-xs" aria-label={`Logo for ${name}`} />
+                <SubmitButton className="btn-ghost btn-sm" pendingLabel="…" doneLabel="Saved">{t?.logoUrl ? 'Replace' : 'Add logo'}</SubmitButton>
+              </form>
+            );
+          })}
+          <p className="text-xs text-silver">PNG with a transparent background, square, 256px or larger.</p>
         </section>
         <section className="card flex flex-col gap-3 p-5">
           <div className="card-head"><h2>Standings</h2><span className="card-head-lbl">From final scores</span></div>
@@ -83,6 +102,14 @@ function GameRow({ brand, g, slug }: { brand: string; g: LeagueGame; slug: strin
         <div className="flex flex-col"><label className="field-label" htmlFor={`g-${g.id}-as`}>Away score</label><input id={`g-${g.id}-as`} name="awayScore" type="number" min={0} defaultValue={g.awayScore ?? ''} className="input text-xs" /></div>
         <div className="flex flex-col"><label className="field-label" htmlFor={`g-${g.id}-st`}>Status</label><select id={`g-${g.id}-st`} name="status" defaultValue={g.status} className="input text-xs"><option value="scheduled">Scheduled</option><option value="final">Final</option><option value="postponed">Postponed</option></select></div>
         <div className="col-span-2 flex flex-col sm:col-span-3"><label className="field-label" htmlFor={`g-${g.id}-note`}>Note</label><input id={`g-${g.id}-note`} name="note" defaultValue={g.note ?? ''} className="input text-xs" /></div>
+        <details className="col-span-2 sm:col-span-4" open={!!g.scorers}>
+          <summary className="cursor-pointer text-xs font-bold">Top scorers and player of the game</summary>
+          <div className="mt-2 grid grid-cols-2 gap-2">
+            <div className="flex flex-col"><label className="field-label" htmlFor={`g-${g.id}-hs5`}>{g.home}</label><textarea id={`g-${g.id}-hs5`} name="homeScorers" rows={5} defaultValue={(g.scorers?.home ?? []).map((s) => `${s.name} | ${s.pts}`).join('\n')} className="input mono text-xs" placeholder={'Name | points\none per line, top five'} /></div>
+            <div className="flex flex-col"><label className="field-label" htmlFor={`g-${g.id}-as5`}>{g.away}</label><textarea id={`g-${g.id}-as5`} name="awayScorers" rows={5} defaultValue={(g.scorers?.away ?? []).map((s) => `${s.name} | ${s.pts}`).join('\n')} className="input mono text-xs" placeholder={'Name | points'} /></div>
+            <div className="col-span-2 flex flex-col"><label className="field-label" htmlFor={`g-${g.id}-potg`}>Player of the game</label><input id={`g-${g.id}-potg`} name="potg" defaultValue={g.scorers?.potg ?? ''} className="input text-xs" placeholder="Exactly as typed above; gets the maple leaf" /></div>
+          </div>
+        </details>
       </div>
       <div className="flex flex-col gap-1">
         <SubmitButton className="btn-gold btn-sm" pendingLabel="…" doneLabel="Saved">Save</SubmitButton>

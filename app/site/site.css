@@ -494,7 +494,8 @@
 .site .sched-head h3{font-size:22px;font-weight:700;letter-spacing:-.01em;color:var(--white)}
 .site .sched-count{margin-left:12px;font-size:var(--fs-micro);font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:var(--silver)}
 .site .sched-div{font-size:13px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:var(--silver)}
-.site .sched-cols, .site .sched-row{display:grid;grid-template-columns:64px 76px minmax(0,1fr) 40px minmax(0,1fr) 104px;gap:0 20px;align-items:center;padding:0 20px}
+.site .sched-cols, .site .sched-row{display:grid;grid-template-columns:64px 72px 84px minmax(0,1fr) 36px minmax(0,1fr) 104px;gap:0 18px;align-items:center;padding:0 20px}
+.site .sched-age{font-size:13px;font-weight:600;white-space:nowrap}
 .site .sched-cols{background:var(--paper);padding-top:9px;padding-bottom:9px;font-size:10px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:var(--cg11)}
 .site .sched-cols b{color:var(--red);font-weight:600}
 .site .sched-row{padding-top:16px;padding-bottom:16px;border-top:1px solid var(--rule);font-size:16px;font-weight:600}
@@ -503,13 +504,37 @@
 .site .sched-no{color:var(--red)}
 .site .sched-vs{text-align:center}
 .site .sched-team{display:flex;align-items:center;justify-content:space-between;gap:14px;min-width:0}
-.site .sched-team .nm{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.site .sched-team .nm{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:inline-flex;align-items:center;gap:10px}
+.site .tl{width:30px;height:30px;object-fit:contain;flex-shrink:0}
+.site .tl--none{display:inline-block;width:30px;height:30px;border:1px dashed var(--rule-strong);border-radius:50%}
+.site .stand-row .nm{display:inline-flex;align-items:center;gap:10px;min-width:0}
+.site .circuit-teams span{display:inline-flex;align-items:center;gap:8px}
+.site .circuit-teams img{width:24px;height:24px;object-fit:contain}
 .site .sched-team .nm small{display:none;margin-left:8px;font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--cg11);font-weight:600}
 .site .sched-team .sc{font-size:28px;font-weight:700;line-height:1;color:var(--cg9);flex-shrink:0}
 .site .sched-team .sc.w{color:var(--red)}
 .site .sched-status{justify-self:end;display:inline-flex;align-items:center;min-height:24px;padding:0 10px;border:1px solid var(--rule-strong);font-size:10px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:var(--cg11);white-space:nowrap}
 .site .sched-status.is-final{background:var(--black);border-color:var(--black);color:var(--white)}
 .site .sched-status.is-ppd{border-color:var(--red);color:var(--red)}
+/* Finished game -> expandable scorers */
+.site .sched-game{border-top:1px solid var(--rule)}
+.site .sched-game>summary{list-style:none;cursor:pointer;border-top:0}
+.site .sched-game>summary::-webkit-details-marker{display:none}
+.site .sched-game:nth-child(odd)>summary{background:#FAFAFA}
+.site .sched-chev{display:inline-block;margin-left:8px;font-size:10px;transition:transform var(--fast) var(--ease)}
+.site .sched-game[open] .sched-chev{transform:rotate(180deg)}
+.site .scorers{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px 40px;padding:18px 20px 22px;background:var(--paper);border-top:1px solid var(--rule)}
+.site .scorers-col{display:grid;gap:4px;align-content:start}
+.site .scorers-col .kicker{margin-bottom:6px}
+.site .scorer{display:flex;justify-content:space-between;gap:12px;padding:7px 0;border-bottom:1px solid var(--rule);font-size:15px}
+.site .scorer-nm{display:inline-flex;align-items:center;gap:8px;min-width:0}
+.site .scorer.is-potg .scorer-nm{font-weight:700}
+.site .scorer .leaf{width:16px;height:16px;object-fit:contain}
+.site .scorer-pts{font-weight:700;font-variant-numeric:tabular-nums}
+.site .scorers-potg{grid-column:1/-1;font-size:14px}
+.site .scorers-potg .kicker{margin-right:8px}
+.site .tl--sm{width:24px;height:24px}
+@media (max-width:640px){.site .scorers{grid-template-columns:1fr}}
 /* Standings in the same card */
 .site .stand-cols, .site .stand-row{display:grid;grid-template-columns:36px minmax(0,1fr) repeat(6,56px);gap:0 12px;align-items:center;padding:0 20px;text-align:right}
 .site .stand-cols span:nth-child(-n+2), .site .stand-row span:nth-child(-n+2){text-align:left}
@@ -521,9 +546,9 @@
 .site .stand-row.is-first .nm{color:var(--red)}
 @media (max-width:760px){
   .site .sched-cols{display:none}
-  .site .sched-row{grid-template-columns:64px 1fr auto;grid-template-areas:"time no status" "home home home" "away away away";row-gap:8px}
-  .site .sched-time{grid-area:time}.site .sched-no{grid-area:no}.site .sched-status{grid-area:status}
-  .site .sched-row>span:nth-child(3){grid-area:home}.site .sched-row>span:nth-child(5){grid-area:away}
+  .site .sched-row{grid-template-columns:64px auto 1fr auto;grid-template-areas:"time no age status" "home home home home" "away away away away";row-gap:8px}
+  .site .sched-time{grid-area:time}.site .sched-no{grid-area:no}.site .sched-age{grid-area:age}.site .sched-status{grid-area:status}
+  .site .sched-row>span:nth-child(4){grid-area:home}.site .sched-row>span:nth-child(6){grid-area:away}
   .site .sched-vs{display:none}
   .site .sched-team .nm small{display:inline}
   .site .sched-team .sc{font-size:24px}

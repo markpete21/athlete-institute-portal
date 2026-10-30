@@ -6,7 +6,7 @@ import ProgramBlock from '@/components/site/ProgramBlock';
 import LeadForm from '@/components/site/LeadForm';
 import ApplyDialog from '@/components/site/ApplyDialog';
 import { fmtDateStacked, fmtTime } from '@/lib/site/context';
-import { divisionsOf, listGames, standings } from '@/lib/site/league';
+import { divisionsOf, listGames, listTeams, standings, type LeagueGame } from '@/lib/site/league';
 import { Chev, FactsDl, PageHead, Row, SecHead, Section, SplitGrid, StatusPill, T } from '@/components/site/ui';
 import { GameCard } from '@/components/compete/DivisionPage';
 import { siteContext, type SiteContext } from '@/lib/site/context';
@@ -255,6 +255,9 @@ async function Circuit({ ctx, page, division }: { ctx: Ctx; page: SitePage | nul
   const loc = rep ? await getLocation(ctx.brandKey, rep.locationSlug) : null;
   const blocks = page ? (ctx.preview ? page.blocksDraft : page.blocksPublished ?? []) : [];
   const games = await listGames(ctx.brandKey, rep?.slug ?? 'circuit');
+  const teamRows = await listTeams(ctx.brandKey, rep?.slug ?? 'circuit');
+  const logoOf = (name: string) => teamRows.find((t) => t.name === name)?.logoUrl ?? null;
+  const Team = ({ name, jersey }: { name: string; jersey?: 'Light' | 'Dark' }) => <span className="nm"><TeamLogo url={logoOf(name)} />{name}{jersey && <small>({jersey})</small>}</span>;
   const divs = divisionsOf(games);
   const table = standings(games);
   const season = (() => { const ys = games.map((g) => g.startsAt ? Number(g.startsAt.slice(0, 4)) : 0).filter(Boolean); if (!ys.length) return null; const a = Math.min(...ys), b = Math.max(...ys); return b > a ? `${a}-${String(b).slice(2)}` : String(a); })();
@@ -290,20 +293,30 @@ async function Circuit({ ctx, page, division }: { ctx: Ctx; page: SitePage | nul
           <h3>{n.iso ? `${wd}, ${md}` : 'Date to be confirmed'}<span className="sched-count">{n.games.length} game{n.games.length === 1 ? '' : 's'}{n.iso ? ` · ${yr}` : ''}</span></h3>
           <span className="sched-div">{n.division || 'All divisions'}{n.note ? ` · ${n.note}` : ''}</span>
         </div>
-        <div className="sched-cols" aria-hidden="true"><span /><span /><span>Home team <b>(Light)</b></span><span /><span>Away team <b>(Dark)</b></span><span /></div>
+        <div className="sched-cols" aria-hidden="true"><span /><span /><span>Division</span><span>Home team <b>(Light)</b></span><span /><span>Away team <b>(Dark)</b></span><span /></div>
         {n.games.map((g) => {
           const fin = g.status === 'final' && g.homeScore != null && g.awayScore != null;
           const hw = fin && g.homeScore! > g.awayScore!, aw = fin && g.awayScore! > g.homeScore!;
           const ppd = g.status === 'postponed';
-          return (
-            <div key={g.id} className="sched-row">
+          const hasScorers = fin && !!g.scorers && ((g.scorers.home?.length ?? 0) > 0 || (g.scorers.away?.length ?? 0) > 0);
+          const rowInner = (
+            <>
               <span className="sched-time">{fmtTime(g.startsAt).replace(' ET', '')}</span>
               <span className="sched-no">Game {numbered.get(g.id)}</span>
-              <span className="sched-team"><span className="nm">{g.home}<small>(Light)</small></span>{fin && <span className={`sc${hw ? ' w' : ''}`}>{g.homeScore}</span>}</span>
+              <span className="sched-age">{g.division || '—'}</span>
+              <span className="sched-team"><Team name={g.home} jersey="Light" />{fin && <span className={`sc${hw ? ' w' : ''}`}>{g.homeScore}</span>}</span>
               <span className="sched-vs">vs</span>
-              <span className="sched-team"><span className="nm">{g.away}<small>(Dark)</small></span>{fin && <span className={`sc${aw ? ' w' : ''}`}>{g.awayScore}</span>}</span>
-              <span className={`sched-status${fin ? ' is-final' : ppd ? ' is-ppd' : ''}`}>{fin ? 'Final' : ppd ? 'Postponed' : 'Upcoming'}</span>
-            </div>
+              <span className="sched-team"><Team name={g.away} jersey="Dark" />{fin && <span className={`sc${aw ? ' w' : ''}`}>{g.awayScore}</span>}</span>
+              <span className={`sched-status${fin ? ' is-final' : ppd ? ' is-ppd' : ''}`}>{fin ? 'Final' : ppd ? 'Postponed' : 'Upcoming'}{hasScorers && <span className="sched-chev" aria-hidden="true">▾</span>}</span>
+            </>
+          );
+          return hasScorers ? (
+            <details key={g.id} className="sched-game">
+              <summary className="sched-row" aria-label={`${g.home} ${g.homeScore} – ${g.away} ${g.awayScore}. Top scorers`}>{rowInner}</summary>
+              <Scorers game={g} leaf={`/sites/${ctx.brandKey}/icon-512.png`} />
+            </details>
+          ) : (
+            <div key={g.id} className="sched-row">{rowInner}</div>
           );
         })}
       </section>
@@ -329,7 +342,7 @@ async function Circuit({ ctx, page, division }: { ctx: Ctx; page: SitePage | nul
           <SecHead label={`${season ? `${season} season` : 'Season'}`} right={<StatusPill label={programStatusLabel(rep).label} live={programStatusLabel(rep).live} />} />
           <SplitGrid left={<><h2>Key info.</h2>{rep.description && <p className="muted" style={{ marginTop: 12 }}>{rep.description}</p>}</>} right={<>
             <dl className="circuit-facts">{rep.facts.map(([k, v]) => <div key={k}><dt>{k}</dt><dd><T preview={ctx.preview}>{v}</T></dd></div>)}</dl>
-            {teams.length > 0 && <div style={{ marginTop: 24 }}><p className="kicker" style={{ marginBottom: 8 }}>Teams</p><div className="circuit-teams">{teams.map((t) => <span key={t}>{t}</span>)}</div></div>}
+            {teams.length > 0 && <div style={{ marginTop: 24 }}><p className="kicker" style={{ marginBottom: 8 }}>Teams</p><div className="circuit-teams">{teams.map((t) => <span key={t}><TeamLogo url={logoOf(t)} small />{t}</span>)}</div></div>}
           </>} />
         </Section>
       )}
@@ -353,7 +366,7 @@ async function Circuit({ ctx, page, division }: { ctx: Ctx; page: SitePage | nul
               <section key={div} className="sched-day">
                 <div className="sched-head"><h3>{div || 'League'}<span className="sched-count">{rows.length} teams</span></h3><span className="sched-div">Wins, then point difference</span></div>
                 <div className="stand-cols" aria-hidden="true"><span>#</span><span>Team</span><span>GP</span><span>W</span><span>L</span><span>PF</span><span>PA</span><span>Diff</span></div>
-                {rows.map((r, i) => <div key={r.team} className={`stand-row${i === 0 && r.gp > 0 ? ' is-first' : ''}`}><span className="rk">{i + 1}</span><span className="nm">{r.team}</span><span>{r.gp}</span><span className="w">{r.w}</span><span>{r.l}</span><span>{r.pf}</span><span>{r.pa}</span><span className="df">{r.diff > 0 ? `+${r.diff}` : r.diff}</span></div>)}
+                {rows.map((r, i) => <div key={r.team} className={`stand-row${i === 0 && r.gp > 0 ? ' is-first' : ''}`}><span className="rk">{i + 1}</span><Team name={r.team} /><span>{r.gp}</span><span className="w">{r.w}</span><span>{r.l}</span><span>{r.pf}</span><span>{r.pa}</span><span className="df">{r.diff > 0 ? `+${r.diff}` : r.diff}</span></div>)}
               </section>
             ))}
           </div>
@@ -366,6 +379,44 @@ async function Circuit({ ctx, page, division }: { ctx: Ctx; page: SitePage | nul
       </Section>
       <BlockRenderer blocks={blocks} ctx={ctx} />
     </>
+  );
+}
+
+function TeamLogo({ url, small }: { url: string | null; small?: boolean }) {
+  if (!url) return small ? null : <span className="tl tl--none" aria-hidden="true" />;
+  // eslint-disable-next-line @next/next/no-img-element
+  return <img className={small ? 'tl tl--sm' : 'tl'} src={url} alt="" />;
+}
+
+/**
+ * Scoring panel under a finished game (owner, Oct 30 2026): top scorers per
+ * team, player of the game in bold with the red maple leaf. A native
+ * <details> so it needs no JavaScript; the summary IS the game row.
+ */
+function Scorers({ game, leaf }: { game: LeagueGame; leaf: string }) {
+  const sc = game.scorers;
+  if (!sc || (!sc.home?.length && !sc.away?.length)) return null;
+  const col = (team: string, rows: { name: string; pts: number }[]) => (
+    <div className="scorers-col">
+      <p className="kicker">{team}</p>
+      {rows.slice(0, 5).map((r, i) => {
+        const potg = !!sc.potg && r.name.trim().toLowerCase() === sc.potg.trim().toLowerCase();
+        return (
+          <div key={i} className={`scorer${potg ? ' is-potg' : ''}`}>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <span className="scorer-nm">{potg && <img src={leaf} alt="Player of the game" className="leaf" />}{r.name}</span>
+            <span className="scorer-pts">{r.pts}</span>
+          </div>
+        );
+      })}
+    </div>
+  );
+  return (
+    <div className="scorers">
+      {col(game.home, sc.home ?? [])}
+      {col(game.away, sc.away ?? [])}
+      {sc.potg && <p className="scorers-potg"><span className="kicker">Player of the game</span> <b>{sc.potg}</b></p>}
+    </div>
   );
 }
 

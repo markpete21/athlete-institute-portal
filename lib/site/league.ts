@@ -10,6 +10,9 @@ import { supabaseAdmin } from '@ai/foundation/supabase';
  */
 export type GameStatus = 'scheduled' | 'final' | 'postponed';
 
+export interface Scorer { name: string; pts: number }
+export interface GameScorers { home?: Scorer[]; away?: Scorer[]; potg?: string | null }
+
 export interface LeagueGame {
   id: number;
   leagueSlug: string;
@@ -22,16 +25,18 @@ export interface LeagueGame {
   awayScore: number | null;
   status: GameStatus;
   note: string | null;
+  scorers: GameScorers | null;
 }
 
 export interface StandingRow { team: string; gp: number; w: number; l: number; pf: number; pa: number; diff: number; pct: number }
 
-const COLS = 'id, league_slug, division, starts_at, venue, home, away, home_score, away_score, status, note';
+const COLS = 'id, league_slug, division, starts_at, venue, home, away, home_score, away_score, status, note, scorers';
 
 function toGame(r: Record<string, unknown>): LeagueGame {
   return {
     id: r.id as number, leagueSlug: r.league_slug as string, division: (r.division as string) ?? '', startsAt: (r.starts_at as string) ?? null, venue: (r.venue as string) ?? null,
     home: r.home as string, away: r.away as string, homeScore: (r.home_score as number) ?? null, awayScore: (r.away_score as number) ?? null, status: (r.status as GameStatus) ?? 'scheduled', note: (r.note as string) ?? null,
+    scorers: (r.scorers as GameScorers) ?? null,
   };
 }
 
@@ -85,7 +90,35 @@ export function torontoLocalToIso(local: string): string | null {
   return new Date(utc).toISOString();
 }
 
-export interface GameInput { id?: number; leagueSlug: string; division: string; startsAt: string | null; venue: string; home: string; away: string; homeScore: number | null; awayScore: number | null; status: GameStatus; note: string }
+export interface LeagueTeam { id: number; name: string; shortName: string | null; city: string | null; logoUrl: string | null }
+
+export async function listTeams(brandKey: string, leagueSlug: string): Promise<LeagueTeam[]> {
+  const { data } = await supabaseAdmin().from('site_league_teams').select('id, name, short_name, city, logo_url').eq('brand_key', brandKey).eq('league_slug', leagueSlug).order('name');
+  return (data ?? []).map((r) => ({ id: r.id as number, name: r.name as string, shortName: (r.short_name as string) ?? null, city: (r.city as string) ?? null, logoUrl: (r.logo_url as string) ?? null }));
+}
+
+/** Upsert a team's logo / short name by its name as it appears in the games. */
+export async function saveTeam(brandKey: string, leagueSlug: string, input: { name: string; shortName?: string; city?: string; logoUrl?: string | null }, actorClerkId: string): Promise<void> {
+  const name = input.name.trim();
+  if (!name) throw new Error('Team name is needed.');
+  const row: Record<string, unknown> = { brand_key: brandKey, league_slug: leagueSlug, name };
+  if (input.shortName !== undefined) row.short_name = input.shortName.trim() || null;
+  if (input.city !== undefined) row.city = input.city.trim() || null;
+  if (input.logoUrl !== undefined) row.logo_url = input.logoUrl;
+  const { error } = await supabaseAdmin().from('site_league_teams').upsert(row, { onConflict: 'brand_key,league_slug,name' });
+  if (error) throw new Error(error.message);
+  await audit({ actorId: actorClerkId, action: 'site.league.team', target: `site:${brandKey}`, meta: { league: leagueSlug, name, logo: !!input.logoUrl } });
+}
+
+export interface GameInput { id?: number; leagueSlug: string; division: string; startsAt: string | null; venue: string; home: string; away: string; homeScore: number | null; awayScore: number | null; status: GameStatus; note: string; scorers?: GameScorers | null }
+
+/** "Name | points" lines (or "Name 23") -> scorers, top five by points. */
+export function parseScorers(text: string): Scorer[] {
+  return text.split('\n').map((l) => l.trim()).filter(Boolean).map((l) => {
+    const m = l.match(/^(.*?)[\s|,:-]+(\d{1,3})\s*$/);
+    return m ? { name: m[1].trim(), pts: Number(m[2]) } : { name: l, pts: 0 };
+  }).filter((s) => s.name).sort((a, b) => b.pts - a.pts).slice(0, 5);
+}
 
 export async function saveGame(brandKey: string, input: GameInput, actorClerkId: string): Promise<void> {
   if (!input.home.trim() || !input.away.trim()) throw new Error('Both teams are needed.');
@@ -93,6 +126,7 @@ export async function saveGame(brandKey: string, input: GameInput, actorClerkId:
     brand_key: brandKey, league_slug: input.leagueSlug, division: input.division.trim(), starts_at: input.startsAt, venue: input.venue.trim() || null,
     home: input.home.trim(), away: input.away.trim(), home_score: input.homeScore, away_score: input.awayScore,
     status: input.homeScore != null && input.awayScore != null && input.status !== 'postponed' ? 'final' : input.status, note: input.note.trim() || null, updated_at: new Date().toISOString(),
+    ...(input.scorers !== undefined ? { scorers: input.scorers } : {}),
   };
   const db = supabaseAdmin();
   const { error } = input.id ? await db.from('site_league_games').update(row).eq('brand_key', brandKey).eq('id', input.id) : await db.from('site_league_games').insert({ ...row, created_by: actorClerkId });

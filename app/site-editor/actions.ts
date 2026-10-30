@@ -443,7 +443,7 @@ export async function resendInviteAction(fd: FormData): Promise<void> {
 export async function saveGameAction(fd: FormData): Promise<void> {
   const brand = str(fd.get('brand'));
   const { session } = await requireSiteRole(brand, ['super', 'admin', 'editor']);
-  const { saveGame, torontoLocalToIso } = await import('@/lib/site/league');
+  const { saveGame, torontoLocalToIso, parseScorers } = await import('@/lib/site/league');
   const when = str(fd.get('startsAt'));
   await saveGame(brand, {
     id: num(fd.get('id')) ?? undefined, leagueSlug: str(fd.get('leagueSlug')) || 'circuit', division: str(fd.get('division')),
@@ -451,6 +451,7 @@ export async function saveGameAction(fd: FormData): Promise<void> {
     startsAt: when ? torontoLocalToIso(when) : null,
     venue: str(fd.get('venue')), home: str(fd.get('home')), away: str(fd.get('away')),
     homeScore: num(fd.get('homeScore')), awayScore: num(fd.get('awayScore')), status: (str(fd.get('status')) || 'scheduled') as 'scheduled' | 'final' | 'postponed', note: str(fd.get('note')),
+    ...(fd.has('homeScorers') ? { scorers: { home: parseScorers(str(fd.get('homeScorers'))), away: parseScorers(str(fd.get('awayScorers'))), potg: str(fd.get('potg')) || null } } : {}),
   }, session.userId!);
   revalidateSite(brand);
 }
@@ -460,5 +461,21 @@ export async function deleteGameAction(fd: FormData): Promise<void> {
   const { session } = await requireSiteRole(brand, ['super', 'admin', 'editor']);
   const { deleteGame } = await import('@/lib/site/league');
   await deleteGame(brand, Number(fd.get('id')), session.userId!);
+  revalidateSite(brand);
+}
+
+export async function saveTeamAction(fd: FormData): Promise<void> {
+  const brand = str(fd.get('brand'));
+  const { session } = await requireSiteRole(brand, ['super', 'admin', 'editor']);
+  const { saveTeam } = await import('@/lib/site/league');
+  const file = fd.get('logo');
+  let logoUrl: string | undefined;
+  if (file instanceof File && file.size > 0) {
+    const m = await uploadMedia(brand, file, 'Teams', session.userId!);
+    logoUrl = m.url;
+  } else if (bool(fd.get('clearLogo'))) {
+    logoUrl = undefined; // handled below
+  }
+  await saveTeam(brand, str(fd.get('leagueSlug')) || 'circuit', { name: str(fd.get('name')), shortName: str(fd.get('shortName')), city: str(fd.get('city')), ...(logoUrl ? { logoUrl } : bool(fd.get('clearLogo')) ? { logoUrl: null } : {}) }, session.userId!);
   revalidateSite(brand);
 }
