@@ -324,7 +324,10 @@ async function Circuit({ ctx, page, division }: { ctx: Ctx; page: SitePage | nul
   };
   return (
     <>
-      <section className="hero ink on-dark" style={{ minHeight: 'min(60vh,560px)' }}>
+      <section className="hero hero--photo ink on-dark" style={{ minHeight: 'min(72vh,680px)' }}>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img className="hero-img" src={`/sites/${ctx.brandKey}/photos/circuit-hero.jpg`} alt="Three ALL CAN Circuit players mid-game: a layup, a drive down the lane and a guard surveying the court." />
+        <span className="hero-scrim" aria-hidden="true" />
         <span className="vcredit">Photo <T preview={ctx.preview}>[TBC]</T></span>
         <div className="wrap"><div className="grid"><div className="left" style={{ gridColumn: '1 / span 8' }}>
           {/* eslint-disable-next-line @next/next/no-img-element */}
