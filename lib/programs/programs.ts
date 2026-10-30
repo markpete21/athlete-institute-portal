@@ -37,6 +37,8 @@ export interface Program {
   season_key: string | null;
   year: number | null;
   brand_key: string;
+  /** Stripe account (organization); null = follow the brand. */
+  stripe_account: string | null;
   min_age: number | null;
   max_age: number | null;
   registration_opens_at: string | null;
@@ -105,6 +107,8 @@ export interface CreateProgramInput {
   seasonKey?: string | null;
   year?: number | null;
   brandKey?: string;
+  /** Stripe account (organization) sales settle in; null = follow the brand. */
+  stripeAccount?: string | null;
   minAge?: number | null;
   maxAge?: number | null;
   capacity?: number | null;
@@ -134,6 +138,7 @@ export async function createProgram(input: CreateProgramInput): Promise<Program>
       season_key: input.seasonKey ?? null,
       year: input.year ?? null,
       brand_key: input.brandKey ?? 'athlete-institute',
+      stripe_account: input.stripeAccount ?? null,
       min_age: input.minAge ?? null,
       max_age: input.maxAge ?? null,
       capacity: input.capacity ?? null,

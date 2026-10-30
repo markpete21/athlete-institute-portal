@@ -1,6 +1,7 @@
 'use server';
 
 import { redirect } from 'next/navigation';
+import { stripeAccountOrNull } from '@ai/foundation';
 import { revalidatePath } from 'next/cache';
 import type { ProgramCategory, ProrationMethod } from '@ai/foundation';
 import { audit } from '@ai/foundation';
@@ -60,6 +61,7 @@ export async function createProgramAction(formData: FormData): Promise<void> {
     category: (String(formData.get('category') ?? '') || undefined) as ProgramCategory | undefined,
     sportTag: String(formData.get('sportTag') ?? '').trim() || null,
     brandKey: String(formData.get('brandKey') ?? 'athlete-institute'),
+    stripeAccount: stripeAccountOrNull(formData.get('stripeAccount')),
     seasonKey: String(formData.get('seasonKey') ?? '').trim() || null,
     minAge: num(formData.get('minAge')),
     maxAge: num(formData.get('maxAge')),
@@ -80,6 +82,7 @@ export async function updateProgramAction(formData: FormData): Promise<void> {
       category: String(formData.get('category') ?? 'Youth Sports'),
       sport_tag: String(formData.get('sportTag') ?? '').trim() || null,
       brand_key: String(formData.get('brandKey') ?? 'athlete-institute'),
+      stripe_account: stripeAccountOrNull(formData.get('stripeAccount')),
       min_age: num(formData.get('minAge')),
       max_age: num(formData.get('maxAge')),
       capacity: num(formData.get('capacity')),

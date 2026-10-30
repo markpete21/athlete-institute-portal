@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { BRANDS, PROGRAM_CATEGORIES, buildTree, flattenTree, formatCAD, type FacilityNode } from '@ai/foundation';
+import { BRANDS, PROGRAM_CATEGORIES, buildTree, flattenTree, formatCAD, type FacilityNode, STRIPE_ACCOUNTS, accountForBrand, configuredStripeAccounts, stripeAccountLabel } from '@ai/foundation';
 import { supabaseAdmin } from '@ai/foundation/supabase';
 import { getProgram } from '@/lib/programs/programs';
 import { listCertTypes, programRoleCerts } from '@/lib/staff/staff';
@@ -106,6 +106,17 @@ export default async function ProgramBuilderPage({ params }: { params: { id: str
           <label className="field-label">Brand</label>
           <select name="brandKey" defaultValue={program.brand_key} className="input">
             {BRANDS.map((b) => <option key={b.key} value={b.key}>{b.name}</option>)}
+          </select>
+        </div>
+        <div>
+          <label className="field-label">Organization (Stripe account)</label>
+          <select name="stripeAccount" defaultValue={program.stripe_account ?? ''} className="input">
+            <option value="">Follow brand ({stripeAccountLabel(accountForBrand(program.brand_key))})</option>
+            {STRIPE_ACCOUNTS.map((a) => (
+              <option key={a.id} value={a.id} disabled={!configuredStripeAccounts().includes(a.id) && program.stripe_account !== a.id}>
+                {a.label}{configuredStripeAccounts().includes(a.id) ? '' : ' (keys not set)'}
+              </option>
+            ))}
           </select>
         </div>
         <div><label className="field-label">Sport</label><input name="sportTag" defaultValue={program.sport_tag ?? ''} className="input" /></div>

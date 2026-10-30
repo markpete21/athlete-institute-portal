@@ -18,7 +18,7 @@ export const dynamic = 'force-dynamic';
  */
 export default async function PlayLayout({ children }: { children: React.ReactNode }) {
   const session = await getPortalSession();
-  const path = headers().get('x-portal-path') ?? '/';
+  const path = (headers().get('x-portal-path') ?? '/').split('?')[0];
 
   if (session.userType === 'tenant' && !tenantAllowedPath(path)) redirect('/schedule');
 

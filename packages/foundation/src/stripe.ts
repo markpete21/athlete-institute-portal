@@ -12,16 +12,50 @@
  */
 
 import Stripe from 'stripe';
+import {
+  DEFAULT_STRIPE_ACCOUNT,
+  STRIPE_ACCOUNTS,
+  normalizeStripeAccount,
+  stripeAccountConfigured,
+  stripeEnvName,
+  type StripeAccountId,
+} from './stripe-accounts';
 
-let _stripe: Stripe | null = null;
+const _clients = new Map<StripeAccountId, Stripe>();
 
-/** Lazily-constructed shared client (account default API version). */
-export function getStripe(): Stripe {
-  if (_stripe) return _stripe;
-  const key = process.env.STRIPE_SECRET_KEY;
-  if (!key) throw new Error('STRIPE_SECRET_KEY is not set');
-  _stripe = new Stripe(key);
-  return _stripe;
+/** A value that names which organization's Stripe account to use. */
+export type StripeAccountRef = string | null | undefined;
+
+/**
+ * The account that will actually be used: the requested one when its secret
+ * key is set, else the default — so a row pointing at a not-yet-configured
+ * organization degrades to the main account instead of failing mid-payment.
+ */
+export function resolveStripeAccount(account: StripeAccountRef): StripeAccountId {
+  const acct = normalizeStripeAccount(account);
+  if (acct !== DEFAULT_STRIPE_ACCOUNT && !stripeAccountConfigured(acct)) {
+    console.warn(`[stripe] account "${acct}" has no secret key — using the default account`);
+    return DEFAULT_STRIPE_ACCOUNT;
+  }
+  return acct;
+}
+
+/** Lazily-constructed client per Stripe account (organization); default = the original STRIPE_SECRET_KEY. */
+export function getStripe(account: StripeAccountRef = DEFAULT_STRIPE_ACCOUNT): Stripe {
+  const acct = resolveStripeAccount(account);
+  const hit = _clients.get(acct);
+  if (hit) return hit;
+  const envName = stripeEnvName('STRIPE_SECRET_KEY', acct);
+  const key = process.env[envName];
+  if (!key) throw new Error(`${envName} is not set`);
+  const client = new Stripe(key);
+  _clients.set(acct, client);
+  return client;
+}
+
+/** Publishable key for an account (Stripe.js), or null when unset. */
+export function stripePublishableKey(account: StripeAccountRef = DEFAULT_STRIPE_ACCOUNT): string | null {
+  return process.env[stripeEnvName('NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY', resolveStripeAccount(account))] ?? null;
 }
 
 // ---------------------------------------------------------------------------
@@ -33,19 +67,24 @@ export interface CreateCustomerInput {
   name?: string;
   /** Always include clerk_user_id so a customer is traceable to its account. */
   metadata: { clerk_user_id: string } & Record<string, string>;
+  /** Stripe account (organization) the customer lives in; default account when omitted. */
+  account?: StripeAccountRef;
 }
 
 export async function createCustomer(input: CreateCustomerInput): Promise<Stripe.Customer> {
-  return getStripe().customers.create({
+  return getStripe(input.account).customers.create({
     email: input.email,
     name: input.name,
     metadata: input.metadata,
   });
 }
 
-/** Look up an existing customer by Clerk user id (metadata search). */
-export async function findCustomerByClerkId(clerkUserId: string): Promise<Stripe.Customer | null> {
-  const res = await getStripe().customers.search({
+/** Look up an existing customer by Clerk user id (metadata search) in one account. */
+export async function findCustomerByClerkId(
+  clerkUserId: string,
+  account: StripeAccountRef = DEFAULT_STRIPE_ACCOUNT,
+): Promise<Stripe.Customer | null> {
+  const res = await getStripe(account).customers.search({
     query: `metadata['clerk_user_id']:'${clerkUserId}'`,
     limit: 1,
   });
@@ -69,8 +108,11 @@ export const PAD_MANDATE_OPTIONS: Stripe.SetupIntentCreateParams.PaymentMethodOp
   };
 
 /** SetupIntent to vault a CARD for future off-session charges. */
-export async function createCardSetupIntent(customerId: string): Promise<Stripe.SetupIntent> {
-  return getStripe().setupIntents.create({
+export async function createCardSetupIntent(
+  customerId: string,
+  account: StripeAccountRef = DEFAULT_STRIPE_ACCOUNT,
+): Promise<Stripe.SetupIntent> {
+  return getStripe(account).setupIntents.create({
     customer: customerId,
     payment_method_types: ['card'],
     usage: 'off_session',
@@ -82,8 +124,11 @@ export async function createCardSetupIntent(customerId: string): Promise<Stripe.
  * the pre-authorized-debit AGREEMENT (mandate). Confirmed client-side with
  * Stripe.js `confirmAcssDebitSetup`, which renders the mandate agreement UI.
  */
-export async function createPadSetupIntent(customerId: string): Promise<Stripe.SetupIntent> {
-  return getStripe().setupIntents.create({
+export async function createPadSetupIntent(
+  customerId: string,
+  account: StripeAccountRef = DEFAULT_STRIPE_ACCOUNT,
+): Promise<Stripe.SetupIntent> {
+  return getStripe(account).setupIntents.create({
     customer: customerId,
     payment_method_types: ['acss_debit'],
     usage: 'off_session',
@@ -99,16 +144,18 @@ export async function createPadSetupIntent(customerId: string): Promise<Stripe.S
 export async function listPaymentMethods(
   customerId: string,
   type: 'card' | 'acss_debit',
+  account: StripeAccountRef = DEFAULT_STRIPE_ACCOUNT,
 ): Promise<Stripe.PaymentMethod[]> {
-  const res = await getStripe().customers.listPaymentMethods(customerId, { type, limit: 100 });
+  const res = await getStripe(account).customers.listPaymentMethods(customerId, { type, limit: 100 });
   return res.data;
 }
 
 export async function setDefaultPaymentMethod(
   customerId: string,
   paymentMethodId: string,
+  account: StripeAccountRef = DEFAULT_STRIPE_ACCOUNT,
 ): Promise<Stripe.Customer> {
-  return getStripe().customers.update(customerId, {
+  return getStripe(account).customers.update(customerId, {
     invoice_settings: { default_payment_method: paymentMethodId },
   });
 }
@@ -120,8 +167,9 @@ export async function setDefaultPaymentMethod(
  */
 export async function padStatus(
   customerId: string,
+  account: StripeAccountRef = DEFAULT_STRIPE_ACCOUNT,
 ): Promise<{ ready: boolean; paymentMethodId: string | null }> {
-  const methods = await listPaymentMethods(customerId, 'acss_debit');
+  const methods = await listPaymentMethods(customerId, 'acss_debit', account);
   return { ready: methods.length > 0, paymentMethodId: methods[0]?.id ?? null };
 }
 
@@ -139,6 +187,8 @@ export interface ChargeInput {
   currency?: string;
   description?: string;
   metadata?: Record<string, string>;
+  /** Stripe account (organization) to charge in — must be the customer's account. */
+  account?: StripeAccountRef;
 }
 
 /**
@@ -150,7 +200,7 @@ export async function charge(input: ChargeInput): Promise<Stripe.PaymentIntent> 
   if (!Number.isInteger(input.amountCents) || input.amountCents <= 0) {
     throw new Error(`charge(): amountCents must be a positive integer, got ${input.amountCents}`);
   }
-  return getStripe().paymentIntents.create({
+  return getStripe(input.account).paymentIntents.create({
     customer: input.customerId,
     amount: input.amountCents,
     currency: input.currency ?? 'cad',
@@ -174,6 +224,8 @@ export interface CreateInvoiceInput {
   /** Days the payer has to pay (send_invoice collection). Default 30. */
   daysUntilDue?: number;
   metadata?: Record<string, string>;
+  /** Stripe account (organization) to invoice from — must be the customer's account. */
+  account?: StripeAccountRef;
 }
 
 /**
@@ -182,7 +234,7 @@ export interface CreateInvoiceInput {
  * immediately so it has a hosted payment URL.
  */
 export async function createInvoice(input: CreateInvoiceInput): Promise<Stripe.Invoice> {
-  const stripe = getStripe();
+  const stripe = getStripe(input.account);
   if (input.items.length === 0) throw new Error('createInvoice(): at least one item required');
   for (const item of input.items) {
     if (!Number.isInteger(item.amountCents) || item.amountCents <= 0) {
@@ -224,6 +276,8 @@ export interface HostedCheckoutInput {
   metadata: Record<string, string>;
   successUrl: string;
   cancelUrl: string;
+  /** Stripe account (organization) the payment settles in. */
+  account?: StripeAccountRef;
 }
 
 /**
@@ -237,7 +291,7 @@ export async function createHostedCheckout(input: HostedCheckoutInput): Promise<
   if (!Number.isInteger(input.amountCents) || input.amountCents <= 0) {
     throw new Error(`createHostedCheckout: bad amount ${input.amountCents}`);
   }
-  return getStripe().checkout.sessions.create({
+  return getStripe(input.account).checkout.sessions.create({
     mode: 'payment',
     customer: input.customerId ?? undefined,
     payment_method_types: ['card'],
@@ -259,8 +313,11 @@ export async function createHostedCheckout(input: HostedCheckoutInput): Promise<
 }
 
 /** Retrieve a Checkout Session (payment status + metadata) by id. */
-export async function getHostedCheckout(sessionId: string): Promise<Stripe.Checkout.Session> {
-  return getStripe().checkout.sessions.retrieve(sessionId);
+export async function getHostedCheckout(
+  sessionId: string,
+  account: StripeAccountRef = DEFAULT_STRIPE_ACCOUNT,
+): Promise<Stripe.Checkout.Session> {
+  return getStripe(account).checkout.sessions.retrieve(sessionId);
 }
 
 // ---------------------------------------------------------------------------
@@ -277,6 +334,32 @@ export async function getHostedCheckout(sessionId: string): Promise<Stripe.Check
  */
 export function verifyWebhook(rawBody: string, signature: string, secret: string): Stripe.Event {
   const client =
-    _stripe ?? new Stripe(process.env.STRIPE_SECRET_KEY ?? 'sk_unused_signature_verify_only');
+    _clients.get(DEFAULT_STRIPE_ACCOUNT) ??
+    new Stripe(process.env.STRIPE_SECRET_KEY ?? 'sk_unused_signature_verify_only');
   return client.webhooks.constructEvent(rawBody, signature, secret);
+}
+
+/**
+ * Verify against EVERY configured account's signing secret (each organization
+ * has its own endpoint pointing at the same URL) and report which account
+ * signed it. Throws when none match or none are configured.
+ */
+export function verifyWebhookAny(
+  rawBody: string,
+  signature: string,
+): { event: Stripe.Event; account: StripeAccountId } {
+  let lastErr: unknown = null;
+  let any = false;
+  for (const a of STRIPE_ACCOUNTS) {
+    const secret = process.env[stripeEnvName('STRIPE_WEBHOOK_SECRET', a.id)];
+    if (!secret) continue;
+    any = true;
+    try {
+      return { event: verifyWebhook(rawBody, signature, secret), account: a.id };
+    } catch (err) {
+      lastErr = err;
+    }
+  }
+  if (!any) throw new Error('No STRIPE_WEBHOOK_SECRET configured for any account');
+  throw lastErr ?? new Error('Webhook signature did not match any account');
 }

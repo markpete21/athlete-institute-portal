@@ -5,8 +5,7 @@ import {
   price,
   torontoToday,
   type PriceLineInput,
-  type PriceResult,
-} from '@ai/foundation';
+  type PriceResult, accountForBrand, pickStripeAccount, singleStripeAccount, type StripeAccountId } from '@ai/foundation';
 import { supabaseAdmin } from '@ai/foundation/supabase';
 import { applyPlayPoints } from '@/lib/credits';
 
@@ -23,6 +22,8 @@ import { applyPlayPoints } from '@/lib/credits';
  */
 
 interface RegRow {
+  /** Resolved Stripe account (organization) the program settles in. */
+  stripeAccount: StripeAccountId;
   id: number;
   program_id: number;
   family_id: number | null;
@@ -42,18 +43,20 @@ interface RegRow {
 async function loadRegs(registrationIds: number[]): Promise<RegRow[]> {
   const { data, error } = await supabaseAdmin()
     .from('registrations')
-    .select('id, program_id, family_id, standing, refund_insurance, programs(program_types(key), base_price_cents, early_bird_price_cents, early_bird_until, late_fee_cents, late_fee_after, returning_discount_cents, multi_member_discount_cents, scholarship_eligible)')
+    .select('id, program_id, family_id, standing, refund_insurance, programs(program_types(key), brand_key, stripe_account, base_price_cents, early_bird_price_cents, early_bird_until, late_fee_cents, late_fee_after, returning_discount_cents, multi_member_discount_cents, scholarship_eligible)')
     .in('id', registrationIds);
   if (error) throw new Error(error.message);
   return (data ?? []).map((r) => {
     const p = r.programs as unknown as {
       program_types: { key: string };
+      brand_key: string | null; stripe_account: string | null;
       base_price_cents: number; early_bird_price_cents: number | null; early_bird_until: string | null;
       late_fee_cents: number; late_fee_after: string | null; returning_discount_cents: number | null;
       multi_member_discount_cents: number; scholarship_eligible: boolean;
     };
     return {
       id: r.id, program_id: r.program_id, family_id: r.family_id, standing: r.standing, refund_insurance: r.refund_insurance,
+      stripeAccount: pickStripeAccount(p?.stripe_account, accountForBrand(p?.brand_key)),
       type_key: p.program_types.key,
       base_price_cents: p.base_price_cents, early_bird_price_cents: p.early_bird_price_cents, early_bird_until: p.early_bird_until,
       late_fee_cents: p.late_fee_cents, late_fee_after: p.late_fee_after, returning_discount_cents: p.returning_discount_cents,
@@ -219,10 +222,15 @@ export async function placeProgramOrder(input: PlaceOrderInput): Promise<{ order
   const addonsCents = (input.addons ?? []).reduce((a, x) => a + x.priceCents * (x.qty ?? 1), 0);
   const orderTotal = quote.totalCents + addonsCents;
 
+  // One checkout charges ONE Stripe account: every program in the order must
+  // settle in the same organization (throws otherwise).
+  const stripeAccount = singleStripeAccount(regs.map((r) => r.stripeAccount), 'programs');
+
   const { data: order, error } = await db
     .from('program_orders')
     .insert({
       family_id: familyId,
+      stripe_account: stripeAccount,
       cart_id: null,
       promo_code: input.promoCents ? 'PROMO' : null,
       subtotal_cents: quote.subtotalCents + addonsCents,

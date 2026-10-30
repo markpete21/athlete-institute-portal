@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import SignInLink from '@/components/site/SignInLink';
 import { notFound } from 'next/navigation';
 import { headers } from 'next/headers';
 import { getSiteSession } from '@/lib/site/editor-session';
@@ -48,7 +49,7 @@ export default async function EditorLayout({ children, params }: { children: Rea
           <p className="text-body text-sm">Sign in to edit this site.</p>
         )}
         <div className="flex flex-wrap gap-2">
-          {satellite && !session.userId && <a className="btn-gold btn-sm" href={`${PLAY_URL}/sign-in?redirect_url=${encodeURIComponent(`${origin}/admin`)}`}>Sign in</a>}
+          {satellite && !session.userId && <SignInLink className="btn-gold btn-sm" fallbackHref={`${PLAY_URL}/sign-in?redirect_url=${encodeURIComponent(`${origin}/admin`)}`} redirectPath="/admin">Sign in</SignInLink>}
           <a className={satellite ? 'btn-ghost btn-sm' : 'btn-gold btn-sm'} href={`${ADMIN_URL}/sites`}>Open from Admin › Websites</a>
           <Link className="btn-ghost btn-sm" href="/">Back to the site</Link>
         </div>

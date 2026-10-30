@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { verifyWebhook } from '@ai/foundation/stripe';
+import { verifyWebhookAny } from '@ai/foundation/stripe';
 import { dispatchBillingEvent, mapStripeEvent } from '@ai/foundation';
 
 export const dynamic = 'force-dynamic';
@@ -13,8 +13,7 @@ export const dynamic = 'force-dynamic';
  * Handlers must be idempotent on stripeEventId — Stripe retries delivery.
  */
 export async function POST(req: NextRequest) {
-  const secret = process.env.STRIPE_WEBHOOK_SECRET;
-  if (!secret) {
+  if (!process.env.STRIPE_WEBHOOK_SECRET) {
     console.error('[stripe-webhook] STRIPE_WEBHOOK_SECRET is not set');
     return NextResponse.json({ error: 'Webhook not configured' }, { status: 500 });
   }
@@ -22,16 +21,19 @@ export async function POST(req: NextRequest) {
   const signature = req.headers.get('stripe-signature');
   if (!signature) return NextResponse.json({ error: 'Missing signature' }, { status: 400 });
 
+  // Each organization's Stripe account has its own endpoint pointing here;
+  // whichever signing secret validates tells us which account sent it.
   const rawBody = await req.text();
   let event;
+  let account;
   try {
-    event = verifyWebhook(rawBody, signature, secret);
+    ({ event, account } = verifyWebhookAny(rawBody, signature));
   } catch (err) {
     console.error('[stripe-webhook] signature verification failed:', err);
     return NextResponse.json({ error: 'Invalid signature' }, { status: 400 });
   }
 
-  const billingEvent = mapStripeEvent(event);
+  const billingEvent = mapStripeEvent(event, account);
   if (billingEvent) {
     // Stage 4: log every consumed event (the audit-log utility in Stage 8
     // upgrades this to a durable trail). Modules subscribe via onBillingEvent.

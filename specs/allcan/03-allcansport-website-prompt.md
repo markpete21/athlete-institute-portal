@@ -402,6 +402,16 @@ Settings › **Password protection** sets `brand_sites.settings.gate_password`. 
 ### 10.5b Clerk satellite is opt-in (Oct 30, 2026)
 Satellite domains are a Clerk Pro feature and the production instance is on Hobby. Settings › Domains has a "Clerk satellite domain" checkbox (`settings.clerk_satellite`, default off); only ticked hosts go into the manifest's `satellites` list and get satellite Clerk options in middleware. No env var is involved, so the switch needs no redeploy. While it is off, the brand host never tries to read a session: no Sign in link or account chip, no Follow this team, and `/my-teams` points to Schedules and results, Play and Compete. Tick it (and add the domain under Clerk › Domains › Satellites) after upgrading Clerk; nothing else changes.
 
+**Setup checklist (Oct 30, 2026, from Clerk's satellite-domain guide):**
+1. Clerk plan: satellites need a paid plan on the production instance (free on development instances). Upgrade first.
+2. Clerk dashboard › Domains › Satellites › Add satellite domain: `allcansport.ca` (the apex only; `www` redirects to it before Clerk runs).
+3. DNS at GoDaddy: the `clerk` CNAME for `allcansport.ca` with the target the dashboard prints under DNS configuration. Wait for the **Verified** label (up to 48 h).
+4. Editor › Settings › Domains › tick **Clerk satellite domain** › Save. That republishes `sites/hosts.json` with the host in `satellites`; middleware picks it up within a minute, no deploy.
+   Gotcha found on the day: the brand-assets bucket only allowed image/video MIME types, so the manifest upload had been failing silently since the module shipped (migration 0065 adds `application/json`). After that migration, save Domains once more to publish.
+5. Check: Sign in on allcansport.ca goes to play.athleteinstitute.ca/sign-in and comes back signed in; the account button (Clerk UserButton) shows; Sign out there signs out of Play too.
+
+What the code does for it: the primary hosts (play./admin./compete.) mount `ClerkProvider` with `allowedRedirectOrigins` = every brand-site origin from the manifest (middleware passes them in `x-site-origins`); the brand host mounts it in satellite mode with Play's sign-in and sign-up URLs; every Sign in link on a brand host is built client-side with Clerk's `buildSignInUrl()` (`components/site/SignInLink.tsx`) so the return trip carries Clerk's sync marker (a hand-written `play…/sign-in?redirect_url=` comes back signed out). The header's account control is Clerk's `UserButton`, the same avatar and dropdown as Play, Admin, Live, Tickets and Gear, with the site's own links (My teams and schedule, Site editor) added; the Admin hand-off editor cookie, which has no Clerk session, keeps a look-alike chip. The report-only CSP lists `clerk.allcansport.ca` (the satellite's own Clerk frontend API host).
+
 ### 10.5c Host redirects follow the primary host (Oct 30, 2026)
 First live hit of allcansport.ca looped: Vercel's own domain redirect sent the apex to `www` while the middleware sent `www` to the apex. The middleware now redirects every alias host to the site's **Primary host** (published in the manifest as `primary`), so Settings › Domains must name the same host Vercel keeps. Decision for ALL CAN: apex `allcansport.ca` is canonical; in Vercel › Domains the `www` entry redirects to the apex.
 

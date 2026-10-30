@@ -2,21 +2,25 @@
 
 import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
+import { UserButton } from '@clerk/nextjs';
 import type { NavItem } from '@/lib/site/nav';
 import AskSheet from '@/components/site/AskSheet';
+import SignInLink from '@/components/site/SignInLink';
 
 /**
  * Brand-site header (ALL CAN §3): black bar, shield, top-level items set in
  * the nav face with a period, a mega panel per folder (hover with a pointer,
  * click/Enter for keyboard, Escape closes, focus returns), the phone drawer
- * (Ask + Sign in on top, folders as accordions), the signed-in chip with its
- * dropdown, and the Ask sheet. Pure client so the menus work without a round
+ * (Ask + Sign in on top, folders as accordions), the signed-in account button
+ * (Clerk's UserButton, the same avatar and dropdown as every other app; an
+ * editor signed in through the Admin hand-off has no Clerk session, so they
+ * get a look-alike chip), and the Ask sheet. Pure client so the menus work without a round
  * trip; everything it shows was resolved on the server and passed as props.
  */
 
 export interface HeaderLocation { slug: string; name: string; venue: string | null; status: { label: string; live: boolean }; photoUrl: string | null }
 export interface HeaderSport { slug: string; name: string; markUrl: string; status: 'live' | 'soon' }
-export interface HeaderUser { initials: string; first: string; name: string; email: string; canEdit: boolean }
+export interface HeaderUser { initials: string; first: string; name: string; email: string; canEdit: boolean; /** 'clerk' = a real session (UserButton); 'editor' = the Admin hand-off cookie only. */ via: 'clerk' | 'editor' }
 
 export interface SiteHeaderProps {
   siteName: string;
@@ -103,7 +107,9 @@ export default function SiteHeader(p: SiteHeaderProps) {
             )}
           </nav>
           <div className="hdr-right">
-            {p.user ? (
+            {p.user?.via === 'clerk' ? (
+              <span className="acct"><SiteUserButton p={p} /></span>
+            ) : p.user ? (
               <span className="acct" data-acct-root>
                 <button type="button" className="chip" aria-haspopup="true" aria-expanded={acct} aria-controls="acct-menu" title={p.user.name} onClick={() => setAcct(!acct)}>{p.user.initials}</button>
                 {acct && (
@@ -114,7 +120,7 @@ export default function SiteHeader(p: SiteHeaderProps) {
                 )}
               </span>
             ) : p.signInHref ? (
-              <a className="signin" href={p.signInHref}>Sign in</a>
+              <SignInLink className="signin" fallbackHref={p.signInHref}>Sign in</SignInLink>
             ) : null}
             {p.askEnabled && <button type="button" className="pill pill--line pill--sm" onClick={() => setAsk(true)}>Ask {p.askName}</button>}
           </div>
@@ -135,15 +141,17 @@ export default function SiteHeader(p: SiteHeaderProps) {
           <nav className="dnav" aria-label="Main" onClick={(e) => { const a = (e.target as HTMLElement).closest('a'); if (a && !a.hasAttribute('data-keep')) setDrawer(false); }}>
             <div className="dnav-top">
               {p.askEnabled ? <button type="button" className="pill pill--ink" onClick={() => { setDrawer(false); setAsk(true); }}>Ask {p.askName}</button> : <span />}
-              {p.user ? (
+              {p.user?.via === 'clerk' ? (
+                <span className="pill pill--line dnav-user"><SiteUserButton p={p} /><span className="dnav-user-name">{p.user.first}</span></span>
+              ) : p.user ? (
                 <button type="button" className="pill pill--line" aria-expanded={dacct} aria-controls="dnav-acct" onClick={() => setDacct(!dacct)}>
                   <span className="mini" aria-hidden="true">{p.user.initials}</span>{p.user.first}<span className="chev down" aria-hidden="true" />
                 </button>
               ) : p.signInHref ? (
-                <a className="pill pill--line" href={p.signInHref}>Sign in</a>
+                <SignInLink className="pill pill--line" fallbackHref={p.signInHref}>Sign in</SignInLink>
               ) : <span />}
             </div>
-            {p.user && dacct && <div className="dnav-acct" id="dnav-acct"><span className="who">Signed in as {p.user.name}</span><AccountLinks p={p} /></div>}
+            {p.user?.via === 'editor' && dacct && <div className="dnav-acct" id="dnav-acct"><span className="who">Signed in as {p.user.name}</span><AccountLinks p={p} /></div>}
             {roots.map((n) =>
               n.kind === 'folder' ? (
                 <details key={n.id}>
@@ -176,6 +184,40 @@ export default function SiteHeader(p: SiteHeaderProps) {
   );
 }
 
+/**
+ * The account control every other Athlete Institute app uses: Clerk's
+ * UserButton (the account's own picture on a white backing with a grey ring,
+ * so a dark or transparent avatar still shows on the black bar) and its
+ * dropdown: Manage account and Sign out from Clerk, plus this site's own
+ * links. Clerk portals the menu to <body>, so it renders the same here as on
+ * Play, Admin, Live, Tickets and Gear. Signing out from a satellite signs out
+ * everywhere; the trip through /api/site/signout also drops the editor cookie.
+ */
+function SiteUserButton({ p }: { p: SiteHeaderProps }) {
+  return (
+    <UserButton
+      afterSignOutUrl={`${p.signOutHref}?back=/`}
+      appearance={{ elements: { avatarBox: 'site-avatar', avatarImage: 'site-avatar-img' } }}
+    >
+      <UserButton.MenuItems>
+        <UserButton.Link label="My teams and schedule" labelIcon={<MenuIcon kind="calendar" />} href={p.myTeamsHref} />
+        {p.user?.canEdit ? <UserButton.Link label="Site editor" labelIcon={<MenuIcon kind="pencil" />} href={p.editorHref} /> : null}
+        <UserButton.Action label="manageAccount" />
+        <UserButton.Action label="signOut" />
+      </UserButton.MenuItems>
+    </UserButton>
+  );
+}
+
+function MenuIcon({ kind }: { kind: 'calendar' | 'pencil' }) {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      {kind === 'calendar' ? <><rect x="3" y="5" width="18" height="16" rx="2" /><path d="M3 10h18M8 3v4M16 3v4" /></> : <path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z" />}
+    </svg>
+  );
+}
+
+/** Dropdown links for the hand-off editor chip (no Clerk session on this host). */
 function AccountLinks({ p }: { p: SiteHeaderProps }) {
   return (
     <>

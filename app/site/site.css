@@ -166,7 +166,15 @@
 .site .dnav .sub-gap{display:block;border-top:1px solid var(--rule-strong);margin:8px 0 2px}
 .site .dnav-top{display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:16px 0;border-bottom:1px solid var(--rule-strong)}
 .site .acct{position:relative;display:inline-flex}
-.site .chip{width:40px;height:40px;border-radius:999px;background:var(--white);color:var(--black);font-weight:700;font-size:14px;letter-spacing:.02em;display:inline-flex;align-items:center;justify-content:center;transition:opacity var(--fast) var(--ease)}
+/* Account button: Clerk's UserButton, as on every other app. White backing +
+   grey ring so a dark or transparent avatar still reads on the black bar; the
+   hand-off editor chip (no Clerk session) copies the same look. */
+.site .site-avatar{width:32px;height:32px;border-radius:999px;background:var(--white);box-shadow:0 0 0 1px var(--black),0 0 0 3px #8a8a8a}
+.site .site-avatar-img{background:var(--white)}
+.site .dnav-user{display:inline-flex;align-items:center;gap:10px;min-width:0}
+.site .dnav-user-name{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.site .dnav-user .site-avatar{box-shadow:0 0 0 1px var(--white),0 0 0 3px #8a8a8a}
+.site .chip{width:32px;height:32px;border-radius:999px;background:var(--white);color:var(--black);font-weight:700;font-size:12px;letter-spacing:.02em;display:inline-flex;align-items:center;justify-content:center;box-shadow:0 0 0 1px var(--black),0 0 0 3px #8a8a8a;transition:opacity var(--fast) var(--ease)}
 .site .chip:hover{opacity:.86}
 .site .acct-menu{position:absolute;right:0;top:calc(100% + 18px);width:270px;background:var(--white);color:var(--ink);border:1px solid var(--rule-strong);border-top:2px solid var(--ink);z-index:55}
 .site .acct-menu .who{padding:14px 16px;border-bottom:1px solid var(--rule-strong);display:grid;gap:2px}

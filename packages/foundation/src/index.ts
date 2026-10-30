@@ -34,6 +34,7 @@ export * from './staff-pay';
 export * from './competitive';
 export * from './leagues-core';
 export * from './billing-events';
+export * from './stripe-accounts';
 export * from './notify-templates';
 export * from './money';
 export * from './tax';
