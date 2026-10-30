@@ -155,17 +155,18 @@ async function inferTemplate(brand: string, parts: string[]): Promise<string> {
 
 async function LocationsFinder({ ctx, page, sport }: { ctx: Ctx; page: SitePage | null; sport?: string }) {
   const locs = await listLocations(ctx.brandKey);
-  const cities = [...new Set(locs.map((l) => l.city ?? l.name))];
+  // Grouped by province/region (Ontario), one hairline row per location.
+  const regions = [...new Set(locs.map((l) => l.region || 'Canada'))];
   const blocks = page ? (ctx.preview ? page.blocksDraft : page.blocksPublished ?? []) : [];
   return (
     <>
       <PageHead kicker="Locations" title="Locations." lede="Pick a location to see its programs, venue details and schedule." crumbs={[['Home', '/'], ['Locations', '']]} />
-      <Section tight><SplitGrid left={<span className="label">By city</span>} right={<>
-        {cities.map((c) => (
+      <Section tight><SplitGrid left={<h2>{regions.length === 1 ? `${regions[0]}.` : 'By province.'}</h2>} right={<>
+        {regions.map((c) => (
           <div key={c}>
-            <h3 style={{ margin: '8px 0 10px' }}>{c}.</h3>
+            {regions.length > 1 && <h3 style={{ margin: '8px 0 10px' }}>{c}.</h3>}
             <div className="rows">
-              {locs.filter((l) => (l.city ?? l.name) === c).map((l) => { const st = locationStatusLabel(l); return <Row key={l.slug} href={`/${l.slug}`} title={l.name} meta={<>{l.venue}{l.address ? ` · ${l.address}` : ''}<br />{l.sports.map((s) => sportBySlug(s)?.name ?? s).join(', ')}</>} end={<StatusPill label={st.label} live={st.live} />} />; })}
+              {locs.filter((l) => (l.region || 'Canada') === c).map((l) => { const st = locationStatusLabel(l); return <Row key={l.slug} href={`/${l.slug}`} title={l.name} meta={<>{l.venue}{l.address ? ` · ${l.address}` : ''}<br />{l.sports.map((s) => sportBySlug(s)?.name ?? s).join(', ')}</>} end={<StatusPill label={st.label} live={st.live} />} />; })}
             </div>
             <div style={{ height: 28 }} />
           </div>
@@ -194,19 +195,36 @@ async function LocationHub({ ctx, loc, page }: { ctx: Ctx; loc: SiteLocation; pa
   const blocks = page ? (ctx.preview ? page.blocksDraft : page.blocksPublished ?? []) : [];
   return (
     <>
-      <PhotoHead loc={loc} ctx={ctx} kicker={`${loc.city ?? loc.region} · ${st.label}`} title={`${loc.name}.`} lede={progs.length ? `${progs.map((p) => p.name).join(' and ')} at ${loc.venue ?? loc.name}.` : loc.note ?? ''} crumbs={[['Home', '/'], ['Locations', '/locations'], [loc.name, '']]} />
+      <PhotoHead loc={loc} ctx={ctx} kicker={st.label} title={`${loc.name}.`} lede={progs.length ? `${progs.map((p) => p.name).join(' and ')} at ${loc.venue ?? loc.name}.` : ''} crumbs={[['Home', '/'], ['Locations', '/locations'], [loc.name, '']]} />
       <Section tight><SecHead label="Venue" /><SplitGrid
-        left={<><h2>{loc.venue ?? loc.name}.</h2>{loc.address && <p className="muted" style={{ marginTop: 12 }}>{loc.address}</p>}{loc.note && <p className="note" style={{ marginTop: 8 }}><T preview={ctx.preview}>{loc.note}</T></p>}</>}
-        right={<FactsDl preview={ctx.preview} facts={[['Address', loc.address ?? '[TBC]'], ['Parking', loc.parking ?? '[TBC]'], ['Arrival', loc.arrival ?? '[TBC]'], ['Contact', loc.contact ?? ctx.site.contact.email ?? '[TBC]'], ['Local updates', loc.socialUrl ?? '[TBC]']]} />}
+        left={<><h2>{loc.venue ?? loc.name}.</h2><p className="muted" style={{ marginTop: 12 }}>{[loc.city, loc.region].filter(Boolean).join(', ')}</p>{loc.note && <p className="note" style={{ marginTop: 8 }}><T preview={ctx.preview}>{loc.note}</T></p>}</>}
+        right={<FactsDl preview={ctx.preview} facts={[
+          ['Address', loc.address ? <span className="addr">{loc.address}<a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent([loc.venue, loc.address].filter(Boolean).join(', '))}`} target="_blank" rel="noopener">Google Maps</a></span> : '[TBC]'],
+          ['Parking', loc.parking ?? '[TBC]'], ['Arrival', loc.arrival ?? '[TBC]'], ['Contact', loc.contact ?? ctx.site.contact.email ?? '[TBC]'],
+        ]} />}
       />
         {loc.photos.length > 0 && <VenuePhotos photos={loc.photos} />}
       </Section>
-      <Section><SecHead label="Sports here" /><div className="rows">
+      <Section><SecHead label="Programs here" /><div className="rows">
         {loc.sports.map((s) => { const sp = sportBySlug(s); const here = progs.filter((p) => p.sport === s); return <Row key={s} href={`/${loc.slug}/${s}`} title={sp?.name ?? s} meta={here.map((p) => p.name).join(' · ')} end={<StatusPill label={st.label} live={st.live} />} />; })}
-        {SPORTS.filter((s) => !loc.sports.includes(s.slug)).map((s) => <Row key={s.slug} title={s.name} muted meta="Not offered here yet." end={<span className="status">Coming soon</span>} />)}
       </div></Section>
-      <Section><SecHead label="Season calendar" /><SplitGrid left={<h2>Key dates.</h2>} right={<FactsDl preview={ctx.preview} facts={loc.calendar.length ? loc.calendar : [['Registration opens', '[TBC]'], ['Placement', '[TBC]'], ['Jerseys', '[TBC]'], ['First session', '[TBC]'], ['Last session', '[TBC]']]} />} /></Section>
-      <Section><SecHead label="Coaches" /><SplitGrid left={<h2>Who coaches<br />here.</h2>} right={<p className="muted">Coach profiles for {loc.name} are <T preview={ctx.preview}>[TBC]</T>. Every coach is screened before working with players.</p>} /></Section>
+      <DevelopmentArm brandKey={ctx.brandKey} />
+      <Section><SecHead label="Season calendar" /><SplitGrid left={<h2>Key dates.</h2>} right={<FactsDl preview={ctx.preview} facts={loc.calendar.length ? loc.calendar : DEFAULT_KEY_DATES} />} /></Section>
+      <Section><SecHead label="Program leadership" /><SplitGrid
+        left={<h2>Program<br />leadership.</h2>}
+        right={<>
+          {loc.leaders.length > 0 ? (
+            <div className="leaders">{loc.leaders.map((l) => (
+              <article key={l.name} className="leader">
+                <div className="leader-photo">{l.photoUrl ? <LeaderPhoto url={l.photoUrl} name={l.name} /> : <span aria-hidden="true">{l.name.split(/\s+/).map((w) => w[0]).join('').slice(0, 2).toUpperCase()}</span>}</div>
+                <div><h3>{l.name}</h3>{l.role && <p className="kicker" style={{ marginTop: 4 }}>{l.role}</p>}{l.bio && <p className="muted" style={{ marginTop: 10 }}>{l.bio}</p>}</div>
+              </article>
+            ))}</div>
+          ) : <p className="muted">Program leadership for {loc.name} is <T preview={ctx.preview}>[TBC]</T>.</p>}
+          <p className="muted" style={{ marginTop: 20 }}>Every coach is screened before working with players.</p>
+          <CoachingPartners brandKey={ctx.brandKey} />
+        </>}
+      /></Section>
       {results.length > 0 && <Section><SecHead label="Scores" right={<Link href="/scores">All games</Link>} /><div className="site-compete"><div className="cs-gamegrid">{results.map((g) => <GameCard key={g.id} g={{ id: g.id, startsAt: g.startsAt, round: null, stage: 'regular', status: 'final', homeTeamId: null, awayTeamId: null, homeTeam: g.homeTeam, awayTeam: g.awayTeam, homeScore: g.homeScore, awayScore: g.awayScore, overtime: g.overtime, liveStreamRef: g.liveStreamRef }} />)}</div></div></Section>}
       <BlockRenderer blocks={blocks} ctx={ctx} />
     </>
@@ -417,6 +435,38 @@ function VenuePhotos({ photos, single }: { photos: { url: string; alt: string; c
           <figcaption className="kicker">{p.caption}</figcaption>
         </figure>
       ))}
+    </div>
+  );
+}
+
+const DEFAULT_KEY_DATES: [string, string][] = [['Registration opens', '[TBC]'], ['Registration deadline', '[TBC]'], ['First session and evaluations', '[TBC]'], ['Team formation and uniforms', '[TBC]'], ['Last session & championships', '[TBC]']];
+
+/** "ALL CAN Basketball is the development arm of All Canadian Basketball" with the All Canadian x ALL CAN lockup, on black. */
+function DevelopmentArm({ brandKey }: { brandKey: string }) {
+  return (
+    <section className="dev-arm on-dark">
+      <div className="wrap">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src={`/sites/${brandKey}/logos/lockup-all-canadian.png`} alt="All Canadian Games and ALL CAN" />
+        <p>ALL CAN Basketball is the development arm of All&nbsp;Canadian Basketball.</p>
+      </div>
+    </section>
+  );
+}
+
+function LeaderPhoto({ url, name }: { url: string; name: string }) {
+  // eslint-disable-next-line @next/next/no-img-element
+  return <img src={url} alt={name} loading="lazy" />;
+}
+
+/** Safe Sport and NCCP marks (white-on-dark files) on a small black strip. */
+function CoachingPartners({ brandKey }: { brandKey: string }) {
+  return (
+    <div className="coach-partners" aria-label="Coaching partners">
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img src={`/sites/${brandKey}/partners/safe-sport-training.png`} alt="Safe Sport Training" />
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img src={`/sites/${brandKey}/partners/nccp.png`} alt="National Coaching Certification Program" />
     </div>
   );
 }

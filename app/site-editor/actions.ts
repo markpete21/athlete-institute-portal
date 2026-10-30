@@ -349,6 +349,7 @@ export async function saveLocationAction(fd: FormData): Promise<void> {
     venue: str(fd.get('venue')), address: str(fd.get('address')), parking: str(fd.get('parking')), arrival: str(fd.get('arrival')), contact: str(fd.get('contact')), socialUrl: str(fd.get('socialUrl')),
     status: (str(fd.get('status')) || 'opening_soon') as SiteLocation['status'], launchLabel: str(fd.get('launchLabel')), sports: fd.getAll('sports').map(String), note: str(fd.get('note')),
     photoUrl: str(fd.get('photoUrl')), photoAlt: str(fd.get('photoAlt')), calendar, sortOrder: num(fd.get('sortOrder')) ?? 100,
+    leaders: Array.from({ length: 8 }, (_, i) => ({ name: str(fd.get(`leader_name_${i}`)), role: str(fd.get(`leader_role_${i}`)), bio: str(fd.get(`leader_bio_${i}`)), photoUrl: str(fd.get(`leader_photo_${i}`)) || null })).filter((l) => l.name),
   };
   await saveLocation(brand, input, session.userId!);
   revalidateSite(brand);

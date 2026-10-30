@@ -450,6 +450,16 @@ The Circuit page's Schedule and results and Standings use the Blue Arrow Classic
 - **Team logos** (`site_league_teams`: name, short name, city, logo) show beside team names on the schedule, the standings and the Teams list; a dashed circle stands in until a logo is added. Editor: Circuit › Teams panel, one upload per team. Seeded: Orangeville Bears and Woodbridge Lions (`/sites/all-can/teams/`).
 - **Finished games expand** (native `<details>`, chevron on the Final pill) to the top five scorers per team with points; the **player of the game** is bold with the red maple leaf. Entered per game in the Circuit tab as "Name | points" lines plus the player of the game; stored as `site_league_games.scorers`.
 
+### 10.5j Location page layout (Oct 30, 2026; migration 0077) — every location
+- Hero kicker is the status only ("Coming Jan 2027"); lede lists the location's programs at the venue.
+- Venue: venue name, then "City, Province" (no address on the left; it's in the facts). Facts: Address with a **Google Maps** link beside it, Parking, Arrival, Contact (Local updates removed).
+- **Programs here** (was Sports here): only the sports offered at the location; no "not offered yet" rows.
+- **Development-arm band** on black: the All Canadian Games × ALL CAN crest lockup (`/sites/all-can/logos/lockup-all-canadian.png`) and "ALL CAN Basketball is the development arm of All Canadian Basketball."
+- Key dates default to Registration opens · Registration deadline · First session and evaluations · Team formation and uniforms · Last session & championships.
+- **Program leadership** (was Coaches): photo, name, role and a short bio per person (`site_locations.leaders`, edited under Locations in the editor), then "Every coach is screened…" and the Safe Sport Training and NCCP marks on a black strip.
+- Toronto Midtown data: area-name note removed, the skills program archived, the league renamed **ALL CAN Basketball Youth League**.
+- Locations finder: the list is grouped under the province heading ("Ontario.") with each location as a row; city sub-headings removed.
+
 ### 10.6 Still manual before launch
 Run 0064 → upload the real photos → replace every `[TBC]` in Programs → Settings › Domains (Vercel project + DNS; Clerk satellite only with Clerk Pro) → Verify DNS → Coming soon → SEO setup, Search Console, sitemap → Live. The §9 legal list is unchanged. Registration on the brand host, the Accessibility and Concussion pages, and Futura hosting remain later stages.
 

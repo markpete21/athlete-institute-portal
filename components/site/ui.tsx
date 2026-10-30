@@ -41,13 +41,13 @@ export function StatusPill({ label, live }: { label: string; live: boolean }) {
   return <span className={`status ${live ? 'status--live' : 'status--soon'}`}>{label}</span>;
 }
 
-export function FactsDl({ facts, preview }: { facts: [string, string][]; preview?: boolean }) {
+export function FactsDl({ facts, preview }: { facts: [string, ReactNode][]; preview?: boolean }) {
   return (
     <dl className="facts">
       {facts.map(([k, v], i) => (
         <div key={`${k}-${i}`}>
           <dt>{k}</dt>
-          <dd><T preview={preview}>{v}</T></dd>
+          <dd>{typeof v === 'string' ? <T preview={preview}>{v}</T> : v}</dd>
         </div>
       ))}
     </dl>

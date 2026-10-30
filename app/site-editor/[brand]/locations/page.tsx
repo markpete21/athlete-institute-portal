@@ -60,6 +60,18 @@ function LocationForm({ brand, loc, photos }: { brand: string; loc: SiteLocation
         <F id={`l-${k}-alt`} label="Photo alt text" name="photoAlt" value={loc?.photoAlt} />
         <F id={`l-${k}-sort`} label="Order" name="sortOrder" value={String(loc?.sortOrder ?? 100)} />
       </div>
+      <fieldset className="flex flex-col gap-3 border-t border-hairline pt-4">
+        <legend className="text-sm font-extrabold">Program leadership</legend>
+        <p className="text-xs text-silver">Shown on the location page with a photo and a short bio. Leave a name blank to remove that person.</p>
+        {[...(loc?.leaders ?? []), { name: '', role: '', bio: '', photoUrl: null }].slice(0, 8).map((l, i) => (
+          <div key={i} className="grid gap-2 rounded border border-hairline p-3 sm:grid-cols-3">
+            <div className="flex flex-col"><label className="field-label" htmlFor={`l-${k}-ln${i}`}>Name</label><input id={`l-${k}-ln${i}`} name={`leader_name_${i}`} defaultValue={l.name} className="input text-sm" /></div>
+            <div className="flex flex-col"><label className="field-label" htmlFor={`l-${k}-lr${i}`}>Role</label><input id={`l-${k}-lr${i}`} name={`leader_role_${i}`} defaultValue={l.role} className="input text-sm" placeholder="e.g. Program Director" /></div>
+            <div className="flex flex-col"><label className="field-label" htmlFor={`l-${k}-lp${i}`}>Photo</label><select id={`l-${k}-lp${i}`} name={`leader_photo_${i}`} defaultValue={l.photoUrl ?? ''} className="input text-sm"><option value="">None yet</option>{photos.map((p) => <option key={p.url} value={p.url}>{p.name}</option>)}</select></div>
+            <div className="flex flex-col sm:col-span-3"><label className="field-label" htmlFor={`l-${k}-lb${i}`}>Short bio</label><textarea id={`l-${k}-lb${i}`} name={`leader_bio_${i}`} defaultValue={l.bio} rows={2} className="input text-sm" placeholder="Two or three sentences" /></div>
+          </div>
+        ))}
+      </fieldset>
       <div><SubmitButton className="btn-gold btn-sm">{loc ? 'Save location' : 'Create location and its pages'}</SubmitButton></div>
     </form>
   );

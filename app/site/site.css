@@ -569,3 +569,19 @@
 .site .venue-photo{margin:0;display:grid;gap:8px}
 .site .venue-photo img{width:100%;aspect-ratio:3/2;object-fit:cover;display:block;background:var(--paper)}
 @media (max-width:640px){.site .venue-photos{grid-template-columns:1fr}}
+
+/* Location page: address + map link, development-arm band, leadership */
+.site .addr{display:inline-flex;flex-wrap:wrap;gap:4px 14px;align-items:baseline}
+.site .addr a{font-weight:600;white-space:nowrap}
+.site .dev-arm{background:var(--black);color:var(--white);margin-top:var(--section)}
+.site .dev-arm .wrap{display:grid;grid-template-columns:minmax(0,auto) minmax(0,1fr);gap:24px 56px;align-items:center;padding-block:48px}
+.site .dev-arm img{height:120px;width:auto;display:block}
+.site .dev-arm p{font-size:clamp(20px,2vw,28px);font-weight:600;line-height:1.2;max-width:28ch;color:var(--white)}
+@media (max-width:760px){.site .dev-arm .wrap{grid-template-columns:1fr}.site .dev-arm img{height:84px}}
+.site .leaders{display:grid;gap:28px}
+.site .leader{display:grid;grid-template-columns:140px minmax(0,1fr);gap:20px;align-items:start}
+.site .leader-photo{aspect-ratio:4/5;background:var(--paper);display:grid;place-items:center;overflow:hidden;font-weight:700;font-size:28px;color:var(--cg11)}
+.site .leader-photo img{width:100%;height:100%;object-fit:cover;display:block}
+@media (max-width:560px){.site .leader{grid-template-columns:100px minmax(0,1fr)}}
+.site .coach-partners{display:flex;flex-wrap:wrap;gap:28px;align-items:center;background:var(--black);padding:18px 22px;margin-top:20px}
+.site .coach-partners img{height:40px;width:auto;display:block}
