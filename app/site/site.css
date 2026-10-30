@@ -561,3 +561,10 @@
   .site .sched-head h3{font-size:18px}.site .sched-count{display:block;margin:4px 0 0}
   .site .stand-cols span:nth-child(n+6):nth-child(-n+7), .site .stand-row span:nth-child(n+6):nth-child(-n+7){display:none}
 }
+
+/* Venue photos */
+.site .venue-photos{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:var(--gutter);margin-top:36px}
+.site .venue-photos--one{grid-template-columns:1fr;margin:0 0 24px}
+.site .venue-photo{margin:0;display:grid;gap:8px}
+.site .venue-photo img{width:100%;aspect-ratio:3/2;object-fit:cover;display:block;background:var(--paper)}
+@media (max-width:640px){.site .venue-photos{grid-template-columns:1fr}}

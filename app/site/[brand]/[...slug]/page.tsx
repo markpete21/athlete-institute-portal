@@ -201,7 +201,9 @@ async function LocationHub({ ctx, loc, page }: { ctx: Ctx; loc: SiteLocation; pa
       <Section tight><SecHead label="Venue" /><SplitGrid
         left={<><h2>{loc.venue ?? loc.name}.</h2>{loc.address && <p className="muted" style={{ marginTop: 12 }}>{loc.address}</p>}{loc.note && <p className="note" style={{ marginTop: 8 }}><T preview={ctx.preview}>{loc.note}</T></p>}</>}
         right={<FactsDl preview={ctx.preview} facts={[['Address', loc.address ?? '[TBC]'], ['Parking', loc.parking ?? '[TBC]'], ['Arrival', loc.arrival ?? '[TBC]'], ['Contact', loc.contact ?? ctx.site.contact.email ?? '[TBC]'], ['Local updates', loc.socialUrl ?? '[TBC]']]} />}
-      /></Section>
+      />
+        {loc.photos.length > 0 && <VenuePhotos photos={loc.photos} />}
+      </Section>
       <Section><SecHead label="Sports here" /><div className="rows">
         {loc.sports.map((s) => { const sp = sportBySlug(s); const here = progs.filter((p) => p.sport === s); return <Row key={s} href={`/${loc.slug}/${s}`} title={sp?.name ?? s} meta={here.map((p) => p.name).join(' · ')} end={<StatusPill label={st.label} live={st.live} />} />; })}
         {SPORTS.filter((s) => !loc.sports.includes(s.slug)).map((s) => <Row key={s.slug} title={s.name} muted meta="Not offered here yet." end={<span className="status">Coming soon</span>} />)}
@@ -344,6 +346,7 @@ async function Circuit({ ctx, page, division }: { ctx: Ctx; page: SitePage | nul
         <Section tight>
           <SecHead label={`${season ? `${season} season` : 'Season'}`} right={<StatusPill label={programStatusLabel(rep).label} live={programStatusLabel(rep).live} />} />
           <SplitGrid left={<><h2>Key info.</h2>{rep.description && <p className="muted" style={{ marginTop: 12 }}>{rep.description}</p>}</>} right={<>
+            {(() => { const dome = loc?.photos.find((p) => /dome/i.test(p.caption)) ?? null; return dome ? <VenuePhotos photos={[{ ...dome, caption: `${dome.caption} · Home court` }]} single /> : null; })()}
             <dl className="circuit-facts">{rep.facts.map(([k, v]) => <div key={k}><dt>{k}</dt><dd><T preview={ctx.preview}>{v}</T></dd></div>)}</dl>
             {teams.length > 0 && <div style={{ marginTop: 24 }}><p className="kicker" style={{ marginBottom: 8 }}>Teams</p><div className="circuit-teams">{teams.map((t) => <span key={t}><TeamLogo url={logoOf(t)} small />{t}</span>)}</div></div>}
           </>} />
@@ -403,6 +406,21 @@ function PhotoHead({ loc, ctx, kicker, title, lede, crumbs }: { loc: SiteLocatio
       </section>
       <div className="wrap"><nav className="crumbs" aria-label="Breadcrumb">{crumbs.map(([l, h], i) => <span key={i} style={{ display: 'contents' }}>{i > 0 && <span aria-hidden="true">/</span>}{h ? <Link href={h}>{l}</Link> : <span aria-current="page">{l}</span>}</span>)}</nav></div>
     </>
+  );
+}
+
+/** Venue photo figures: two across (hub page) or one wide (Circuit key info). */
+function VenuePhotos({ photos, single }: { photos: { url: string; alt: string; caption: string }[]; single?: boolean }) {
+  return (
+    <div className={`venue-photos${single ? ' venue-photos--one' : ''}`}>
+      {photos.map((p) => (
+        <figure key={p.url} className="venue-photo">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={p.url} alt={p.alt} loading="lazy" />
+          <figcaption className="kicker">{p.caption}</figcaption>
+        </figure>
+      ))}
+    </div>
   );
 }
 

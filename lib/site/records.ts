@@ -30,6 +30,8 @@ export interface SiteLocation {
   note: string | null;
   photoUrl: string | null;
   photoAlt: string | null;
+  /** Extra venue photos (e.g. Fieldhouse, Dome). */
+  photos: { url: string; alt: string; caption: string }[];
   calendar: [string, string][];
   sortOrder: number;
 }
@@ -71,7 +73,7 @@ function toLoc(r: Record<string, unknown>): SiteLocation {
     venue: (r.venue as string) ?? null, address: (r.address as string) ?? null, parking: (r.parking as string) ?? null, arrival: (r.arrival as string) ?? null,
     contact: (r.contact as string) ?? null, socialUrl: (r.social_url as string) ?? null, status: (r.status as LocationStatus) ?? 'opening_soon',
     launchLabel: (r.launch_label as string) ?? null, sports: (r.sports as string[]) ?? [], note: (r.note as string) ?? null,
-    photoUrl: (r.photo_url as string) ?? null, photoAlt: (r.photo_alt as string) ?? null, calendar: pairs(r.calendar), sortOrder: (r.sort_order as number) ?? 100,
+    photoUrl: (r.photo_url as string) ?? null, photoAlt: (r.photo_alt as string) ?? null, photos: Array.isArray(r.photos) ? (r.photos as { url: string; alt: string; caption: string }[]) : [], calendar: pairs(r.calendar), sortOrder: (r.sort_order as number) ?? 100,
   };
 }
 function toProg(r: Record<string, unknown>): SiteProgram {
@@ -83,12 +85,17 @@ function toProg(r: Record<string, unknown>): SiteProgram {
 }
 
 export async function listLocations(brandKey: string): Promise<SiteLocation[]> {
-  const { data } = await supabaseAdmin().from('site_locations').select(LCOLS).eq('brand_key', brandKey).order('sort_order').order('id');
-  return (data ?? []).map(toLoc);
+  const db = supabaseAdmin();
+  const { data } = await db.from('site_locations').select(LCOLS).eq('brand_key', brandKey).order('sort_order').order('id');
+  const locs = (data ?? []).map(toLoc);
+  // Extra venue photos live in a column added later (0076); read them
+  // separately so the site keeps rendering before that migration runs.
+  const { data: extra } = await db.from('site_locations').select('slug, photos').eq('brand_key', brandKey);
+  if (extra) for (const l of locs) { const row = extra.find((x) => x.slug === l.slug); if (row && Array.isArray(row.photos)) l.photos = row.photos as SiteLocation['photos']; }
+  return locs;
 }
 export async function getLocation(brandKey: string, slug: string): Promise<SiteLocation | null> {
-  const { data } = await supabaseAdmin().from('site_locations').select(LCOLS).eq('brand_key', brandKey).eq('slug', slug).maybeSingle();
-  return data ? toLoc(data) : null;
+  return (await listLocations(brandKey)).find((l) => l.slug === slug) ?? null;
 }
 export async function listPrograms(brandKey: string, filter: { locationSlug?: string; sport?: string; includeArchived?: boolean } = {}): Promise<SiteProgram[]> {
   let q = supabaseAdmin().from('site_programs').select(PCOLS).eq('brand_key', brandKey).order('sort_order').order('id');
