@@ -7,8 +7,7 @@ import type { RenderCtx } from '@/components/site/blocks/BlockRenderer';
 
 /**
  * One program as a block (ALL CAN §4.4): kicker, name, status pill, the fact
- * block in its fixed order, a financial-assistance line beside the price, and
- * on the right the interest form while registration is closed (or the
+ * block in its fixed order and on the right the interest form while registration is closed (or the
  * Circuit details link for the rep program). When Module 4 registration is
  * connected the right column becomes the Register action; until then an
  * external registration link (Playbook) does the same job in a new tab.
@@ -30,7 +29,6 @@ export default function ProgramBlock({ program, location, ctx, primary }: { prog
           <FactsDl facts={program.facts} preview={ctx.preview} />
           {program.description && <p style={{ marginTop: 14 }}><T preview={ctx.preview}>{program.description}</T></p>}
           {!isRep && <p style={{ marginTop: 12 }}><Link href={programLinePath(program.sport, program.leagueType)}>About {program.name}</Link></p>}
-          <p className="note" style={{ marginTop: 12 }}>Financial help is available. <Link href="/financial-assistance">See financial assistance</Link>.</p>
         </div>
         <div className="right">
           {isRep ? (

@@ -25,7 +25,6 @@ This policy applies to all personal information we hold about players, parents a
 - Parent or guardian name, email and, if you choose, phone number.
 - A player's name, age group or birth year, and program choices.
 - Requests and enquiries, such as a request for a new location or an offer to host a program.
-- Financial assistance requests. These are kept confidential and separate from program and coaching records.
 - Your account details when you sign in (name and email), the teams you follow and your notification choices.
   
 **Information about players in our programs**
@@ -50,7 +49,7 @@ We use personal information only to run ALL CAN Sport and to understand what our
 - Running programs: placement, teams, schedules, results and communication with families.
 - Telling you when registration opens for a program you asked about.
 - Sending the notifications you chose, such as schedule changes and final scores.
-- Answering requests and enquiries, and reviewing financial assistance requests.
+- Answering requests and enquiries.
 - Taking registrations and payments, once registration opens on this site.
 - Keeping the site secure and working well.
 - Meeting legal obligations, including Rowan's Law and tax records.
