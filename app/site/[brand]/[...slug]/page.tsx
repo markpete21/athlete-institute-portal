@@ -207,7 +207,7 @@ async function LocationHub({ ctx, loc, page }: { ctx: Ctx; loc: SiteLocation; pa
   const blocks = page ? (ctx.preview ? page.blocksDraft : page.blocksPublished ?? []) : [];
   return (
     <>
-      <PhotoHead loc={loc} ctx={ctx} kicker={st.label} title={`${loc.name}.`} lede={progs.length ? `${progs.map((p) => p.name).join(' and ')} at ${loc.venue ?? loc.name}.` : ''} crumbs={[['Home', '/'], ['Locations', '/locations'], [loc.name, '']]} />
+      <PhotoHead loc={loc} ctx={ctx} kicker={st.label} title={`${loc.name}.`} lede={progs.length ? `${progs.map((p) => p.name).join(' and ')} at ${loc.venue ?? loc.name}.` : ''} ledeNode={progs.some((p) => p.logoUrl) ? <>{progs.map((p, i) => <span key={p.id}>{i > 0 && ' and '}{p.logoUrl ? /* eslint-disable-next-line @next/next/no-img-element */ <img className="lede-logo" src={p.logoUrl} alt={p.name} /> : p.name}</span>)}<span className="lede-at">at {loc.venue ?? loc.name}.</span></> : undefined} crumbs={[['Home', '/'], ['Locations', '/locations'], [loc.name, '']]} />
       <Section tight><SecHead label="Venue" /><SplitGrid
         left={<><h2>{loc.venue ?? loc.name}.</h2><p className="muted" style={{ marginTop: 12 }}>{[loc.city, loc.region].filter(Boolean).join(', ')}</p>{loc.note && <p className="note" style={{ marginTop: 8 }}><T preview={ctx.preview}>{loc.note}</T></p>}</>}
         right={<FactsDl preview={ctx.preview} facts={[
@@ -475,7 +475,7 @@ async function Circuit({ ctx, page, division }: { ctx: Ctx; page: SitePage | nul
 }
 
 /** Location pages: the venue photo as a full-bleed hero when one is set, otherwise the plain page head. */
-function PhotoHead({ loc, ctx, kicker, title, lede, crumbs }: { loc: SiteLocation; ctx: Ctx; kicker: string; title: string; lede: string; crumbs: [string, string][] }) {
+function PhotoHead({ loc, ctx, kicker, title, lede, ledeNode, crumbs }: { loc: SiteLocation; ctx: Ctx; kicker: string; title: string; lede: string; ledeNode?: React.ReactNode; crumbs: [string, string][] }) {
   if (!loc.photoUrl) return <PageHead kicker={kicker} title={title} lede={lede} crumbs={crumbs} preview={ctx.preview} />;
   return (
     <>
@@ -487,7 +487,7 @@ function PhotoHead({ loc, ctx, kicker, title, lede, crumbs }: { loc: SiteLocatio
           <p className="kicker" style={{ color: 'var(--white)' }}><T preview={ctx.preview}>{kicker}</T></p>
           <div className="lane" aria-hidden="true"><i /><i /><i /></div>
           <h1><T preview={ctx.preview}>{title}</T></h1>
-          {lede && <p className="sub"><T preview={ctx.preview}>{lede}</T></p>}
+          {ledeNode ? <p className="sub sub--logo">{ledeNode}</p> : lede && <p className="sub"><T preview={ctx.preview}>{lede}</T></p>}
         </div></div></div>
       </section>
       <div className="wrap"><nav className="crumbs" aria-label="Breadcrumb">{crumbs.map(([l, h], i) => <span key={i} style={{ display: 'contents' }}>{i > 0 && <span aria-hidden="true">/</span>}{h ? <Link href={h}>{l}</Link> : <span aria-current="page">{l}</span>}</span>)}</nav></div>

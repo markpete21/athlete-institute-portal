@@ -361,7 +361,7 @@ export async function saveProgramAction(fd: FormData): Promise<void> {
   const facts = str(fd.get('facts')).split('\n').map((l) => l.split('|').map((x) => x.trim())).filter((p) => p[0]).map((p) => [p[0], p[1] ?? '[TBC]'] as [string, string]);
   const input: Partial<SiteProgram> & { name: string; locationSlug: string; sport: string; leagueType: string } = {
     id: num(fd.get('id')) ?? undefined, slug: str(fd.get('slug')) || undefined, name: str(fd.get('name')), locationSlug: str(fd.get('locationSlug')), sport: str(fd.get('sport')), leagueType: str(fd.get('leagueType')) || 'league',
-    status: (str(fd.get('status')) || 'coming_soon') as SiteProgram['status'], statusLabel: str(fd.get('statusLabel')), description: str(fd.get('description')), facts, programId: num(fd.get('programId')), registerUrl: /^https:\/\//i.test(str(fd.get('registerUrl'))) ? str(fd.get('registerUrl')) : null, sortOrder: num(fd.get('sortOrder')) ?? 100,
+    status: (str(fd.get('status')) || 'coming_soon') as SiteProgram['status'], statusLabel: str(fd.get('statusLabel')), description: str(fd.get('description')), facts, programId: num(fd.get('programId')), registerUrl: /^https:\/\//i.test(str(fd.get('registerUrl'))) ? str(fd.get('registerUrl')) : null, logoUrl: /^(\/|https:\/\/)/i.test(str(fd.get('logoUrl'))) && !/\.svg(\?|$)/i.test(str(fd.get('logoUrl'))) ? str(fd.get('logoUrl')) : null, sortOrder: num(fd.get('sortOrder')) ?? 100,
   };
   await saveProgram(brand, input, session.userId!);
   revalidateSite(brand);
