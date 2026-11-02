@@ -207,7 +207,7 @@ async function LocationHub({ ctx, loc, page }: { ctx: Ctx; loc: SiteLocation; pa
   const blocks = page ? (ctx.preview ? page.blocksDraft : page.blocksPublished ?? []) : [];
   return (
     <>
-      <PhotoHead loc={loc} ctx={ctx} kicker={st.label} title={`${loc.name}.`} lede={progs.length ? `${progs.map((p) => p.name).join(' and ')} at ${loc.venue ?? loc.name}.` : ''} ledeNode={progs.some((p) => p.logoUrl) ? <>{progs.map((p, i) => <span key={p.id}>{i > 0 && ' and '}{p.logoUrl ? /* eslint-disable-next-line @next/next/no-img-element */ <img className="lede-logo" src={p.logoUrl} alt={p.name} /> : p.name}</span>)}<span className="lede-at">at {loc.venue ?? loc.name}.</span></> : undefined} crumbs={[['Home', '/'], ['Locations', '/locations'], [loc.name, '']]} />
+      <PhotoHead loc={loc} ctx={ctx} kicker={st.label} title={`${loc.name}.`} lede={progs.length ? `${progs.map((p) => p.name).join(' and ')} at ${loc.venue ?? loc.name}.` : ''} ledeNode={progs.some((p) => p.logoUrl) ? <>{progs.map((p, i) => <span key={p.id}>{i > 0 && ' and '}{p.logoUrl ? <LedeLogo url={p.logoUrl} name={p.name} /> : p.name}</span>)}<span className="lede-at">at {loc.venue ?? loc.name}.</span></> : undefined} crumbs={[['Home', '/'], ['Locations', '/locations'], [loc.name, '']]} />
       <Section tight><SecHead label="Venue" /><SplitGrid
         left={<><h2>{loc.venue ?? loc.name}.</h2><p className="muted" style={{ marginTop: 12 }}>{[loc.city, loc.region].filter(Boolean).join(', ')}</p>{loc.note && <p className="note" style={{ marginTop: 8 }}><T preview={ctx.preview}>{loc.note}</T></p>}</>}
         right={<FactsDl preview={ctx.preview} facts={[
@@ -523,6 +523,11 @@ function DevelopmentArm({ brandKey }: { brandKey: string }) {
       </div>
     </section>
   );
+}
+
+function LedeLogo({ url, name }: { url: string; name: string }) {
+  // eslint-disable-next-line @next/next/no-img-element
+  return <img className="lede-logo" src={url} alt={name} />;
 }
 
 function LeaderPhoto({ url, name }: { url: string; name: string }) {
