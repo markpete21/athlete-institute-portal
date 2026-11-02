@@ -1,6 +1,6 @@
 import { listPrograms } from '@/lib/site/records';
 import { divisionsOf, listGames, listTeams, standings, type LeagueGame } from '@/lib/site/league';
-import { deleteGameAction, saveGameAction, saveTeamAction } from '../../actions';
+import { deleteGameAction, saveGameAction, saveTeamAction, setStreamForUpcomingAction } from '../../actions';
 import { SubmitButton } from '@/app/admin/brands/SubmitButton';
 import { PreviewButton } from '../PreviewButton';
 
@@ -44,6 +44,16 @@ export default async function LeaguePage({ params, searchParams }: { params: { b
       </section>
       <div className="flex flex-col gap-5">
         <section className="card flex flex-col gap-3 p-5">
+          <div className="card-head"><h2>Live stream</h2></div>
+          <p className="text-body text-xs">One link for every game that hasn&apos;t finished. The schedule shows Watch live in place of Upcoming. Set a different link on a single game below.</p>
+          <form action={setStreamForUpcomingAction} className="flex flex-col gap-2">
+            <input type="hidden" name="brand" value={brand} /><input type="hidden" name="leagueSlug" value={slug} />
+            <label className="field-label" htmlFor="ls-url">Stream link</label>
+            <input id="ls-url" name="streamUrl" type="url" className="input text-sm" placeholder="https://www.youtube.com/@…/live" defaultValue={games.find((g) => g.status !== 'final' && g.streamUrl)?.streamUrl ?? ''} />
+            <SubmitButton className="btn-ghost btn-sm self-start">Apply to upcoming games</SubmitButton>
+          </form>
+        </section>
+        <section className="card flex flex-col gap-3 p-5">
           <div className="card-head"><h2>Add a game</h2></div>
           <form action={saveGameAction} className="grid grid-cols-2 gap-2">
             <input type="hidden" name="brand" value={brand} /><input type="hidden" name="leagueSlug" value={slug} />
@@ -53,6 +63,7 @@ export default async function LeaguePage({ params, searchParams }: { params: { b
             <div className="flex flex-col"><label className="field-label" htmlFor="ng-home">Home</label><input id="ng-home" name="home" required className="input text-sm" /></div>
             <div className="flex flex-col"><label className="field-label" htmlFor="ng-away">Away</label><input id="ng-away" name="away" required className="input text-sm" /></div>
             <div className="col-span-2 flex flex-col"><label className="field-label" htmlFor="ng-note">Note</label><input id="ng-note" name="note" className="input text-sm" placeholder="Optional, e.g. Court 2" /></div>
+            <div className="col-span-2 flex flex-col"><label className="field-label" htmlFor="ng-stream">Live stream link</label><input id="ng-stream" name="streamUrl" type="url" className="input text-sm" placeholder="Optional, https://…" /></div>
             <input type="hidden" name="status" value="scheduled" />
             <div className="col-span-2"><SubmitButton className="btn-gold btn-sm" pendingLabel="Adding…" doneLabel="Added">Add game</SubmitButton></div>
           </form>
@@ -102,6 +113,7 @@ function GameRow({ brand, g, slug }: { brand: string; g: LeagueGame; slug: strin
         <div className="flex flex-col"><label className="field-label" htmlFor={`g-${g.id}-as`}>Away score</label><input id={`g-${g.id}-as`} name="awayScore" type="number" min={0} defaultValue={g.awayScore ?? ''} className="input text-xs" /></div>
         <div className="flex flex-col"><label className="field-label" htmlFor={`g-${g.id}-st`}>Status</label><select id={`g-${g.id}-st`} name="status" defaultValue={g.status} className="input text-xs"><option value="scheduled">Scheduled</option><option value="final">Final</option><option value="postponed">Postponed</option></select></div>
         <div className="col-span-2 flex flex-col sm:col-span-3"><label className="field-label" htmlFor={`g-${g.id}-note`}>Note</label><input id={`g-${g.id}-note`} name="note" defaultValue={g.note ?? ''} className="input text-xs" /></div>
+        <div className="col-span-2 flex flex-col sm:col-span-4"><label className="field-label" htmlFor={`g-${g.id}-stream`}>Live stream link</label><input id={`g-${g.id}-stream`} name="streamUrl" type="url" defaultValue={g.streamUrl ?? ''} className="input text-xs" placeholder="https://…" /></div>
         <details className="col-span-2 sm:col-span-4" open={!!g.scorers}>
           <summary className="cursor-pointer text-xs font-bold">Top scorers and player of the game</summary>
           <div className="mt-2 grid grid-cols-2 gap-2">

@@ -677,3 +677,11 @@
 .site .hero .sub--logo{display:flex;flex-wrap:wrap;align-items:flex-end;gap:10px 14px;margin-top:22px}
 .site .hero .sub--logo .lede-logo{display:block;height:clamp(52px,6vw,84px);width:auto;max-width:100%}
 .site .hero .sub--logo .lede-at{padding-bottom:2px}
+/* Schedule: live stream link in place of "Upcoming" */
+.site a.sched-live{gap:6px;text-decoration:none;color:var(--ink);border-color:var(--ink);transition:background var(--fast) var(--ease),color var(--fast) var(--ease)}
+.site a.sched-live:hover{background:var(--ink);color:var(--white)}
+.site a.sched-live.is-live{background:var(--red);border-color:var(--red);color:var(--white)}
+.site a.sched-live.is-live:hover{opacity:.86;color:var(--white)}
+.site .live-dot{display:inline-block;width:6px;height:6px;border-radius:50%;background:currentColor;animation:livepulse 1.4s ease-in-out infinite}
+@keyframes livepulse{0%,100%{opacity:1}50%{opacity:.3}}
+@media (prefers-reduced-motion:reduce){.site .live-dot{animation:none}}

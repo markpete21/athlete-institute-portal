@@ -76,7 +76,7 @@ export const BLOCK_TYPES: BlockTypeDef[] = [
   { type: 'checklist', label: 'Checklist', group: 'Content', hint: 'What\'s included, with an optional photo', defaults: { label: 'Included', heading: '', intro: '', items: [{ text: '' }], imageUrl: '', imageAlt: '', caption: '', ctaLabel: '', ctaHref: '' } },
   { type: 'person', label: 'Person', group: 'Content', hint: 'A coach or staff member: photo, name, role, bio, link', defaults: { label: 'Your coach', name: '', role: '', bio: '', imageUrl: '', imageAlt: '', caption: '', linkLabel: '', linkHref: '' } },
   { type: 'venue', label: 'Venue', group: 'Locations & programs', hint: 'Photo, address, directions and an optional map', defaults: { label: 'Venue', name: '', address: '', facts: [], imageUrl: '', imageAlt: '', directionsUrl: '', mapEmbedUrl: '' } },
-  { type: 'lockup_band', label: 'Partnership band', group: 'Content', hint: 'A partner lockup with one line, on black', defaults: { imageUrl: '/sites/all-can/logos/lockup-all-canadian.png', alt: 'All Canadian Games and ALL CAN', text: 'ALL CAN Basketball is the development arm of All Canadian Basketball.' } },
+  { type: 'lockup_band', label: 'Partnership band', group: 'Content', hint: 'A partner lockup with one line, on black', defaults: { imageUrl: '/sites/all-can/logos/lockup-all-canadian-basketball.png', alt: 'All Canadian Games and ALL CAN Basketball', text: 'ALL CAN Basketball is the development arm of All Canadian Basketball Games, est. 2015.' } },
   { type: 'spacer', label: 'Space', group: 'Layout', hint: 'Vertical space', defaults: { size: 'md' } },
   { type: 'divider', label: 'Hairline', group: 'Layout', hint: 'A rule across the page', defaults: {} },
 ];
