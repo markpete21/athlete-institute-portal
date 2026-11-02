@@ -46,6 +46,8 @@ export interface SiteHeaderProps {
 
 const withPeriod = (l: string) => (/[.!?]$/.test(l) ? l : `${l}.`);
 const hrefOf = (n: NavItem) => n.href ?? '#';
+/** Loose links after a heading link (meta.heading) are indented beneath it. */
+const looseClass = (list: NavItem[], i: number) => (list[i].meta.heading ? 'nav-head' : list.slice(0, i).some((x) => x.meta.heading) ? 'nav-sub' : undefined);
 const PDESC: Record<string, string> = { League: 'Youth league. Skills block, then games.', Skills: 'Skill sessions for every level.', Circuit: 'Rep teams, based in Orangeville.', 'Rep Circuit': 'League in Orangeville, ON' };
 
 export default function SiteHeader(p: SiteHeaderProps) {
@@ -166,8 +168,8 @@ export default function SiteHeader(p: SiteHeaderProps) {
                       </div>
                     ))}
                     {n.children.some((c) => c.kind === 'folder') && n.children.some((c) => c.kind !== 'folder' && !c.featured) && <span className="sub-gap" aria-hidden="true" />}
-                    {n.children.filter((c) => c.kind !== 'folder' && !c.featured).map((c) => (
-                      <a key={c.id} href={hrefOf(c)} target={c.newTab ? '_blank' : undefined} rel={c.newTab ? 'noopener' : undefined}>{c.label}<span className="chev" aria-hidden="true" /></a>
+                    {n.children.filter((c) => c.kind !== 'folder' && !c.featured).map((c, i, list) => (
+                      <a key={c.id} className={looseClass(list, i)} href={hrefOf(c)} target={c.newTab ? '_blank' : undefined} rel={c.newTab ? 'noopener' : undefined}>{c.label}<span className="chev" aria-hidden="true" /></a>
                     ))}
                   </div>
                 </details>
@@ -233,17 +235,23 @@ function MegaPanel({ n, p, tab, setTab }: { n: NavItem; p: SiteHeaderProps; tab:
   const folders = n.children.filter((c) => c.kind === 'folder');
   const loose = n.children.filter((c) => c.kind !== 'folder' && !c.featured);
   const feat = n.children.find((c) => c.featured);
-  // A featured card is either the ink well with a title, or (meta.card = logo)
-  // the item's image alone on white, e.g. the ALL CAN Circuit lockup.
+  // A featured card is the item's image alone on white (meta.card = logo,
+  // e.g. the ALL CAN Circuit lockup), a photo shown whole with the title
+  // beneath it (photos carry their own branding, so nothing sits on top), or
+  // the ink well with a title when there is no image.
   const featHTML = feat && (
     <a className="mega-feature" href={hrefOf(feat)}>
       {feat.meta.card === 'logo' && feat.imageUrl ? (
         // eslint-disable-next-line @next/next/no-img-element
         <div className="well well--logo"><img src={feat.imageUrl} alt={feat.label} /></div>
+      ) : feat.imageUrl ? (
+        <>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img className="feat-photo" src={feat.imageUrl} alt="" />
+          <h3 className="feat-title">{withPeriod(feat.label)}</h3>
+        </>
       ) : (
         <div className="well on-dark">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          {feat.imageUrl ? <img src={feat.imageUrl} alt="" /> : null}
           <p className="kicker" style={{ color: 'var(--silver)' }}>{feat.meta.note || 'Featured'}</p>
           <h3 style={{ marginTop: 6 }}>{withPeriod(feat.label)}</h3>
         </div>
@@ -334,7 +342,7 @@ function MegaPanel({ n, p, tab, setTab }: { n: NavItem; p: SiteHeaderProps; tab:
         {loose.length > 0 && (
           <div className="mega-col">
             {folders.length > 0 && <h3>More</h3>}
-            {loose.map((g) => <a key={g.id} href={hrefOf(g)} target={g.newTab ? '_blank' : undefined} rel={g.newTab ? 'noopener' : undefined}><span>{g.label}</span><span className="chev" aria-hidden="true" /></a>)}
+            {loose.map((g, i) => <a key={g.id} className={looseClass(loose, i)} href={hrefOf(g)} target={g.newTab ? '_blank' : undefined} rel={g.newTab ? 'noopener' : undefined}><span>{g.label}</span><span className="chev" aria-hidden="true" /></a>)}
           </div>
         )}
         {folders.map((f) => (

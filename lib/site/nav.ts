@@ -23,7 +23,7 @@ export interface NavItem {
   featured: boolean;
   sortOrder: number;
   visible: boolean;
-  meta: { soon?: boolean; sport?: string; note?: string; card?: 'logo' };
+  meta: { soon?: boolean; sport?: string; note?: string; card?: 'logo'; /** A loose link set as the column's title; the loose links after it sit indented beneath it. */ heading?: boolean };
   children: NavItem[];
 }
 

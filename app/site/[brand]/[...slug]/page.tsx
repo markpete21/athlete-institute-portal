@@ -447,13 +447,14 @@ async function Circuit({ ctx, page, division }: { ctx: Ctx; page: SitePage | nul
 
       <Section id="standings" tight>
         <SecHead label="Standings" />
-        {table.size === 0 || [...table.values()].every((rows) => rows.every((r) => r.gp === 0)) ? <p className="muted">Standings appear after the first final score. Wins first, then point difference.</p> : (
+        {table.size === 0 ? <p className="muted">Standings appear once the schedule is set. Wins first, then point difference.</p> : (
           <div className="sched-list">
-            {[...table.entries()].filter(([d]) => !sel || d === sel).map(([div, rows]) => (
+            {/* Every scheduled team shows from the start, at 0 until its first final score. */}
+            {[...table.entries()].sort(([a], [b]) => a.localeCompare(b)).filter(([d]) => !sel || d === sel).map(([div, rows]) => (
               <section key={div} className="sched-day">
                 <div className="sched-head"><h3>{div || 'League'}<span className="sched-count">{rows.length} teams</span></h3><span className="sched-div">Wins, then point difference</span></div>
                 <div className="stand-cols" aria-hidden="true"><span>#</span><span>Team</span><span>GP</span><span>W</span><span>L</span><span>PF</span><span>PA</span><span>Diff</span></div>
-                {rows.map((r, i) => <div key={r.team} className={`stand-row${i === 0 && r.gp > 0 ? ' is-first' : ''}`}><span className="rk">{i + 1}</span><Team name={r.team} /><span>{r.gp}</span><span className="w">{r.w}</span><span>{r.l}</span><span>{r.pf}</span><span>{r.pa}</span><span className="df">{r.diff > 0 ? `+${r.diff}` : r.diff}</span></div>)}
+                {rows.map((r, i) => <div key={r.team} className={`stand-row${i === 0 && r.gp > 0 ? ' is-first' : ''}`}><span className="rk">{rows.some((x) => x.gp > 0) ? i + 1 : '–'}</span><Team name={r.team} /><span>{r.gp}</span><span className="w">{r.w}</span><span>{r.l}</span><span>{r.pf}</span><span>{r.pa}</span><span className="df">{r.diff > 0 ? `+${r.diff}` : r.diff}</span></div>)}
               </section>
             ))}
           </div>
@@ -586,7 +587,7 @@ async function About({ ctx, page }: { ctx: Ctx; page: SitePage | null }) {
       <BlockRenderer blocks={blocks} ctx={ctx} />
       <Section id="contact"><SecHead label="Contact" /><SplitGrid left={<h2>Talk to us.</h2>} right={<>
         <FactsDl preview={ctx.preview} facts={[['Email', ctx.site.contact.email ?? '[TBC]'], ['Phone', ctx.site.contact.phone ?? '[TBC]']]} />
-        <p className="note" style={{ marginTop: 12 }}>Registration and cancellations always go through this contact, never social messages.</p>
+        <div style={{ marginTop: 24 }}><LeadForm brandKey={ctx.brandKey} variant="contact" context="About · Talk to us" siteName={ctx.site.name} /></div>
       </>} /></Section>
     </>
   );

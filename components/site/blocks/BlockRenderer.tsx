@@ -197,7 +197,6 @@ async function renderBlock(b: Block, ctx: RenderCtx): Promise<JSX.Element | null
     case 'contact_card': return (
       <section key={key} className="sec" id="contact"><div className="wrap"><SecHead label={s(p.label) || 'Contact'} /><div className="grid"><div className="left"><h2>Talk to us.</h2></div><div className="right">
         <FactsDl preview={ctx.preview} facts={[['Email', ctx.site.contact.email ?? '[TBC]'], ['Phone', ctx.site.contact.phone ?? '[TBC]'], ...(ctx.site.contact.address ? [['Mail', ctx.site.contact.address] as [string, string]] : [])]} />
-        <p className="note" style={{ marginTop: 12 }}>Registration and cancellations always go through this contact, never social messages.</p>
         {p.showForm && <div style={{ marginTop: 24 }}><LeadForm brandKey={ctx.brandKey} variant="contact" siteName={ctx.site.name} /></div>}
       </div></div></div></section>
     );

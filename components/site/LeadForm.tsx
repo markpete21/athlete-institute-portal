@@ -53,7 +53,7 @@ export default function LeadForm(p: LeadFormProps) {
 
   const consent = p.variant === 'interest'
     ? `Email me about ${p.context ?? p.siteName} registration and launch updates. I can unsubscribe at any time.`
-    : p.variant === 'assistance' ? `${p.siteName} may contact me about this request.` : `${p.siteName} may email or call me about this ${p.variant === 'location' ? (mode === 'host' ? 'hosting enquiry' : 'request') : 'request'}.`;
+    : p.variant === 'assistance' ? `${p.siteName} may contact me about this request.` : `${p.siteName} may email or call me about this ${p.variant === 'location' ? (mode === 'host' ? 'hosting enquiry' : 'request') : p.variant === 'contact' ? 'message' : 'request'}.`;
 
   return (
     <form className="form" onSubmit={submit} noValidate>
