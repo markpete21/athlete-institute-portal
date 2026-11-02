@@ -377,7 +377,7 @@ async function Circuit({ ctx, page, division }: { ctx: Ctx; page: SitePage | nul
     return (
       <section className="sched-day">
         <div className="sched-head">
-          <h3>{n.iso ? `${wd}, ${md}` : 'Date to be confirmed'}<span className="sched-count">{n.games.length} game{n.games.length === 1 ? '' : 's'}{n.iso ? ` · ${yr}` : ''}</span></h3>
+          <h3>{n.iso ? `${wd}, ${md}` : 'Date to be confirmed'}{n.iso && <span className="sched-count">{yr.replace(/\.$/, '')}</span>}</h3>
           <span className="sched-div">{n.division || 'All divisions'}{n.note ? ` · ${n.note}` : ''}</span>
         </div>
         <div className="sched-cols" aria-hidden="true"><span /><span /><span>Division</span><span>Home team <b>(Light)</b></span><span /><span>Away team <b>(Dark)</b></span><span /></div>
@@ -386,6 +386,9 @@ async function Circuit({ ctx, page, division }: { ctx: Ctx; page: SitePage | nul
           const hw = fin && g.homeScore! > g.awayScore!, aw = fin && g.awayScore! > g.homeScore!;
           const ppd = g.status === 'postponed';
           const hasScorers = fin && !!g.scorers && ((g.scorers.home?.length ?? 0) > 0 || (g.scorers.away?.length ?? 0) > 0);
+          // On air from 10 minutes before tip-off until about two hours after.
+          const t0 = g.startsAt ? new Date(g.startsAt).getTime() : NaN;
+          const live = !fin && Number.isFinite(t0) && now >= t0 - 10 * 60_000 && now <= t0 + 2 * 3600_000;
           const rowInner = (
             <>
               <span className="sched-time">{fmtTime(g.startsAt).replace(' ET', '')}</span>
@@ -394,7 +397,11 @@ async function Circuit({ ctx, page, division }: { ctx: Ctx; page: SitePage | nul
               <span className="sched-team"><Team name={g.home} jersey="Light" />{fin && <span className={`sc${hw ? ' w' : ''}`}>{g.homeScore}</span>}</span>
               <span className="sched-vs">vs</span>
               <span className="sched-team"><Team name={g.away} jersey="Dark" />{fin && <span className={`sc${aw ? ' w' : ''}`}>{g.awayScore}</span>}</span>
-              <span className={`sched-status${fin ? ' is-final' : ppd ? ' is-ppd' : ''}`}>{fin ? 'Final' : ppd ? 'Postponed' : 'Upcoming'}{hasScorers && <span className="sched-chev" aria-hidden="true">▾</span>}</span>
+              {!fin && !ppd && g.streamUrl ? (
+                <a className={`sched-status sched-live${live ? ' is-live' : ''}`} href={g.streamUrl} target="_blank" rel="noopener" aria-label={`Watch ${g.home} vs ${g.away} live`}>{live && <i className="live-dot" aria-hidden="true" />}{live ? 'Live now' : 'Watch live'}</a>
+              ) : (
+                <span className={`sched-status${fin ? ' is-final' : ppd ? ' is-ppd' : ''}`}>{fin ? 'Final' : ppd ? 'Postponed' : 'Upcoming'}{hasScorers && <span className="sched-chev" aria-hidden="true">▾</span>}</span>
+              )}
             </>
           );
           return hasScorers ? (

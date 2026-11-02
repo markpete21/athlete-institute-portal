@@ -452,8 +452,18 @@ export async function saveGameAction(fd: FormData): Promise<void> {
     startsAt: when ? torontoLocalToIso(when) : null,
     venue: str(fd.get('venue')), home: str(fd.get('home')), away: str(fd.get('away')),
     homeScore: num(fd.get('homeScore')), awayScore: num(fd.get('awayScore')), status: (str(fd.get('status')) || 'scheduled') as 'scheduled' | 'final' | 'postponed', note: str(fd.get('note')),
+    ...(fd.has('streamUrl') ? { streamUrl: /^https:\/\//i.test(str(fd.get('streamUrl'))) ? str(fd.get('streamUrl')) : null } : {}),
     ...(fd.has('homeScorers') ? { scorers: { home: parseScorers(str(fd.get('homeScorers'))), away: parseScorers(str(fd.get('awayScorers'))), potg: str(fd.get('potg')) || null } } : {}),
   }, session.userId!);
+  revalidateSite(brand);
+}
+
+export async function setStreamForUpcomingAction(fd: FormData): Promise<void> {
+  const brand = str(fd.get('brand'));
+  const { session } = await requireSiteRole(brand, ['super', 'admin', 'editor']);
+  const { setStreamForUpcoming } = await import('@/lib/site/league');
+  const url = str(fd.get('streamUrl'));
+  await setStreamForUpcoming(brand, str(fd.get('leagueSlug')) || 'circuit', /^https:\/\//i.test(url) ? url : null, session.userId!);
   revalidateSite(brand);
 }
 

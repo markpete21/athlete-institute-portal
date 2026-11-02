@@ -26,17 +26,20 @@ export interface LeagueGame {
   status: GameStatus;
   note: string | null;
   scorers: GameScorers | null;
+  /** Live stream page for this game (YouTube, a club channel…); shown in place of "Upcoming". */
+  streamUrl: string | null;
 }
 
 export interface StandingRow { team: string; gp: number; w: number; l: number; pf: number; pa: number; diff: number; pct: number }
 
-const COLS = 'id, league_slug, division, starts_at, venue, home, away, home_score, away_score, status, note, scorers';
+const COLS = 'id, league_slug, division, starts_at, venue, home, away, home_score, away_score, status, note, scorers, stream_url';
 
 function toGame(r: Record<string, unknown>): LeagueGame {
   return {
     id: r.id as number, leagueSlug: r.league_slug as string, division: (r.division as string) ?? '', startsAt: (r.starts_at as string) ?? null, venue: (r.venue as string) ?? null,
     home: r.home as string, away: r.away as string, homeScore: (r.home_score as number) ?? null, awayScore: (r.away_score as number) ?? null, status: (r.status as GameStatus) ?? 'scheduled', note: (r.note as string) ?? null,
     scorers: (r.scorers as GameScorers) ?? null,
+    streamUrl: (r.stream_url as string) ?? null,
   };
 }
 
@@ -110,7 +113,7 @@ export async function saveTeam(brandKey: string, leagueSlug: string, input: { na
   await audit({ actorId: actorClerkId, action: 'site.league.team', target: `site:${brandKey}`, meta: { league: leagueSlug, name, logo: !!input.logoUrl } });
 }
 
-export interface GameInput { id?: number; leagueSlug: string; division: string; startsAt: string | null; venue: string; home: string; away: string; homeScore: number | null; awayScore: number | null; status: GameStatus; note: string; scorers?: GameScorers | null }
+export interface GameInput { id?: number; leagueSlug: string; division: string; startsAt: string | null; venue: string; home: string; away: string; homeScore: number | null; awayScore: number | null; status: GameStatus; note: string; scorers?: GameScorers | null; streamUrl?: string | null }
 
 /** "Name | points" lines (or "Name 23") -> scorers, top five by points. */
 export function parseScorers(text: string): Scorer[] {
@@ -127,11 +130,20 @@ export async function saveGame(brandKey: string, input: GameInput, actorClerkId:
     home: input.home.trim(), away: input.away.trim(), home_score: input.homeScore, away_score: input.awayScore,
     status: input.homeScore != null && input.awayScore != null && input.status !== 'postponed' ? 'final' : input.status, note: input.note.trim() || null, updated_at: new Date().toISOString(),
     ...(input.scorers !== undefined ? { scorers: input.scorers } : {}),
+    ...(input.streamUrl !== undefined ? { stream_url: input.streamUrl } : {}),
   };
   const db = supabaseAdmin();
   const { error } = input.id ? await db.from('site_league_games').update(row).eq('brand_key', brandKey).eq('id', input.id) : await db.from('site_league_games').insert({ ...row, created_by: actorClerkId });
   if (error) throw new Error(error.message);
   await audit({ actorId: actorClerkId, action: input.id ? 'site.league.game.update' : 'site.league.game.add', target: `site:${brandKey}`, meta: { league: input.leagueSlug, home: row.home, away: row.away, status: row.status } });
+}
+
+/** One live stream link on every game that hasn't finished (most leagues stream every game on one channel). */
+export async function setStreamForUpcoming(brandKey: string, leagueSlug: string, url: string | null, actorClerkId: string): Promise<number> {
+  const { data, error } = await supabaseAdmin().from('site_league_games').update({ stream_url: url, updated_at: new Date().toISOString() }).eq('brand_key', brandKey).eq('league_slug', leagueSlug).neq('status', 'final').select('id');
+  if (error) throw new Error(error.message);
+  await audit({ actorId: actorClerkId, action: 'site.league.stream', target: `site:${brandKey}`, meta: { league: leagueSlug, games: data?.length ?? 0, url } });
+  return data?.length ?? 0;
 }
 
 export async function deleteGame(brandKey: string, id: number, actorClerkId: string): Promise<void> {
