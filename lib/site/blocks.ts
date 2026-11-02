@@ -15,7 +15,7 @@ export type BlockType =
   | 'why_band' | 'partners' | 'location_list' | 'sport_list' | 'fact_block'
   | 'season_calendar' | 'interest_form' | 'big_buttons' | 'request_form'
   // Landing-page sections (Toronto Midtown, Nov 2026): every one editable
-  | 'page_nav' | 'key_facts' | 'division_cards' | 'steps' | 'timeline' | 'checklist' | 'person' | 'venue'
+  | 'page_nav' | 'key_facts' | 'division_cards' | 'steps' | 'timeline' | 'checklist' | 'person' | 'venue' | 'lockup_band'
   // Editor-only: a Claude draft in progress. Never rendered publicly.
   | 'claude';
 
@@ -76,6 +76,7 @@ export const BLOCK_TYPES: BlockTypeDef[] = [
   { type: 'checklist', label: 'Checklist', group: 'Content', hint: 'What\'s included, with an optional photo', defaults: { label: 'Included', heading: '', intro: '', items: [{ text: '' }], imageUrl: '', imageAlt: '', caption: '', ctaLabel: '', ctaHref: '' } },
   { type: 'person', label: 'Person', group: 'Content', hint: 'A coach or staff member: photo, name, role, bio, link', defaults: { label: 'Your coach', name: '', role: '', bio: '', imageUrl: '', imageAlt: '', caption: '', linkLabel: '', linkHref: '' } },
   { type: 'venue', label: 'Venue', group: 'Locations & programs', hint: 'Photo, address, directions and an optional map', defaults: { label: 'Venue', name: '', address: '', facts: [], imageUrl: '', imageAlt: '', directionsUrl: '', mapEmbedUrl: '' } },
+  { type: 'lockup_band', label: 'Partnership band', group: 'Content', hint: 'A partner lockup with one line, on black', defaults: { imageUrl: '/sites/all-can/logos/lockup-all-canadian.png', alt: 'All Canadian Games and ALL CAN', text: 'ALL CAN Basketball is the development arm of All Canadian Basketball.' } },
   { type: 'spacer', label: 'Space', group: 'Layout', hint: 'Vertical space', defaults: { size: 'md' } },
   { type: 'divider', label: 'Hairline', group: 'Layout', hint: 'A rule across the page', defaults: {} },
 ];
@@ -248,6 +249,7 @@ export function validateBlocks(input: unknown, depth = 0): { blocks: Block[]; is
           imageUrl: imageUrl(p.imageUrl, issues, id), imageAlt: str(p.imageAlt, 400), credit: str(p.credit, 200),
           wordmarkUrl: imageUrl(p.wordmarkUrl, issues, id), wordmarkAlt: str(p.wordmarkAlt, 80),
           logoUrl: imageUrl(p.logoUrl, issues, id),
+          titleLogoUrl: imageUrl(p.titleLogoUrl, issues, id),
           ctaLabel: str(p.ctaLabel, 80), ctaHref: href(p.ctaHref, issues, id, 'Action link'),
           ctaSecondaryLabel: str(p.ctaSecondaryLabel, 80), ctaSecondaryHref: href(p.ctaSecondaryHref, issues, id, 'Second action link'),
           height: ['full', 'short'].includes(String(p.height)) ? String(p.height) : 'short',
@@ -375,6 +377,10 @@ export function validateBlocks(input: unknown, depth = 0): { blocks: Block[]; is
       case 'venue':
         props = { label: str(p.label, 80), name: str(p.name, 160), address: str(p.address, 300), facts: pairs(p.facts, 8), imageUrl: imageUrl(p.imageUrl, issues, id), imageAlt: str(p.imageAlt, 400), directionsUrl: href(p.directionsUrl, issues, id, 'Directions link'), mapEmbedUrl: embedUrl(p.mapEmbedUrl, issues, id) };
         if (props.imageUrl && !props.imageAlt) issues.push({ blockId: id, message: 'Photo needs alt text.' });
+        break;
+      case 'lockup_band':
+        props = { imageUrl: imageUrl(p.imageUrl, issues, id), alt: str(p.alt, 200), text: str(p.text, 300) };
+        if (props.imageUrl && !props.alt) issues.push({ blockId: id, message: 'Lockup needs alt text.' });
         break;
       case 'claude':
         props = { prompt: str(p.prompt, 2000), sources: Array.isArray(p.sources) ? p.sources.slice(0, 10).map((s) => str(s, 80)) : [], length: str(p.length, 40), out: str(p.out, 8000) };

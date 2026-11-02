@@ -670,3 +670,6 @@
 .site .venue .full{margin-top:8px}
 /* Room for the phone Register bar so it never covers the footer */
 @media (max-width:760px){.site:has(.regbar) .ftr{padding-bottom:88px}}
+/* Hero: a logo in place of the headline */
+.site .hero h1.hero-title-logo{margin:4px 0 0;line-height:0}
+.site .hero h1.hero-title-logo img{display:block;width:min(720px,100%);height:auto}

@@ -216,6 +216,14 @@ async function renderBlock(b: Block, ctx: RenderCtx): Promise<JSX.Element | null
     case 'checklist': return <Checklist key={key} p={p} ctx={ctx} />;
     case 'person': return <Person key={key} p={p} ctx={ctx} />;
     case 'venue': return <Venue key={key} p={p} ctx={ctx} />;
+    case 'lockup_band': return s(p.imageUrl) ? (
+      // Same band as the Basketball pages' development-arm strip.
+      <section key={key} className="dev-arm on-dark"><div className="wrap">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src={s(p.imageUrl)} alt={s(p.alt)} />
+        {s(p.text) && <p>{s(p.text)}</p>}
+      </div></section>
+    ) : null;
     case 'spacer': return <div key={key} className={`spacer spacer--${s(p.size) || 'md'}`} aria-hidden="true" />;
     case 'divider': return <div key={key} className="wrap"><hr className="rule" /></div>;
     case 'why_band': return <WhyBand key={key} p={p} ctx={ctx} />;
@@ -317,7 +325,14 @@ function Hero({ p, ctx }: { p: Record<string, never>; ctx: RenderCtx }) {
           {/* eslint-disable-next-line @next/next/no-img-element */}
           {s(p.logoUrl) && <img src={s(p.logoUrl)} alt="" style={{ width: 'min(320px,80%)', height: 'auto', display: 'block', marginBottom: 28 }} />}
           {s(p.kicker) && <p className="kicker" style={{ color: 'var(--silver)' }}>{s(p.kicker)}</p>}
-          {s(p.wordmarkUrl) ? (
+          {s(p.titleLogoUrl) ? (
+            <>
+              {/* A logo in place of the headline; the headline text becomes its alt so the page keeps its H1. */}
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <h1 className="hero-title-logo"><img src={s(p.titleLogoUrl)} alt={lines.join(' ').replace(/\.$/, '') || ctx.site.name} /></h1>
+              {s(p.subheading) && <p className="sub"><T preview={ctx.preview}>{s(p.subheading)}</T></p>}
+            </>
+          ) : s(p.wordmarkUrl) ? (
             <>
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img className="hero-logo" src={s(p.wordmarkUrl)} alt={s(p.wordmarkAlt) || ctx.site.name} />
