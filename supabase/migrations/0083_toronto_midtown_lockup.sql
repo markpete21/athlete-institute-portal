@@ -1,7 +1,7 @@
 -- Toronto Midtown basketball (owner, Nov 2 2026): the ALL CAN Basketball logo
 -- in place of the hero headline (the headline stays as its alt text), and the
 -- All Canadian x ALL CAN partnership band ("development arm of All Canadian
--- Basketball") after Why it works. Draft and published both; both render once
+-- Basketball Games, est. 2015") after Why it works. Draft and published both; both render once
 -- the titleLogoUrl hero option and the lockup_band block ship.
 -- Idempotent.
 update public.site_pages p set
@@ -15,7 +15,7 @@ from (
     from (
       select b, ord from jsonb_array_elements(pg.blocks_draft) with ordinality as t(b, ord) where b->>'id' <> 'partner'
       union all
-      select '{"id":"partner","type":"lockup_band","props":{"imageUrl":"/sites/all-can/logos/lockup-all-canadian.png","alt":"All Canadian Games and ALL CAN","text":"ALL CAN Basketball is the development arm of All Canadian Basketball."}}'::jsonb,
+      select '{"id":"partner","type":"lockup_band","props":{"imageUrl":"/sites/all-can/logos/lockup-all-canadian-basketball.png","alt":"All Canadian Games and ALL CAN Basketball","text":"ALL CAN Basketball is the development arm of All Canadian Basketball Games, est. 2015."}}'::jsonb,
              (select ord from jsonb_array_elements(pg.blocks_draft) with ordinality as t(b, ord) where b->>'id' = 'why') + 0.5
     ) s
   ) as blocks

@@ -519,14 +519,14 @@ function VenuePhotos({ photos, single }: { photos: { url: string; alt: string; c
 
 const DEFAULT_KEY_DATES: [string, string][] = [['Registration opens', '[TBC]'], ['Registration deadline', '[TBC]'], ['First session and evaluations', '[TBC]'], ['Team formation and uniforms', '[TBC]'], ['Last session & championships', '[TBC]']];
 
-/** "ALL CAN Basketball is the development arm of All Canadian Basketball" with the All Canadian x ALL CAN lockup, on black. */
+/** "ALL CAN Basketball is the development arm of All Canadian Basketball Games, est. 2015." with the All Canadian Games x ALL CAN Basketball lockup, on black. */
 function DevelopmentArm({ brandKey }: { brandKey: string }) {
   return (
     <section className="dev-arm on-dark">
       <div className="wrap">
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={`/sites/${brandKey}/logos/lockup-all-canadian.png`} alt="All Canadian Games and ALL CAN" />
-        <p>ALL CAN Basketball is the development arm of All&nbsp;Canadian Basketball.</p>
+        <img src={`/sites/${brandKey}/logos/lockup-all-canadian-basketball.png`} alt="All Canadian Games and ALL CAN Basketball" />
+        <p>ALL CAN Basketball is the development arm of All&nbsp;Canadian Basketball Games, est.&nbsp;2015.</p>
       </div>
     </section>
   );
