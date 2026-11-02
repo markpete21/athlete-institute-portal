@@ -63,7 +63,6 @@ export async function ProgramDetail({ ctx, id }: { ctx: { site: BrandSite; brand
                 <div><dt>Spots</dt><dd>{p.spots_left == null ? 'Open' : p.spots_left > 0 ? `${p.spots_left} left` : 'Full · waitlist'}</dd></div>
                 <div><dt>Status</dt><dd>{open ? 'Registration open' : p.status === 'full' ? 'Full' : 'Registration not open yet'}</dd></div>
               </dl>
-              <p className="note" style={{ marginTop: 12 }}>Financial help is available. <Link href="/financial-assistance">See financial assistance</Link>.</p>
             </div>
             <div className="right">
               <a className={`pill ${open ? 'pill--red' : 'pill--ink'}`} href={`${ctx.site.links.play_url ?? PLAY_URL}/p/${p.share_token}`}>{open ? 'Register on Play. App' : p.status === 'full' ? 'Join the waitlist' : 'View on Play. App'}</a>

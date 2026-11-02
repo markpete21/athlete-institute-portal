@@ -176,7 +176,7 @@ export default async function SiteLayout({ children, params }: { children: React
         myTeamsHref="/my-teams"
         editorHref="/admin"
         askEnabled={site.settings.ask_enabled !== false}
-        askPrompts={['When does registration open?', 'What ages can play?', 'Where is the closest location?', 'Is there financial help?']}
+        askPrompts={['When does registration open?', 'What ages can play?', 'Where is the closest location?', 'What does it cost?']}
         brandKey={site.brandKey}
         preview={preview}
         previewBack={preview ? '/admin/pages' : null}

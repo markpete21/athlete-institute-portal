@@ -159,7 +159,7 @@ export async function draftStory(site: BrandSite, input: { topic: string; locati
       { t: 'h', v: 'What a session looks like' },
       { t: 'p', v: 'Every session opens with a 30-minute skills block. Coaches teach one movement or decision, then players use it in gameplay.' },
       { t: 'h', v: 'What to know before you register' },
-      { t: 'p', v: 'Ages, days, times and price are [TBC]. Every coach is screened before working with players. Financial assistance is available, and requests are confidential.' },
+      { t: 'p', v: 'Ages, days, times and price are [TBC]. Every coach is screened before working with players.' },
       { t: 'q', v: 'Leave your email on the location page and we\'ll tell you the moment registration opens.' },
     ];
   }
