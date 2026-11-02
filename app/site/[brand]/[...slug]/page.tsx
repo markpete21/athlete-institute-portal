@@ -252,9 +252,13 @@ async function LocationSport({ ctx, loc, sport, page }: { ctx: Ctx; loc: SiteLoc
   // leads, the program record(s) follow, then the rest of the blocks. The
   // generic head and the parent-guide FAQ step aside (the page brings its own).
   const heroIdx = blocks.findIndex((b) => b.type === 'hero' && !b.hidden);
+  // A landing page that places a program block itself gets no automatic one.
+  const placesProgram = blocks.some((b) => b.type === 'program_card' && !b.hidden);
   const landing = heroIdx >= 0;
-  const lead = landing ? blocks.slice(0, heroIdx + 1) : [];
-  const rest = landing ? blocks.slice(heroIdx + 1) : blocks;
+  // A page menu right after the hero sits above the breadcrumbs, flush with the hero.
+  const navNext = landing && blocks[heroIdx + 1]?.type === 'page_nav' ? 1 : 0;
+  const lead = landing ? blocks.slice(0, heroIdx + 1 + navNext) : [];
+  const rest = landing ? blocks.slice(heroIdx + 1 + navNext) : blocks;
   const ownFaq = blocks.some((b) => b.type === 'faq' && !b.hidden);
   const crumbs: [string, string][] = [['Home', '/'], ['Locations', '/locations'], [loc.name, `/${loc.slug}`], [sport.name, '']];
   return (
@@ -267,10 +271,10 @@ async function LocationSport({ ctx, loc, sport, page }: { ctx: Ctx; loc: SiteLoc
       ) : (
         <PhotoHead loc={loc} ctx={ctx} kicker={`${loc.name} · ${sport.name}`} title={`${sport.name} in ${loc.name}.`} lede={`Every ${sport.name.toLowerCase()} program at ${loc.venue ?? loc.name}.`} crumbs={crumbs} />
       )}
-      <Section tight><SecHead label={progs.length === 1 ? 'The program' : 'Programs'} right={progs.length > 1 ? <span className="note">{progs.length} programs</span> : undefined} />
+      {!(landing && placesProgram) && <Section tight><SecHead label={progs.length === 1 ? 'The program' : 'Programs'} right={progs.length > 1 ? <span className="note">{progs.length} programs</span> : undefined} />
         {progs.map((p, i) => <ProgramBlock key={p.id} program={p} location={loc} ctx={ctx} primary={i === 0} />)}
         {progs.length === 0 && <p className="muted">No programs published here yet.</p>}
-      </Section>
+      </Section>}
       {!ownFaq && faq.length > 0 && <Section><SecHead label="Before you register" /><SplitGrid left={<h2>Good to know.</h2>} right={<div className="acc">{faq.map((f, i) => <details key={i}><summary>{f.q}<span className="chev down" aria-hidden="true" /></summary><div className="body"><p><T preview={ctx.preview}>{f.a}</T></p>{f.note && <p className="muted"><T preview={ctx.preview}>{f.note}</T></p>}</div></details>)}</div>} /></Section>}
       <BlockRenderer blocks={rest} ctx={ctx} />
     </>

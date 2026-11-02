@@ -9,6 +9,7 @@ import { Chev, FactsDl, SecHead, StatusPill, T } from '@/components/site/ui';
 import LeadForm from '@/components/site/LeadForm';
 import ProgramBlock from '@/components/site/ProgramBlock';
 import { fmtDay, fmtTime } from '@/lib/site/context';
+import { Checklist, DivisionCards, KeyFacts, PageNavBlock, Person, Steps, Timeline, Venue } from '@/components/site/blocks/LandingBlocks';
 
 /**
  * The block renderer (Module 23 §5): every block type, one renderer set,
@@ -20,7 +21,11 @@ export interface RenderCtx { site: BrandSite; brandKey: string; preview: boolean
 
 export default async function BlockRenderer({ blocks, ctx }: { blocks: Block[]; ctx: RenderCtx }) {
   const visible = publicBlocks(blocks);
-  return <>{await Promise.all(visible.map((b) => renderBlock(b, ctx)))}</>;
+  // A block with an anchor is wrapped so the page menu can jump to it.
+  return <>{await Promise.all(visible.map(async (b) => {
+    const el = await renderBlock(b, ctx);
+    return b.anchor && el ? <div key={b.id} id={b.anchor} className="anchor">{el}</div> : el;
+  }))}</>;
 }
 
 const P = (b: Block) => b.props as Record<string, never>;
@@ -85,12 +90,13 @@ async function renderBlock(b: Block, ctx: RenderCtx): Promise<JSX.Element | null
     }
     case 'video': {
       const url = s(p.url);
-      if (!url) return null;
+      // No video yet: editors see a labelled spot (the caption is the brief); the public sees nothing.
+      if (!url) return ctx.preview ? <section key={key} className="sec"><div className="wrap"><figure className="fig"><div className="ph"><span className="kicker">Video <em className="tbc">[TBC]</em></span>{s(p.caption) && <span className="note">{s(p.caption)}</span>}</div></figure></div></section> : null;
       const isFile = /\.(mp4|webm)(\?|$)/i.test(url);
       return (
-        <section key={key} className="sec"><div className="wrap"><div className="video">
+        <section key={key} className="sec"><div className="wrap"><figure className="fig"><div className="video">
           {isFile ? <video src={url} controls playsInline preload="metadata" /> : <iframe src={toEmbed(url)} title="Video" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowFullScreen loading="lazy" />}
-        </div></div></section>
+        </div>{s(p.caption) && <figcaption className="note">{s(p.caption)}</figcaption>}</figure></div></section>
       );
     }
     case 'cta_band': {
@@ -202,6 +208,14 @@ async function renderBlock(b: Block, ctx: RenderCtx): Promise<JSX.Element | null
     );
     case 'map': return s(p.embedUrl) ? <section key={key} className="sec"><div className="wrap"><div className="video map"><iframe src={s(p.embedUrl)} title="Map" loading="lazy" allowFullScreen /></div></div></section> : null;
     case 'embed': return s(p.url) ? <section key={key} className="sec"><div className="wrap"><div className="video"><iframe src={toEmbed(s(p.url))} title="Embedded content" loading="lazy" allowFullScreen /></div></div></section> : null;
+    case 'page_nav': return <PageNavBlock key={key} p={p} />;
+    case 'key_facts': return <KeyFacts key={key} p={p} ctx={ctx} />;
+    case 'division_cards': return <DivisionCards key={key} p={p} ctx={ctx} />;
+    case 'steps': return <Steps key={key} p={p} ctx={ctx} />;
+    case 'timeline': return <Timeline key={key} p={p} ctx={ctx} />;
+    case 'checklist': return <Checklist key={key} p={p} ctx={ctx} />;
+    case 'person': return <Person key={key} p={p} ctx={ctx} />;
+    case 'venue': return <Venue key={key} p={p} ctx={ctx} />;
     case 'spacer': return <div key={key} className={`spacer spacer--${s(p.size) || 'md'}`} aria-hidden="true" />;
     case 'divider': return <div key={key} className="wrap"><hr className="rule" /></div>;
     case 'why_band': return <WhyBand key={key} p={p} ctx={ctx} />;

@@ -43,7 +43,7 @@ export default function ProgramBlock({ program, location, ctx, primary }: { prog
           ) : program.status === 'open' && program.registerUrl ? (
             <div className="reg">
               <a className="pill pill--red" href={program.registerUrl} target="_blank" rel="noopener">Register now<span className="chev" aria-hidden="true" /></a>
-              <p className="note" style={{ marginTop: 12 }}>Opens our registration partner in a new tab. Create a family account, add your player and choose this program.</p>
+              <p className="note" style={{ marginTop: 12 }}>Opens our registration partner, Playbook, in a new tab. Sign in or create a family account, then add your player.</p>
             </div>
           ) : (
             <LeadForm brandKey={ctx.brandKey} variant="interest" context={program.name} siteName={ctx.site.name} />
