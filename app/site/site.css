@@ -673,3 +673,7 @@
 /* Hero: a logo in place of the headline */
 .site .hero h1.hero-title-logo{margin:4px 0 0;line-height:0}
 .site .hero h1.hero-title-logo img{display:block;width:min(720px,100%);height:auto}
+/* Location head: a program logo in place of its name ("[logo] at De La Salle College.") */
+.site .hero .sub--logo{display:flex;flex-wrap:wrap;align-items:flex-end;gap:10px 14px;margin-top:22px}
+.site .hero .sub--logo .lede-logo{display:block;height:clamp(52px,6vw,84px);width:auto;max-width:100%}
+.site .hero .sub--logo .lede-at{padding-bottom:2px}
