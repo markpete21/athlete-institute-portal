@@ -11,7 +11,8 @@ const csp = [
   "img-src 'self' blob: data: https://img.clerk.com https://*.supabase.co",
   "font-src 'self' data:",
   "connect-src 'self' https://*.clerk.accounts.dev https://clerk.athleteinstitute.ca https://clerk.allcansport.ca https://*.supabase.co https://api.stripe.com",
-  "frame-src https://challenges.cloudflare.com https://js.stripe.com https://hooks.stripe.com",
+  // Brand-site embeds (lib/site/blocks.ts EMBED_HOSTS): YouTube, Vimeo, Google Maps, Instagram
+  "frame-src https://challenges.cloudflare.com https://js.stripe.com https://hooks.stripe.com https://www.youtube-nocookie.com https://www.youtube.com https://player.vimeo.com https://www.google.com https://maps.google.com https://www.instagram.com",
   "worker-src 'self' blob:",
   "frame-ancestors 'none'",
   "base-uri 'self'",

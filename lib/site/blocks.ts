@@ -14,6 +14,8 @@ export type BlockType =
   // Brand-site specifics (every theme renders these too)
   | 'why_band' | 'partners' | 'location_list' | 'sport_list' | 'fact_block'
   | 'season_calendar' | 'interest_form' | 'big_buttons' | 'request_form'
+  // Landing-page sections (Toronto Midtown, Nov 2026): every one editable
+  | 'page_nav' | 'key_facts' | 'division_cards' | 'steps' | 'timeline' | 'checklist' | 'person' | 'venue'
   // Editor-only: a Claude draft in progress. Never rendered publicly.
   | 'claude';
 
@@ -22,6 +24,8 @@ export interface Block {
   type: BlockType;
   props: Record<string, unknown>;
   hidden?: boolean;
+  /** In-page link target (#anchor), e.g. for the page menu. Lowercase letters, digits and hyphens. */
+  anchor?: string;
 }
 
 export interface BlockTypeDef {
@@ -64,6 +68,14 @@ export const BLOCK_TYPES: BlockTypeDef[] = [
   { type: 'embed', label: 'Embed', group: 'Media', hint: 'YouTube, Vimeo, Google Maps or Instagram', defaults: { url: '' } },
   { type: 'map', label: 'Map', group: 'Media', hint: 'Google Maps embed', defaults: { embedUrl: '' } },
   { type: 'contact_card', label: 'Contact', group: 'Content', hint: 'Email, phone and address from site settings', defaults: { showForm: false } },
+  { type: 'page_nav', label: 'Page menu', group: 'Layout', hint: 'Sticky section links with a Register button; a Register bar on phones', defaults: { items: [{ label: 'Overview', href: '#overview' }], ctaLabel: 'Register', ctaHref: '', note: '' } },
+  { type: 'key_facts', label: 'Key facts', group: 'Content', hint: 'A strip of short facts with one button', defaults: { label: '', items: [{ label: 'Ages', value: '[TBC]' }], ctaLabel: '', ctaHref: '', note: '' } },
+  { type: 'division_cards', label: 'Division cards', group: 'Locations & programs', hint: 'One card per division or age group, each with a button', defaults: { label: 'Divisions', heading: '', intro: '', items: [{ name: '13U', ages: '[TBC]', when: '[TBC]', note: '' }], ctaLabel: 'Register', ctaHref: '', footnote: '' } },
+  { type: 'steps', label: 'Steps', group: 'Content', hint: 'Numbered steps, e.g. how the season works', defaults: { label: 'How it works', heading: '', items: [{ title: 'Register.', body: '' }] } },
+  { type: 'timeline', label: 'Schedule', group: 'Locations & programs', hint: 'Dated rows, with highlighted ones (semifinals, finals)', defaults: { label: 'Schedule', heading: '', items: [{ label: 'Week 1', date: '[TBC]', tag: '' }], note: '' } },
+  { type: 'checklist', label: 'Checklist', group: 'Content', hint: 'What\'s included, with an optional photo', defaults: { label: 'Included', heading: '', intro: '', items: [{ text: '' }], imageUrl: '', imageAlt: '', caption: '', ctaLabel: '', ctaHref: '' } },
+  { type: 'person', label: 'Person', group: 'Content', hint: 'A coach or staff member: photo, name, role, bio, link', defaults: { label: 'Your coach', name: '', role: '', bio: '', imageUrl: '', imageAlt: '', caption: '', linkLabel: '', linkHref: '' } },
+  { type: 'venue', label: 'Venue', group: 'Locations & programs', hint: 'Photo, address, directions and an optional map', defaults: { label: 'Venue', name: '', address: '', facts: [], imageUrl: '', imageAlt: '', directionsUrl: '', mapEmbedUrl: '' } },
   { type: 'spacer', label: 'Space', group: 'Layout', hint: 'Vertical space', defaults: { size: 'md' } },
   { type: 'divider', label: 'Hairline', group: 'Layout', hint: 'A rule across the page', defaults: {} },
 ];
@@ -202,6 +214,11 @@ const buttons = (v: unknown, issues: ValidationIssue[], id: string, max = 4) =>
       }).filter((b) => b.label)
     : [];
 
+const links = (v: unknown, issues: ValidationIssue[], id: string, max: number) =>
+  Array.isArray(v)
+    ? v.slice(0, max).map((b) => { const o = (b ?? {}) as Record<string, unknown>; return { label: str(o.label, 60), href: href(o.href, issues, id, 'Menu link') }; }).filter((b) => b.label && b.href)
+    : [];
+
 /**
  * Validate and normalise a block list. Returns the cleaned blocks plus any
  * issues; unknown types are dropped with an issue so a save never silently
@@ -254,7 +271,7 @@ export function validateBlocks(input: unknown, depth = 0): { blocks: Block[]; is
         break;
       case 'video': {
         const u = str(p.url, 2000);
-        props = { url: u && /\.(mp4|webm)(\?|$)/i.test(u) ? (safeUrl(u) ?? '') : embedUrl(u, issues, id) };
+        props = { url: u && /\.(mp4|webm)(\?|$)/i.test(u) ? (safeUrl(u) ?? '') : embedUrl(u, issues, id), caption: str(p.caption, 400) };
         break;
       }
       case 'cta_band':
@@ -332,11 +349,39 @@ export function validateBlocks(input: unknown, depth = 0): { blocks: Block[]; is
       case 'request_form':
         props = { variant: ['location', 'training', 'assistance', 'contact'].includes(String(p.variant)) ? String(p.variant) : 'location', heading: str(p.heading, 120), note: str(p.note, 400) };
         break;
+      case 'page_nav':
+        props = { items: links(p.items, issues, id, 10), ctaLabel: str(p.ctaLabel, 60), ctaHref: href(p.ctaHref, issues, id, 'Button link'), note: str(p.note, 120) };
+        break;
+      case 'key_facts':
+        props = { label: str(p.label, 80), items: (Array.isArray(p.items) ? p.items.slice(0, 8) : []).map((x) => { const o = (x ?? {}) as Record<string, unknown>; return { label: str(o.label, 80), value: str(o.value, 80) }; }).filter((x) => x.label || x.value), ctaLabel: str(p.ctaLabel, 60), ctaHref: href(p.ctaHref, issues, id, 'Button link'), note: str(p.note, 300) };
+        break;
+      case 'division_cards':
+        props = { label: str(p.label, 80), heading: str(p.heading, 200), intro: str(p.intro, 600), items: (Array.isArray(p.items) ? p.items.slice(0, 6) : []).map((x) => { const o = (x ?? {}) as Record<string, unknown>; return { name: str(o.name, 60), ages: str(o.ages, 120), when: str(o.when, 160), note: str(o.note, 300) }; }).filter((x) => x.name), ctaLabel: str(p.ctaLabel, 60), ctaHref: href(p.ctaHref, issues, id, 'Button link'), footnote: str(p.footnote, 400) };
+        break;
+      case 'steps':
+        props = { label: str(p.label, 80), heading: str(p.heading, 200), items: (Array.isArray(p.items) ? p.items.slice(0, 8) : []).map((x) => { const o = (x ?? {}) as Record<string, unknown>; return { title: str(o.title, 120), body: str(o.body, 500) }; }).filter((x) => x.title) };
+        break;
+      case 'timeline':
+        props = { label: str(p.label, 80), heading: str(p.heading, 200), note: str(p.note, 400), items: (Array.isArray(p.items) ? p.items.slice(0, 30) : []).map((x) => { const o = (x ?? {}) as Record<string, unknown>; return { label: str(o.label, 60), date: str(o.date, 120), tag: str(o.tag, 60) }; }).filter((x) => x.label || x.date) };
+        break;
+      case 'checklist':
+        props = { label: str(p.label, 80), heading: str(p.heading, 200), intro: str(p.intro, 400), items: (Array.isArray(p.items) ? p.items.slice(0, 16) : []).map((x) => ({ text: str(((x ?? {}) as Record<string, unknown>).text, 200) })).filter((x) => x.text), imageUrl: imageUrl(p.imageUrl, issues, id), imageAlt: str(p.imageAlt, 400), caption: str(p.caption, 400), ctaLabel: str(p.ctaLabel, 60), ctaHref: href(p.ctaHref, issues, id, 'Button link') };
+        if (props.imageUrl && !props.imageAlt) issues.push({ blockId: id, message: 'Photo needs alt text.' });
+        break;
+      case 'person':
+        props = { label: str(p.label, 80), name: str(p.name, 120), role: str(p.role, 160), bio: str(p.bio, 1500), imageUrl: imageUrl(p.imageUrl, issues, id), imageAlt: str(p.imageAlt, 400), caption: str(p.caption, 400), linkLabel: str(p.linkLabel, 60), linkHref: href(p.linkHref, issues, id, 'Link') };
+        if (props.imageUrl && !props.imageAlt) issues.push({ blockId: id, message: 'Photo needs alt text.' });
+        break;
+      case 'venue':
+        props = { label: str(p.label, 80), name: str(p.name, 160), address: str(p.address, 300), facts: pairs(p.facts, 8), imageUrl: imageUrl(p.imageUrl, issues, id), imageAlt: str(p.imageAlt, 400), directionsUrl: href(p.directionsUrl, issues, id, 'Directions link'), mapEmbedUrl: embedUrl(p.mapEmbedUrl, issues, id) };
+        if (props.imageUrl && !props.imageAlt) issues.push({ blockId: id, message: 'Photo needs alt text.' });
+        break;
       case 'claude':
         props = { prompt: str(p.prompt, 2000), sources: Array.isArray(p.sources) ? p.sources.slice(0, 10).map((s) => str(s, 80)) : [], length: str(p.length, 40), out: str(p.out, 8000) };
         break;
     }
-    blocks.push({ id, type, props, ...(b.hidden ? { hidden: true } : {}) });
+    const anchor = str(b.anchor, 40).toLowerCase().replace(/[^a-z0-9-]/g, '');
+    blocks.push({ id, type, props, ...(b.hidden ? { hidden: true } : {}), ...(anchor ? { anchor } : {}) });
   }
   return { blocks, issues };
 }
@@ -364,6 +409,10 @@ export function blockSummary(b: Block): string {
     case 'request_form': return `Request form · ${first(p.variant) || 'location'}`;
     case 'image': return first(p.caption) || first(p.alt) || 'Photo';
     case 'claude': return first(p.prompt).slice(0, 80) || 'Write with Claude';
+    case 'page_nav': return ((p.items as { label: string }[]) ?? []).map((x) => x.label).join(' · ') || 'Page menu';
+    case 'division_cards': case 'steps': case 'timeline': case 'checklist': return first(p.heading) || first(p.label) || BLOCK_BY_TYPE[b.type].label;
+    case 'person': return first(p.name) || 'Person';
+    case 'venue': return first(p.name) || 'Venue';
     default: return BLOCK_BY_TYPE[b.type]?.label ?? b.type;
   }
 }

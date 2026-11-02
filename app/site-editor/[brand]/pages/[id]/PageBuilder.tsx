@@ -57,6 +57,14 @@ const FIELDS: Partial<Record<BlockType, Field[]>> = {
   contact_card: [{ k: 'label', l: 'Section label', t: 'text' }, { k: 'showForm', l: 'Show the contact form', t: 'bool' }],
   spacer: [{ k: 'size', l: 'Size', t: 'select', opts: [['sm', 'Small'], ['md', 'Medium'], ['lg', 'Large']] }],
   divider: [],
+  page_nav: [{ k: 'items', l: 'Links', t: 'list', cols: [{ k: 'label', l: 'Label' }, { k: 'href', l: 'Link (#anchor)' }] }, { k: 'ctaLabel', l: 'Button', t: 'text' }, { k: 'ctaHref', l: 'Button link', t: 'page' }, { k: 'note', l: 'Line on the phone Register bar', t: 'text', hint: 'e.g. $350 + HST · Winter 2027' }],
+  key_facts: [{ k: 'label', l: 'Section label', t: 'text' }, { k: 'items', l: 'Facts', t: 'list', cols: [{ k: 'label', l: 'Label' }, { k: 'value', l: 'Value' }] }, { k: 'ctaLabel', l: 'Button', t: 'text' }, { k: 'ctaHref', l: 'Button link', t: 'page' }, { k: 'note', l: 'Line beside the button', t: 'text' }],
+  division_cards: [{ k: 'label', l: 'Section label', t: 'text' }, { k: 'heading', l: 'Heading', t: 'text' }, { k: 'intro', l: 'Intro', t: 'textarea' }, { k: 'items', l: 'Divisions', t: 'list', cols: [{ k: 'name', l: 'Name' }, { k: 'ages', l: 'Ages' }, { k: 'when', l: 'When' }, { k: 'note', l: 'Note' }] }, { k: 'ctaLabel', l: 'Button on each card', t: 'text' }, { k: 'ctaHref', l: 'Button link', t: 'page' }, { k: 'footnote', l: 'Footnote', t: 'textarea' }],
+  steps: [{ k: 'label', l: 'Section label', t: 'text' }, { k: 'heading', l: 'Heading', t: 'text' }, { k: 'items', l: 'Steps', t: 'list', cols: [{ k: 'title', l: 'Step' }, { k: 'body', l: 'Line' }] }],
+  timeline: [{ k: 'label', l: 'Section label', t: 'text' }, { k: 'heading', l: 'Heading', t: 'text' }, { k: 'note', l: 'Note', t: 'textarea' }, { k: 'items', l: 'Rows', t: 'list', cols: [{ k: 'label', l: 'Label' }, { k: 'date', l: 'Date' }, { k: 'tag', l: 'Highlight (e.g. Semifinals)' }] }],
+  checklist: [{ k: 'label', l: 'Section label', t: 'text' }, { k: 'heading', l: 'Heading', t: 'text' }, { k: 'intro', l: 'Intro', t: 'textarea' }, { k: 'items', l: 'Items', t: 'list', cols: [{ k: 'text', l: 'Item' }] }, { k: 'imageUrl', l: 'Photo', t: 'image' }, { k: 'imageAlt', l: 'Photo alt text', t: 'text' }, { k: 'caption', l: 'Caption (the brief while there is no photo)', t: 'text' }, { k: 'ctaLabel', l: 'Button', t: 'text' }, { k: 'ctaHref', l: 'Button link', t: 'page' }],
+  person: [{ k: 'label', l: 'Section label', t: 'text' }, { k: 'name', l: 'Name', t: 'text' }, { k: 'role', l: 'Role', t: 'text' }, { k: 'bio', l: 'Bio (blank line between paragraphs)', t: 'textarea' }, { k: 'imageUrl', l: 'Photo (4 by 5)', t: 'image' }, { k: 'imageAlt', l: 'Photo alt text', t: 'text' }, { k: 'caption', l: 'Brief while there is no photo', t: 'text' }, { k: 'linkLabel', l: 'Link', t: 'text' }, { k: 'linkHref', l: 'Link address', t: 'url' }],
+  venue: [{ k: 'label', l: 'Section label', t: 'text' }, { k: 'name', l: 'Venue name', t: 'text' }, { k: 'address', l: 'Address', t: 'textarea' }, { k: 'facts', l: 'Details (parking, entrance…)', t: 'pairs', a: 'Label', b: 'Value' }, { k: 'imageUrl', l: 'Photo', t: 'image' }, { k: 'imageAlt', l: 'Photo alt text', t: 'text' }, { k: 'directionsUrl', l: 'Directions link (Google Maps)', t: 'url' }, { k: 'mapEmbedUrl', l: 'Map embed URL', t: 'url' }],
   claude: [],
 };
 
@@ -165,6 +173,7 @@ export function PageBuilder({ brand, page, seo, canPublish, canDelete, origin, i
                 <div className="card-head"><h3>{BLOCK_BY_TYPE[cur.type]?.label}</h3><span className="card-head-lbl">{BLOCK_BY_TYPE[cur.type]?.hint}</span></div>
                 {(FIELDS[cur.type] ?? []).map((f) => <FieldEditor key={f.k} f={f} value={cur.props[f.k]} onChange={(v) => setProp(f.k, v)} refs={refs} />)}
                 {!FIELDS[cur.type] && <JsonEditor value={cur.props} onChange={(v) => cur && update(blocks.map((b) => (b.id === cur.id ? { ...b, props: v } : b)))} />}
+                <div className="flex flex-col"><label className="field-label" htmlFor="f-anchor">Anchor</label><input id="f-anchor" className="input mono text-xs" value={cur.anchor ?? ''} placeholder="e.g. schedule" onChange={(e) => { const a = e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ''); update(blocks.map((b) => (b.id === cur.id ? { ...b, anchor: a || undefined } : b))); }} /><span className="mt-1 text-xs text-silver">Link to this block with #{cur.anchor || 'anchor'}, e.g. from the page menu.</span></div>
               </>
             )}
           </section>
