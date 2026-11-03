@@ -506,9 +506,13 @@
 .site .apply-body form{display:grid;gap:14px}
 .site .apply-body select[multiple]{min-height:0;padding:6px}
 /* Circuit one-pager */
-.site .circuit-facts{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:18px 28px}
-.site .circuit-facts dt{font-size:12px;text-transform:uppercase;letter-spacing:.05em;color:var(--cg11);font-weight:600;margin-bottom:4px}
-.site .circuit-facts dd{font-size:var(--fs-list)}
+.site .circuit-facts{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:0 var(--gutter);margin:0;border-top:1px solid var(--rule-strong)}
+.site .circuit-facts>div{padding:14px 0 16px;border-bottom:1px solid var(--rule)}
+.site .circuit-facts dt{font-size:13px;text-transform:uppercase;letter-spacing:.05em;color:var(--red);font-weight:700;margin-bottom:6px}
+.site .circuit-facts dd{margin:0;font-size:var(--fs-list);line-height:1.4}
+@media (max-width:560px){.site .circuit-facts{grid-template-columns:1fr}}
+.site .circuit-programs{margin-top:28px}
+.site .circuit-programs-h{font-size:13px;text-transform:uppercase;letter-spacing:.05em;color:var(--red);font-weight:700;margin-bottom:10px}
 .site .circuit-teams{display:flex;flex-wrap:wrap;gap:8px}
 .site .circuit-teams span{border:1px solid var(--rule-strong);padding:6px 12px;font-size:14px;font-weight:600}
 /* Day cards: the Blue Arrow Classic schedule structure in ALL CAN colours and type */
