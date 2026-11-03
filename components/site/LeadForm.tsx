@@ -26,6 +26,11 @@ export interface LeadFormProps {
 
 const PROVINCES = ['Alberta', 'British Columbia', 'Manitoba', 'New Brunswick', 'Newfoundland and Labrador', 'Northwest Territories', 'Nova Scotia', 'Nunavut', 'Ontario', 'Prince Edward Island', 'Quebec', 'Saskatchewan', 'Yukon'];
 const PROGRAM_TYPES = ['Youth League', 'Youth Skills', 'Adult League', 'Camps'];
+/** Apply form: each age group as Boys and Girls (from the league's divisions, e.g. "U13 Boys"), then Other. */
+function divisionChoices(divs?: string[]): string[] {
+  const ages = [...new Set((divs?.length ? divs : ['U13 Boys', 'U14 Boys', 'U15 Boys']).filter((d) => d !== 'Other').map((d) => d.replace(/\s+(Boys|Girls)$/i, '').trim()))];
+  return [...ages.flatMap((a) => [`${a} Boys`, `${a} Girls`]), 'Other'];
+}
 
 export default function LeadForm(p: LeadFormProps) {
   const [mode, setMode] = useState<'request' | 'host'>(p.initialMode ?? 'request');
@@ -108,7 +113,10 @@ export default function LeadForm(p: LeadFormProps) {
         <>
           <label className="field" htmlFor={`${id}-team`}><span>Team or club</span><input id={`${id}-team`} name="team" required placeholder="e.g. Woodbridge Lions" /></label>
           <label className="field" htmlFor={`${id}-city`}><span>Home city</span><input id={`${id}-city`} name="city" required /></label>
-          <label className="field" htmlFor={`${id}-divs`}><span>Divisions you&apos;d enter</span><select id={`${id}-divs`} name="divisions" multiple size={4}>{(p.programOptions ?? ['U13 Boys', 'U14 Boys', 'U15 Boys', 'Other']).map((o) => <option key={o}>{o}</option>)}</select></label>
+          <fieldset className="field checks-field">
+            <legend>Divisions of interest</legend>
+            <div className="check-grid">{divisionChoices(p.programOptions).map((o) => <label key={o} className="check" htmlFor={`${id}-dv-${o.replace(/\s+/g, '')}`}><input id={`${id}-dv-${o.replace(/\s+/g, '')}`} type="checkbox" name="divisions" value={o} /><span>{o}</span></label>)}</div>
+          </fieldset>
           <label className="field" htmlFor={`${id}-role`}><span>Your role</span><input id={`${id}-role`} name="role" placeholder="Head coach, club director…" /></label>
           <label className="field" htmlFor={`${id}-about`}><span>About the team (optional)</span><textarea id={`${id}-about`} name="about" placeholder="Level, current league, anything we should know" /></label>
         </>
