@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import type { ReactNode } from 'react';
+import ImageDialog from '@/components/site/ImageDialog';
 
 /**
  * Brand-site primitives (server-safe): the hairline/pill language from the
@@ -12,8 +13,26 @@ import type { ReactNode } from 'react';
 export const Chev = () => <span className="chev" aria-hidden="true" />;
 
 /** Text with [TBC] markers rendered as muted "To be confirmed" (live) or [TBC] (preview). */
+/** "[label](url)" in a fact or line: an image url opens in a dialog on the page; anything else is a plain link. */
+const LINK = /\[([^\]]{1,80})\]\(((?:\/|https:\/\/)[^)\s]{1,500})\)/g;
+
 export function T({ children, preview = false }: { children: string | null | undefined; preview?: boolean }) {
   const s = children ?? '';
+  if (LINK.test(s)) {
+    LINK.lastIndex = 0;
+    const out: ReactNode[] = [];
+    let last = 0, m: RegExpExecArray | null, k = 0;
+    while ((m = LINK.exec(s))) {
+      if (m.index > last) out.push(<T key={k++} preview={preview}>{s.slice(last, m.index)}</T>);
+      const [, label, url] = m;
+      out.push(/\.(jpe?g|png|webp|gif)(\?|$)/i.test(url)
+        ? <ImageDialog key={k++} label={label} src={url} />
+        : <a key={k++} href={url} {...(/^https?:/i.test(url) ? { target: '_blank', rel: 'noopener' } : {})}>{label}</a>);
+      last = m.index + m[0].length;
+    }
+    if (last < s.length) out.push(<T key={k++} preview={preview}>{s.slice(last)}</T>);
+    return <>{out}</>;
+  }
   if (!s.includes('[TBC]')) return <>{s}</>;
   const parts = s.split('[TBC]');
   return (
