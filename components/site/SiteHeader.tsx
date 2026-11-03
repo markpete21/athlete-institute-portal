@@ -165,6 +165,7 @@ export default function SiteHeader(p: SiteHeaderProps) {
                         {f.meta.soon
                           ? <a href={`/locations?sport=${f.meta.sport ?? ''}#request`}>Request {f.label.toLowerCase()} near you<span className="chev" aria-hidden="true" /></a>
                           : f.children.map((g) => <a key={g.id} href={hrefOf(g)}>{g.label}<span className="chev" aria-hidden="true" /></a>)}
+                        {(f.meta.sport === 'basketball' || f.label === 'Basketball') && !f.meta.soon && <PartnerLockup brandKey={p.brandKey} />}
                       </div>
                     ))}
                     {n.children.some((c) => c.kind === 'folder') && n.children.some((c) => c.kind !== 'folder' && !c.featured) && <span className="sub-gap" aria-hidden="true" />}
@@ -216,6 +217,16 @@ function MenuIcon({ kind }: { kind: 'calendar' | 'pencil' }) { // calendar kept 
     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
       {kind === 'calendar' ? <><rect x="3" y="5" width="18" height="16" rx="2" /><path d="M3 10h18M8 3v4M16 3v4" /></> : <path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z" />}
     </svg>
+  );
+}
+
+/** The All Canadian Games x ALL CAN Basketball lockup, small, under the Basketball links (on-white file). */
+function PartnerLockup({ brandKey }: { brandKey: string }) {
+  return (
+    <span className="menu-lockup">
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img src={`/sites/${brandKey}/logos/lockup-all-canadian-basketball-on-white.png`} alt="All Canadian Games and ALL CAN Basketball" />
+    </span>
   );
 }
 
@@ -295,6 +306,7 @@ function MegaPanel({ n, p, tab, setTab }: { n: NavItem; p: SiteHeaderProps; tab:
                       <span className="chev" aria-hidden="true" />
                     </a>
                   ))}
+                  {cur.sp?.slug === 'basketball' && <PartnerLockup brandKey={p.brandKey} />}
                 </div>
               )}
               {cur.f.meta.soon && (

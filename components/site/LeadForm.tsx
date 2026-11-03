@@ -24,6 +24,9 @@ export interface LeadFormProps {
   siteName: string;
 }
 
+const PROVINCES = ['Alberta', 'British Columbia', 'Manitoba', 'New Brunswick', 'Newfoundland and Labrador', 'Northwest Territories', 'Nova Scotia', 'Nunavut', 'Ontario', 'Prince Edward Island', 'Quebec', 'Saskatchewan', 'Yukon'];
+const PROGRAM_TYPES = ['Youth League', 'Youth Skills', 'Adult League', 'Camps'];
+
 export default function LeadForm(p: LeadFormProps) {
   const [mode, setMode] = useState<'request' | 'host'>(p.initialMode ?? 'request');
   const [state, setState] = useState<'idle' | 'busy' | 'done' | 'error'>('idle');
@@ -78,7 +81,14 @@ export default function LeadForm(p: LeadFormProps) {
           {mode === 'host' && <label className="field" htmlFor={`${id}-ft`}><span>Facility type</span><select id={`${id}-ft`} name="facility_type"><option>School gym</option><option>Community centre</option><option>Private facility</option><option>Outdoor field</option></select></label>}
           {mode === 'host' && <label className="field" htmlFor={`${id}-courts`}><span>Courts or fields available</span><input id={`${id}-courts`} name="courts" /></label>}
           {mode === 'host' && <label className="field" htmlFor={`${id}-when`}><span>When the space is available</span><input id={`${id}-when`} name="availability" placeholder="e.g. weeknights after 6, Saturday mornings" /></label>}
+          {mode === 'request' && <label className="field" htmlFor={`${id}-prov`}><span>Province</span><select id={`${id}-prov`} name="province" defaultValue="Ontario">{PROVINCES.map((pv) => <option key={pv}>{pv}</option>)}</select></label>}
           <label className="field" htmlFor={`${id}-sport`}><span>Sport</span><select id={`${id}-sport`} name="sport" defaultValue={p.initialSport ?? ''}>{(p.sportOptions ?? ['Basketball', 'Volleyball', 'Soccer', 'Flag Football']).map((s) => <option key={s} value={s.toLowerCase().replace(/\s+/g, '-')}>{s}</option>)}<option value="several">More than one</option></select></label>
+          <fieldset className="field checks-field">
+            <legend>Program of interest</legend>
+            <div className="check-grid">{PROGRAM_TYPES.map((pt) => <label key={pt} className="check" htmlFor={`${id}-pt-${pt.replace(/\s+/g, '')}`}><input id={`${id}-pt-${pt.replace(/\s+/g, '')}`} type="checkbox" name="programs" value={pt} /><span>{pt}</span></label>)}</div>
+          </fieldset>
+          {mode === 'request' && <label className="field" htmlFor={`${id}-fac`}><span>Recommended facility</span><input id={`${id}-fac`} name="recommended_facility" placeholder="e.g. a school gym or community centre near you" /></label>}
+          {mode === 'request' && <label className="field" htmlFor={`${id}-facc`}><span>Facility contact info (optional)</span><input id={`${id}-facc`} name="facility_contact" placeholder="Name, email or phone, if you know it" /></label>}
         </>
       )}
       {p.variant === 'training' && (

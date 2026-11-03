@@ -6,7 +6,7 @@ How ALL CAN Sport collects, uses and protects personal information.
 
 - **Operator:** Athlete Institute, Ltd. ALL CAN Sport is a division.
 - **Applies to:** allcansport.ca and every ALL CAN Sport program
-- **Effective:** November 1, 2026
+- **Effective:** November 2, 2026
 
 ## Our commitment
 
@@ -31,7 +31,7 @@ This policy applies to all personal information we hold about players, parents a
 
 - Name, team, division, jersey number, schedules and results.
 - Health and safety information only where it's needed for safe participation, including records required by Ontario's *Rowan's Law* when a player is removed from or returns to sport. Access is limited to the people who need it.
-- Photos and video, only as described under Youth players and photos.
+- Photos, video and live streams of games and sessions, as described under Photos, video and live streams.
   
 **Information collected automatically**
 
@@ -47,6 +47,7 @@ Questions typed into Ask ALL CAN are processed by an AI service to answer them f
 We use personal information only to run ALL CAN Sport and to understand what our families need:
 
 - Running programs: placement, teams, schedules, results and communication with families.
+- Live-streaming and recording games, and publishing rosters, scores, standings and top scorers.
 - Telling you when registration opens for a program you asked about.
 - Sending the notifications you chose, such as schedule changes and final scores.
 - Answering requests and enquiries.
@@ -61,12 +62,15 @@ We ask for your consent when we collect your information, for example by a check
 
 We send marketing emails and texts only with your express consent, as Canada's anti-spam law (CASL) requires. You can withdraw consent at any time: use the unsubscribe link in any email, reply STOP to a text, or contact us. If you withdraw consent, we may not be able to provide some services; for example, we can't place a player without a way to reach their family.
 
-## Youth players and photos
+## Photos, video and live streams
 
-- A youth player's name appears on public rosters only with a parent or guardian's permission. Otherwise they appear as "Team member".
-- Public pages never show a player's date of birth, school, contact details or private evaluations.
-- Player profile pages are kept out of search engines.
-- We publish photos and video of youth players only with a parent or guardian's media permission. You can ask us to remove one at any time.
+- **Live streams and recordings.** ALL CAN games may be live-streamed and recorded. Streams are hosted on YouTube as unlisted videos and shown on live.athleteinstitute.ca, Athlete Institute's live-streaming site.
+- **Part of taking part.** Live streaming is part of signing up. By registering a player, a parent or guardian agrees that the player may appear in live streams and game recordings, and this is also part of the registration waiver. Players can't opt out of live streams; a player whose family doesn't agree can't take part in streamed games.
+- **Replays.** A game's replay is available on live.athleteinstitute.ca for 30 days after the game. After that it's removed from public viewing.
+- **Names and results.** We publish team rosters with players' names and jersey numbers, game scores, standings, top scorers and player of the game, on allcansport.ca and in our streams.
+- **Photos, stories and social media.** We may use photos and short video clips from games and sessions in stories on allcansport.ca and on our social media.
+- **What we never show.** Public pages never show a player's date of birth, school, contact details or private evaluations. Player profile pages are kept out of search engines.
+- **Removal requests.** To ask us to remove a photo, clip, story or social media post that shows your child, email info@athleteinstitute.ca. We'll remove it promptly. This doesn't cover live streams or game recordings, which are part of taking part.
 
 ## Who we share it with
 
@@ -80,6 +84,7 @@ We share it only with service providers that help us run ALL CAN Sport, under ag
 - **Resend**: email.
 - **Twilio**: text messages.
 - **Stripe**: payments, once registration opens. We never see or store full card numbers.
+- **YouTube (Google)**: hosting for our live streams and game replays, which are unlisted and shown through live.athleteinstitute.ca.
 - **Anthropic**: the AI service behind Ask ALL CAN and our staff writing tools.
 Athlete Institute staff who run ALL CAN programs see the information they need for their work. We may share overall statistics that can't identify anyone with partners.
 
@@ -96,6 +101,8 @@ Some of our service providers store or process information outside Canada, inclu
 ## How long we keep it
 
 We keep personal information only as long as we need it for the purpose it was collected, or as long as the law requires. Then we delete or destroy it securely.
+
+Game replays are available for 30 days after each game, as described under Photos, video and live streams.
 
 ## How we protect it
 

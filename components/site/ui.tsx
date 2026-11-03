@@ -71,13 +71,15 @@ export function Crumbs({ items }: { items: [string, string][] }) {
   );
 }
 
-export function PageHead({ kicker, title, lede, crumbs, preview }: { kicker?: string; title: string; lede?: string | null; crumbs?: [string, string][]; preview?: boolean }) {
+export function PageHead({ kicker, title, lede, crumbs, preview, titleLogoUrl, children }: { kicker?: string; title: string; lede?: string | null; crumbs?: [string, string][]; preview?: boolean; /** A logo in place of the title; the title becomes its alt so the page keeps its H1. */ titleLogoUrl?: string; /** Extra content under the title, e.g. a tagline. */ children?: ReactNode }) {
   return (
     <div className="wrap">
       {crumbs && <Crumbs items={crumbs} />}
       <div className="page-head">
         {kicker && <p className="kicker"><T preview={preview}>{kicker}</T></p>}
-        <h1><T preview={preview}>{title}</T></h1>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        {titleLogoUrl ? <h1 className="page-head-logo"><img src={titleLogoUrl} alt={title.replace(/\.$/, '')} /></h1> : <h1><T preview={preview}>{title}</T></h1>}
+        {children}
         {lede && <p className="lede"><T preview={preview}>{lede}</T></p>}
       </div>
     </div>

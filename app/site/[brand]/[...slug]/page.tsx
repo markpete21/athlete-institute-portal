@@ -207,7 +207,7 @@ async function LocationHub({ ctx, loc, page }: { ctx: Ctx; loc: SiteLocation; pa
   const blocks = page ? (ctx.preview ? page.blocksDraft : page.blocksPublished ?? []) : [];
   return (
     <>
-      <PhotoHead loc={loc} ctx={ctx} kicker={st.label} title={`${loc.name}.`} lede={progs.length ? `${progs.map((p) => p.name).join(' and ')} at ${loc.venue ?? loc.name}.` : ''} ledeNode={progs.some((p) => p.logoUrl) ? <>{progs.map((p, i) => <span key={p.id}>{i > 0 && ' and '}{p.logoUrl ? <LedeLogo url={p.logoUrl} name={p.name} /> : p.name}</span>)}<span className="lede-at">at {loc.venue ?? loc.name}.</span></> : undefined} crumbs={[['Home', '/'], ['Locations', '/locations'], [loc.name, '']]} />
+      <PhotoHead loc={loc} ctx={ctx} kicker={st.label} title={`${loc.name}.`} lede={progs.length ? `${progs.map((p) => p.name).join(' and ')} at ${loc.venue ?? loc.name}.` : ''} ledeNode={progs.some((p) => p.logoUrl) ? <><span className="lede-at">{loc.venue ?? loc.name}</span><span className="lede-logos">{progs.map((p, i) => <span key={p.id}>{i > 0 && ' and '}{p.logoUrl ? <LedeLogo url={p.logoUrl} name={p.name} /> : p.name}</span>)}</span></> : undefined} crumbs={[['Home', '/'], ['Locations', '/locations'], [loc.name, '']]} />
       <Section tight><SecHead label="Venue" /><SplitGrid
         left={<><h2>{loc.venue ?? loc.name}.</h2><p className="muted" style={{ marginTop: 12 }}>{[loc.city, loc.region].filter(Boolean).join(', ')}</p>{loc.note && <p className="note" style={{ marginTop: 8 }}><T preview={ctx.preview}>{loc.note}</T></p>}</>}
         right={<FactsDl preview={ctx.preview} facts={[
@@ -222,21 +222,22 @@ async function LocationHub({ ctx, loc, page }: { ctx: Ctx; loc: SiteLocation; pa
       </div></Section>
       <DevelopmentArm brandKey={ctx.brandKey} />
       <Section><SecHead label="Season calendar" /><SplitGrid left={<h2>Key dates.</h2>} right={<FactsDl preview={ctx.preview} facts={loc.calendar.length ? loc.calendar : DEFAULT_KEY_DATES} />} /></Section>
-      <Section><SecHead label="Program leadership" /><SplitGrid
+      {/* Only once a location has leaders entered (owner, Nov 2 2026: no [TBC] placeholder). */}
+      {loc.leaders.length > 0 && <Section><SecHead label="Program leadership" /><SplitGrid
         left={<h2>Program<br />leadership.</h2>}
         right={<>
-          {loc.leaders.length > 0 ? (
+          {(
             <div className="leaders">{loc.leaders.map((l) => (
               <article key={l.name} className="leader">
                 <div className="leader-photo">{l.photoUrl ? <LeaderPhoto url={l.photoUrl} name={l.name} /> : <span aria-hidden="true">{l.name.split(/\s+/).map((w) => w[0]).join('').slice(0, 2).toUpperCase()}</span>}</div>
                 <div><h3>{l.name}</h3>{l.role && <p className="kicker" style={{ marginTop: 4 }}>{l.role}</p>}{l.bio && <p className="muted" style={{ marginTop: 10 }}>{l.bio}</p>}</div>
               </article>
             ))}</div>
-          ) : <p className="muted">Program leadership for {loc.name} is <T preview={ctx.preview}>[TBC]</T>.</p>}
+          )}
           <p className="muted" style={{ marginTop: 20 }}>Every coach is screened before working with players.</p>
           <CoachingPartners brandKey={ctx.brandKey} />
         </>}
-      /></Section>
+      /></Section>}
       {results.length > 0 && <Section><SecHead label="Scores" right={<Link href="/scores">All games</Link>} /><div className="site-compete"><div className="cs-gamegrid">{results.map((g) => <GameCard key={g.id} g={{ id: g.id, startsAt: g.startsAt, round: null, stage: 'regular', status: 'final', homeTeamId: null, awayTeamId: null, homeTeam: g.homeTeam, awayTeam: g.awayTeam, homeScore: g.homeScore, awayScore: g.awayScore, overtime: g.overtime, liveStreamRef: g.liveStreamRef }} />)}</div></div></Section>}
       <BlockRenderer blocks={blocks} ctx={ctx} />
     </>
@@ -446,6 +447,8 @@ async function Circuit({ ctx, page, division }: { ctx: Ctx; page: SitePage | nul
         </Section>
       )}
 
+      <DevelopmentArm brandKey={ctx.brandKey} />
+
       <Section id="schedule">
         <SecHead label="Schedule and results" right={divs.length > 1 ? <span className="tabs" style={{ margin: 0 }}><Link href="/circuit#schedule" className="tab" role="button" aria-pressed={!sel}>All</Link>{divs.map((d) => <Link key={d} href={`/circuit?division=${encodeURIComponent(d)}#schedule`} className="tab" role="button" aria-pressed={sel === d}>{d}</Link>)}</span> : undefined} />
         {games.length === 0 ? <p className="muted">The schedule is <T preview={ctx.preview}>[TBC]</T>.</p> : (
@@ -624,12 +627,20 @@ function Scorers({ game, leaf, players }: { game: LeagueGame; leaf: string; play
 
 async function About({ ctx, page }: { ctx: Ctx; page: SitePage | null }) {
   const blocks = page ? (ctx.preview ? page.blocksDraft : page.blocksPublished ?? []) : [];
+  // The home page's tagline and Why band, so About always says the same thing.
+  const home = await getPageBySlug(ctx.brandKey, '');
+  const homeBlocks = home ? (ctx.preview ? home.blocksDraft : home.blocksPublished ?? []) : [];
+  const hero = homeBlocks.find((b) => b.type === 'hero' && !b.hidden);
+  const lines = ((hero?.props.headingLines as string[] | undefined) ?? []).filter(Boolean);
+  const accent = typeof hero?.props.accentWord === 'string' ? hero.props.accentWord : '';
+  const why = homeBlocks.find((b) => b.type === 'why_band' && !b.hidden);
   return (
     <>
-      <PageHead kicker="About" title={`${ctx.site.name}.`} lede={ctx.site.seo.default_description} crumbs={[['Home', '/'], ['About', '']]} />
-      <Section tight><SecHead label="Structure" /><SplitGrid left={<h2>One name.<br />{SPORTS.length} sports.</h2>} right={<div className="rows">
-        {SPORTS.map((s) => <div key={s.slug} className="row" style={{ gridTemplateColumns: 'minmax(0,.7fr) minmax(0,1.6fr) auto' }}><h3>{s.name}</h3><span className="meta">{s.programs.map((l) => l[0]).join(' · ')}</span><span className="end">{s.status === 'live' ? <span className="status status--live">Now playing</span> : <span className="status">Coming soon</span>}</span></div>)}
-      </div>} /></Section>
+      <PageHead kicker="About" title={`${ctx.site.name}.`} titleLogoUrl={`/sites/${ctx.brandKey}/logos/sport-horizontal-on-white.png`} lede={lines.length ? null : ctx.site.seo.default_description} crumbs={[['Home', '/'], ['About', '']]}>
+        {lines.length > 0 && <p className="about-tagline">{lines.map((l, i) => <span key={i}>{accent && l.startsWith(accent) ? <><span className="tag-red">{accent}</span>{l.slice(accent.length)}</> : l}</span>)}</p>}
+      </PageHead>
+      {why && <BlockRenderer blocks={[{ ...why, props: { ...why.props, showSports: false } }]} ctx={ctx} />}
+      <Section tight><SecHead label="Structure" /><h2 className="lp-h2">One name.<br />{SPORTS.length} sports.</h2><SportTiles /></Section>
       <BlockRenderer blocks={blocks} ctx={ctx} />
       <Section id="contact"><SecHead label="Contact" /><SplitGrid left={<h2>Talk to us.</h2>} right={<>
         <FactsDl preview={ctx.preview} facts={[['Email', ctx.site.contact.email ?? '[TBC]'], ['Phone', ctx.site.contact.phone ?? '[TBC]']]} />
