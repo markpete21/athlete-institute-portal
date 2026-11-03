@@ -710,3 +710,7 @@
 .site .about-tagline{margin-top:18px;max-width:none;font-family:"AC Pillars","Jost",var(--font);font-weight:700;font-size:clamp(30px,4vw,56px);line-height:1.02;letter-spacing:-.01em;color:var(--ink)}
 .site .about-tagline>span{display:block}
 .site .about-tagline .tag-red{display:inline;color:var(--red)}
+/* Lead form: a group of checkboxes (program of interest) */
+.site .checks-field{border:0;margin:0;padding:0;min-width:0}
+.site .checks-field legend{font-size:13px;font-weight:600;padding:0;margin-bottom:8px}
+.site .check-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px 16px}
