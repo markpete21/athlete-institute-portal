@@ -698,3 +698,11 @@
 .site .roster-no{font-weight:600;color:var(--red);font-variant-numeric:tabular-nums}
 .site .roster-empty{padding:0 20px 18px;font-size:var(--fs-list)}
 .site .scorer-no{color:var(--cg11);font-weight:600;margin-right:6px;font-size:.9em}
+/* Play menu: the All Canadian Games x ALL CAN Basketball lockup under the Basketball links */
+.site .menu-lockup{display:block;margin-top:18px}
+.site .menu-lockup img{display:block;height:44px;width:auto}
+.site .dnav .menu-lockup{margin:12px 0 6px}
+.site .dnav .menu-lockup img{height:40px}
+/* Page head: a logo in place of the title (About) */
+.site .page-head h1.page-head-logo{line-height:0;margin-top:10px}
+.site .page-head h1.page-head-logo img{display:block;width:min(640px,100%);height:auto}

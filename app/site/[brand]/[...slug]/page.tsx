@@ -446,6 +446,8 @@ async function Circuit({ ctx, page, division }: { ctx: Ctx; page: SitePage | nul
         </Section>
       )}
 
+      <DevelopmentArm brandKey={ctx.brandKey} />
+
       <Section id="schedule">
         <SecHead label="Schedule and results" right={divs.length > 1 ? <span className="tabs" style={{ margin: 0 }}><Link href="/circuit#schedule" className="tab" role="button" aria-pressed={!sel}>All</Link>{divs.map((d) => <Link key={d} href={`/circuit?division=${encodeURIComponent(d)}#schedule`} className="tab" role="button" aria-pressed={sel === d}>{d}</Link>)}</span> : undefined} />
         {games.length === 0 ? <p className="muted">The schedule is <T preview={ctx.preview}>[TBC]</T>.</p> : (
@@ -626,7 +628,7 @@ async function About({ ctx, page }: { ctx: Ctx; page: SitePage | null }) {
   const blocks = page ? (ctx.preview ? page.blocksDraft : page.blocksPublished ?? []) : [];
   return (
     <>
-      <PageHead kicker="About" title={`${ctx.site.name}.`} lede={ctx.site.seo.default_description} crumbs={[['Home', '/'], ['About', '']]} />
+      <PageHead kicker="About" title={`${ctx.site.name}.`} titleLogoUrl={`/sites/${ctx.brandKey}/logos/sport-horizontal-on-white.png`} lede={ctx.site.seo.default_description} crumbs={[['Home', '/'], ['About', '']]} />
       <Section tight><SecHead label="Structure" /><SplitGrid left={<h2>One name.<br />{SPORTS.length} sports.</h2>} right={<div className="rows">
         {SPORTS.map((s) => <div key={s.slug} className="row" style={{ gridTemplateColumns: 'minmax(0,.7fr) minmax(0,1.6fr) auto' }}><h3>{s.name}</h3><span className="meta">{s.programs.map((l) => l[0]).join(' · ')}</span><span className="end">{s.status === 'live' ? <span className="status status--live">Now playing</span> : <span className="status">Coming soon</span>}</span></div>)}
       </div>} /></Section>
