@@ -141,7 +141,7 @@
 .site .mega .status--live{border-color:var(--red)}
 .site a.loc-card:hover h3{color:var(--cg11)}
 .site .mega-more{grid-column:9/span 4;grid-template-columns:1fr}
-.site .mega-feature{grid-column:10/span 3;border-top:1px solid var(--rule-strong);padding-top:14px;display:grid;gap:10px}
+.site .mega-feature{grid-column:10/span 3;display:grid;gap:10px}
 .site .mega-feature .well{aspect-ratio:4/3;background:var(--ink) var(--grain);background-size:180px;color:var(--white);padding:16px;display:flex;flex-direction:column;justify-content:flex-end;max-width:100%}
 .site .mega-feature a{text-decoration:none}
 /* Featured card with a photo: image fills the well, text sits on a scrim at the bottom */
