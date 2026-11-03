@@ -40,6 +40,7 @@ The rulebook (`design-system/guidelines/ALL-CAN-Design-System.md`) and tokens wi
 - **Sport marks.** Each sport has a supplied line mark (basketball snowflake ball, volleyball maple leaf, soccer star shield, flag football field). Files: `design-system/logos/sports/`. Black on white, about 72px tall, above the sport name. They are logos, not icons: never recolour, outline or redraw them, and don't use them as UI glyphs.
 - **Photography.** Full-bleed, one treatment per composition, faces never covered by type, every photo credited. Until real photos exist, use Ink with grain and a "Photo [TBC]" credit. Never use stock or another brand's images.
 - **Copy formats.** Dates stacked: `Saturday / April 4th / 2026.` Times: `7:30pm ET`. Scores and records with an en dash: `84–79`, `12–3`. Inline meta with middle dots: `De La Salle College · Court 2 · 7:30pm ET`. Brand name always `ALL CAN` / `ALL CAN Sport`.
+- **Division labels** (owner, Nov 2 2026). Basketball, soccer and flag football write age divisions as **U13, U17**; volleyball writes them as **13U, 17U**.
 - **Accuracy.** Never state a date, price, age group, coach, partner or stat that wasn't supplied. Show `[TBC]` in admin and hide unconfirmed rows from the public page once the site is live (see "`[TBC]` handling" at the end of §6).
 - **Never** use All Canadian Games or Orangeville Prep marks (the one exception: the All Canadian Games logo as a partner logo in the Partners band and footer, owner decision, §4.1), lines, colours (Trophy Gold), Inter, JetBrains Mono or the dot field.
 
