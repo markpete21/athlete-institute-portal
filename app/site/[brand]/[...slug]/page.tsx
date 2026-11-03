@@ -217,7 +217,7 @@ async function LocationHub({ ctx, loc, page }: { ctx: Ctx; loc: SiteLocation; pa
       />
         {loc.photos.length > 0 && <VenuePhotos photos={loc.photos} />}
       </Section>
-      <Section><SecHead label="Programs here" /><div className="rows">
+      <Section><SecHead label="Programs here" /><div className="rows rows--programs">
         {loc.sports.map((s) => { const sp = sportBySlug(s); const here = progs.filter((p) => p.sport === s); return <Row key={s} href={`/${loc.slug}/${s}`} title={sp?.name ?? s} meta={here.map((p) => p.name).join(' · ')} end={<StatusPill label={st.label} live={st.live} />} />; })}
       </div></Section>
       <DevelopmentArm brandKey={ctx.brandKey} />
