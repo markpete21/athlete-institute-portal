@@ -553,7 +553,7 @@
 .site .scorer{display:flex;justify-content:space-between;gap:12px;padding:7px 0;border-bottom:1px solid var(--rule);font-size:15px}
 .site .scorer-nm{display:inline-flex;align-items:center;gap:8px;min-width:0}
 .site .scorer.is-potg .scorer-nm{font-weight:700}
-.site .scorer .leaf{width:16px;height:16px;object-fit:contain}
+.site .scorer .leaf{width:14px;height:14px;object-fit:contain;margin-right:6px;vertical-align:-1px}
 .site .scorer-pts{font-weight:700;font-variant-numeric:tabular-nums}
 .site .scorers-potg{grid-column:1/-1;font-size:14px}
 .site .scorers-potg .kicker{margin-right:8px}
