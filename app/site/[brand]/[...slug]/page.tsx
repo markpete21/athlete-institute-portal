@@ -320,7 +320,9 @@ async function ProgramLinePage({ ctx, sport, line, page }: { ctx: Ctx; sport: No
   const photoLoc = here.find((h) => h.loc?.photoUrl)?.loc ?? null;
   const first = line.programs[0];
   const shared = first ? first.facts.filter(([k]) => /age|format|session|level|includes|what/i.test(k)) : [];
-  const head = { kicker: `${sport.name} · ${line.type}`, title: `${line.name}.`, lede: line.description ?? '', crumbs: [['Home', '/'], [sport.name, `/${sport.slug}`], [line.name, '']] as [string, string][] };
+  // The program's logo (e.g. ALL CAN Basketball League) stands in for the title when one is set.
+  const titleLogoUrl = line.programs.find((p) => p.logoUrl)?.logoUrl ?? undefined;
+  const head = { kicker: `${sport.name} · ${line.type}`, title: `${line.name}.`, lede: line.description ?? '', crumbs: [['Home', '/'], [sport.name, `/${sport.slug}`], [line.name, '']] as [string, string][], titleLogoUrl };
   return (
     <>
       {photoLoc ? <PhotoHead loc={photoLoc} ctx={ctx} {...head} /> : <PageHead {...head} preview={ctx.preview} />}
@@ -515,8 +517,8 @@ async function Circuit({ ctx, page, division }: { ctx: Ctx; page: SitePage | nul
 }
 
 /** Location pages: the venue photo as a full-bleed hero when one is set, otherwise the plain page head. */
-function PhotoHead({ loc, ctx, kicker, title, lede, ledeNode, crumbs }: { loc: SiteLocation; ctx: Ctx; kicker: string; title: string; lede: string; ledeNode?: React.ReactNode; crumbs: [string, string][] }) {
-  if (!loc.photoUrl) return <PageHead kicker={kicker} title={title} lede={lede} crumbs={crumbs} preview={ctx.preview} />;
+function PhotoHead({ loc, ctx, kicker, title, lede, ledeNode, crumbs, titleLogoUrl }: { loc: SiteLocation; ctx: Ctx; kicker: string; title: string; lede: string; ledeNode?: React.ReactNode; crumbs: [string, string][]; /** A logo in place of the title (its alt is the title). */ titleLogoUrl?: string }) {
+  if (!loc.photoUrl) return <PageHead kicker={kicker} title={title} lede={lede} crumbs={crumbs} preview={ctx.preview} titleLogoUrl={titleLogoUrl} />;
   return (
     <>
       <section className="hero hero--photo ink on-dark" style={{ minHeight: 'min(62vh,600px)' }}>
@@ -526,7 +528,7 @@ function PhotoHead({ loc, ctx, kicker, title, lede, ledeNode, crumbs }: { loc: S
         <div className="wrap"><div className="grid"><div className="left" style={{ gridColumn: '1 / span 8' }}>
           <p className="kicker" style={{ color: 'var(--white)' }}><T preview={ctx.preview}>{kicker}</T></p>
           <div className="lane" aria-hidden="true"><i /><i /><i /></div>
-          <h1><T preview={ctx.preview}>{title}</T></h1>
+          {titleLogoUrl ? <h1 className="hero-title-logo"><LedeLogo url={titleLogoUrl} name={title.replace(/\.$/, '')} /></h1> : <h1><T preview={ctx.preview}>{title}</T></h1>}
           {ledeNode ? <p className="sub sub--logo">{ledeNode}</p> : lede && <p className="sub"><T preview={ctx.preview}>{lede}</T></p>}
         </div></div></div>
       </section>
