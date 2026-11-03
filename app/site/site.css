@@ -714,3 +714,10 @@
 .site .checks-field{border:0;margin:0;padding:0;min-width:0}
 .site .checks-field legend{font-size:13px;font-weight:600;padding:0;margin-bottom:8px}
 .site .check-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px 16px}
+/* A link that opens an image (campus map) in a dialog on the page */
+.site .img-dialog-link{text-decoration:underline;text-underline-offset:3px;text-decoration-thickness:1px;font:inherit;color:inherit;cursor:pointer}
+.site .img-dialog-link:hover{color:var(--cg11)}
+.site .img-dialog{padding:0;border:0;max-width:min(92vw,720px);max-height:92vh;background:var(--white);color:var(--ink);box-shadow:0 24px 80px rgba(0,0,0,.35)}
+.site .img-dialog::backdrop{background:rgba(0,0,0,.72)}
+.site .img-dialog-head{display:flex;justify-content:space-between;align-items:center;gap:16px;padding:12px 16px;border-bottom:1px solid var(--rule-strong);position:sticky;top:0;background:var(--white)}
+.site .img-dialog img{display:block;width:100%;height:auto}
