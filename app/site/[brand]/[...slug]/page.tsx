@@ -6,7 +6,7 @@ import ProgramBlock from '@/components/site/ProgramBlock';
 import LeadForm from '@/components/site/LeadForm';
 import ApplyDialog from '@/components/site/ApplyDialog';
 import { fmtDateStacked, fmtTime } from '@/lib/site/context';
-import { divisionsOf, listGames, listTeams, standings, type LeagueGame } from '@/lib/site/league';
+import { divisionsOf, listGames, listPlayers, listTeams, standings, type LeagueGame, type LeaguePlayer } from '@/lib/site/league';
 import { Chev, Crumbs, FactsDl, PageHead, Row, SecHead, Section, SplitGrid, StatusPill, T } from '@/components/site/ui';
 import { GameCard } from '@/components/compete/DivisionPage';
 import { siteContext, type SiteContext } from '@/lib/site/context';
@@ -343,6 +343,7 @@ async function Circuit({ ctx, page, division }: { ctx: Ctx; page: SitePage | nul
   const blocks = page ? (ctx.preview ? page.blocksDraft : page.blocksPublished ?? []) : [];
   const games = await listGames(ctx.brandKey, rep?.slug ?? 'circuit');
   const teamRows = await listTeams(ctx.brandKey, rep?.slug ?? 'circuit');
+  const players = await listPlayers(ctx.brandKey, rep?.slug ?? 'circuit');
   const logoOf = (name: string) => teamRows.find((t) => t.name === name)?.logoUrl ?? null;
   const Team = ({ name, jersey }: { name: string; jersey?: 'Light' | 'Dark' }) => <span className="nm"><TeamLogo url={logoOf(name)} />{name}{jersey && <small>({jersey})</small>}</span>;
   const divs = divisionsOf(games);
@@ -407,7 +408,7 @@ async function Circuit({ ctx, page, division }: { ctx: Ctx; page: SitePage | nul
           return hasScorers ? (
             <details key={g.id} className="sched-game">
               <summary className="sched-row" aria-label={`${g.home} ${g.homeScore} – ${g.away} ${g.awayScore}. Top scorers`}>{rowInner}</summary>
-              <Scorers game={g} leaf={`/sites/${ctx.brandKey}/icon-512.png`} />
+              <Scorers game={g} leaf={`/sites/${ctx.brandKey}/icon-512.png`} players={players} />
             </details>
           ) : (
             <div key={g.id} className="sched-row">{rowInner}</div>
@@ -429,7 +430,7 @@ async function Circuit({ ctx, page, division }: { ctx: Ctx; page: SitePage | nul
           <p className="kicker" style={{ color: 'var(--white)' }}>Rep Basketball League{loc ? ` · ${loc.name}` : ''}</p>
           <div className="lane" aria-hidden="true"><i /><i /><i /></div>
           <h1>Rep your city.<br />Run the Circuit.</h1>
-          <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginTop: 28 }}>{apply}<a className="pill pill--line" href="#schedule">Schedule and results</a><a className="pill pill--line" href="#standings">Standings</a></div>
+          <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginTop: 28 }}>{apply}<a className="pill pill--line" href="#schedule">Schedule and results</a><a className="pill pill--line" href="#standings">Standings</a><a className="pill pill--line" href="#rosters">Rosters</a></div>
         </div></div></div>
       </section>
       <div className="wrap"><nav className="crumbs" aria-label="Breadcrumb"><Link href="/">Home</Link><span aria-hidden="true">/</span><Link href="/basketball">Basketball</Link><span aria-hidden="true">/</span><span aria-current="page">Circuit</span></nav></div>
@@ -468,6 +469,33 @@ async function Circuit({ ctx, page, division }: { ctx: Ctx; page: SitePage | nul
                 {rows.map((r, i) => <div key={r.team} className={`stand-row${i === 0 && r.gp > 0 ? ' is-first' : ''}`}><span className="rk">{rows.some((x) => x.gp > 0) ? i + 1 : '–'}</span><Team name={r.team} /><span>{r.gp}</span><span className="w">{r.w}</span><span>{r.l}</span><span>{r.pf}</span><span>{r.pa}</span><span className="df">{r.diff > 0 ? `+${r.diff}` : r.diff}</span></div>)}
               </section>
             ))}
+          </div>
+        )}
+      </Section>
+
+      <Section id="rosters" tight>
+        <SecHead label="Rosters" />
+        {divs.length === 0 ? <p className="muted">Rosters appear once the schedule is set.</p> : (
+          <div className="sched-list">
+            {divs.filter((d) => !sel || d === sel).map((div) => {
+              const clubs = [...new Set(games.filter((g) => g.division === div).flatMap((g) => [g.home, g.away]))].sort();
+              return (
+                <section key={div} className="sched-day">
+                  <div className="sched-head"><h3>{div || 'League'}<span className="sched-count">{clubs.length} teams</span></h3><span className="sched-div">Open a team to see its roster</span></div>
+                  {clubs.map((club) => {
+                    const roster = players.filter((p) => p.team === club && p.division === div);
+                    return (
+                      <details key={club} className="roster">
+                        <summary><Team name={club} /><span className="roster-count">{roster.length ? `${roster.length} player${roster.length === 1 ? '' : 's'}` : 'Roster coming'}</span><span className="chev down" aria-hidden="true" /></summary>
+                        {roster.length ? (
+                          <ol className="roster-list">{roster.map((p) => <li key={p.id}><span className="roster-no">{p.number ? `#${p.number}` : ''}</span><span>{p.name}</span></li>)}</ol>
+                        ) : <p className="muted roster-empty">The {club} {div} roster is posted before their first game.</p>}
+                      </details>
+                    );
+                  })}
+                </section>
+              );
+            })}
           </div>
         )}
       </Section>
@@ -565,8 +593,10 @@ function TeamLogo({ url, small }: { url: string | null; small?: boolean }) {
  * team, player of the game in bold with the red maple leaf. A native
  * <details> so it needs no JavaScript; the summary IS the game row.
  */
-function Scorers({ game, leaf }: { game: LeagueGame; leaf: string }) {
+function Scorers({ game, leaf, players }: { game: LeagueGame; leaf: string; players: LeaguePlayer[] }) {
   const sc = game.scorers;
+  // Jersey numbers from the roster, when the scorer is rostered.
+  const numOf = (team: string, name: string) => players.find((p) => p.team === team && p.division === game.division && p.name.trim().toLowerCase() === name.trim().toLowerCase())?.number ?? null;
   if (!sc || (!sc.home?.length && !sc.away?.length)) return null;
   const col = (team: string, rows: { name: string; pts: number }[]) => (
     <div className="scorers-col">
@@ -576,7 +606,7 @@ function Scorers({ game, leaf }: { game: LeagueGame; leaf: string }) {
         return (
           <div key={i} className={`scorer${potg ? ' is-potg' : ''}`}>
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <span className="scorer-nm">{potg && <img src={leaf} alt="Player of the game" className="leaf" />}{r.name}</span>
+            <span className="scorer-nm">{potg && <img src={leaf} alt="Player of the game" className="leaf" />}{numOf(team, r.name) && <span className="scorer-no">#{numOf(team, r.name)}</span>}{r.name}</span>
             <span className="scorer-pts">{r.pts}</span>
           </div>
         );

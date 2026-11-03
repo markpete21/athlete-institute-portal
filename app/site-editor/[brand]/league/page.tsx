@@ -1,6 +1,6 @@
 import { listPrograms } from '@/lib/site/records';
-import { divisionsOf, listGames, listTeams, standings, type LeagueGame } from '@/lib/site/league';
-import { deleteGameAction, saveGameAction, saveTeamAction, setStreamForUpcomingAction } from '../../actions';
+import { divisionsOf, listGames, listPlayers, listTeams, standings, type LeagueGame, type LeaguePlayer } from '@/lib/site/league';
+import { deleteGameAction, saveGameAction, saveRosterAction, saveTeamAction, setStreamForUpcomingAction } from '../../actions';
 import { SubmitButton } from '@/app/admin/brands/SubmitButton';
 import { PreviewButton } from '../PreviewButton';
 
@@ -29,6 +29,9 @@ export default async function LeaguePage({ params, searchParams }: { params: { b
   const league = leagues.find((l) => l.slug === slug);
   const games = await listGames(brand, slug);
   const teamRows = await listTeams(brand, slug);
+  const players = await listPlayers(brand, slug);
+  // Teams per division, as they appear in the schedule (a club fields one roster per division).
+  const rosterSlots = [...new Set(games.map((g) => g.division))].sort().map((d) => ({ division: d, teams: [...new Set(games.filter((g) => g.division === d).flatMap((g) => [g.home, g.away]))].sort() }));
   const teamNames = [...new Set([...games.flatMap((g) => [g.home, g.away]), ...teamRows.map((t) => t.name)])].sort();
   const table = standings(games);
   const divs = divisionsOf(games);
@@ -39,10 +42,34 @@ export default async function LeaguePage({ params, searchParams }: { params: { b
         {leagues.length > 1 && <nav className="seg">{leagues.map((l) => <a key={l.slug} href={`/admin/league?league=${l.slug}`} className={l.slug === slug ? 'on' : ''}>{l.name}</a>)}</nav>}
         {games.length === 0 && <p className="text-body text-sm">No games yet. Add the schedule on the right; enter scores here as games finish and the standings update themselves.</p>}
         <div className="flex flex-col gap-2">
-          {games.map((g) => <GameRow key={g.id} brand={brand} g={g} slug={slug} />)}
+          {games.map((g) => <GameRow key={g.id} brand={brand} g={g} slug={slug} players={players} />)}
         </div>
       </section>
       <div className="flex flex-col gap-5">
+        <section className="card flex flex-col gap-3 p-5">
+          <div className="card-head"><h2>Rosters</h2><span className="card-head-lbl">{players.length} player{players.length === 1 ? '' : 's'}</span></div>
+          <p className="text-body text-xs">One player per line: <span className="mono">23 | Jordan Smith</span>. Shown on the Circuit page under Rosters (full names), and offered when you enter top scorers.</p>
+          {rosterSlots.length === 0 && <p className="text-body text-sm">Add games first; each team gets a roster per division it plays in.</p>}
+          {rosterSlots.map((slot) => (
+            <details key={slot.division} className="rounded border border-hairline p-2">
+              <summary className="cursor-pointer text-xs font-bold">{slot.division || 'League'} · {slot.teams.length} teams</summary>
+              <div className="mt-2 flex flex-col gap-3">
+                {slot.teams.map((team) => {
+                  const roster = players.filter((p) => p.team === team && p.division === slot.division);
+                  const id = `r-${slot.division}-${team}`.replace(/[^a-z0-9]+/gi, '-');
+                  return (
+                    <form key={team} action={saveRosterAction} className="flex flex-col gap-1">
+                      <input type="hidden" name="brand" value={brand} /><input type="hidden" name="leagueSlug" value={slug} /><input type="hidden" name="team" value={team} /><input type="hidden" name="division" value={slot.division} />
+                      <label className="field-label" htmlFor={id}>{team} <span className="text-silver">· {roster.length}</span></label>
+                      <textarea id={id} name="roster" rows={Math.min(12, Math.max(3, roster.length + 1))} defaultValue={roster.map((r) => (r.number ? `${r.number} | ${r.name}` : r.name)).join('\n')} className="input mono text-xs" placeholder={'23 | Jordan Smith\n7 | Sam Lee'} />
+                      <SubmitButton className="btn-ghost btn-sm self-start" pendingLabel="Saving…" doneLabel="Saved">Save roster</SubmitButton>
+                    </form>
+                  );
+                })}
+              </div>
+            </details>
+          ))}
+        </section>
         <section className="card flex flex-col gap-3 p-5">
           <div className="card-head"><h2>Live stream</h2></div>
           <p className="text-body text-xs">One link for every game that hasn&apos;t finished. The schedule shows Watch live in place of Upcoming. Set a different link on a single game below.</p>
@@ -99,7 +126,9 @@ export default async function LeaguePage({ params, searchParams }: { params: { b
   );
 }
 
-function GameRow({ brand, g, slug }: { brand: string; g: LeagueGame; slug: string }) {
+function GameRow({ brand, g, slug, players }: { brand: string; g: LeagueGame; slug: string; players: LeaguePlayer[] }) {
+  const rosterOf = (team: string) => players.filter((p) => p.team === team && p.division === g.division);
+  const home = rosterOf(g.home), away = rosterOf(g.away);
   return (
     <form action={saveGameAction} className="grid grid-cols-[1fr_auto] items-center gap-2 rounded border border-hairline p-3">
       <input type="hidden" name="brand" value={brand} /><input type="hidden" name="id" value={g.id} /><input type="hidden" name="leagueSlug" value={slug} />
@@ -117,9 +146,9 @@ function GameRow({ brand, g, slug }: { brand: string; g: LeagueGame; slug: strin
         <details className="col-span-2 sm:col-span-4" open={!!g.scorers}>
           <summary className="cursor-pointer text-xs font-bold">Top scorers and player of the game</summary>
           <div className="mt-2 grid grid-cols-2 gap-2">
-            <div className="flex flex-col"><label className="field-label" htmlFor={`g-${g.id}-hs5`}>{g.home}</label><textarea id={`g-${g.id}-hs5`} name="homeScorers" rows={5} defaultValue={(g.scorers?.home ?? []).map((s) => `${s.name} | ${s.pts}`).join('\n')} className="input mono text-xs" placeholder={'Name | points\none per line, top five'} /></div>
-            <div className="flex flex-col"><label className="field-label" htmlFor={`g-${g.id}-as5`}>{g.away}</label><textarea id={`g-${g.id}-as5`} name="awayScorers" rows={5} defaultValue={(g.scorers?.away ?? []).map((s) => `${s.name} | ${s.pts}`).join('\n')} className="input mono text-xs" placeholder={'Name | points'} /></div>
-            <div className="col-span-2 flex flex-col"><label className="field-label" htmlFor={`g-${g.id}-potg`}>Player of the game</label><input id={`g-${g.id}-potg`} name="potg" defaultValue={g.scorers?.potg ?? ''} className="input text-xs" placeholder="Exactly as typed above; gets the maple leaf" /></div>
+            <ScorerInputs gid={g.id} side="home" team={g.home} roster={home} rows={g.scorers?.home ?? []} />
+            <ScorerInputs gid={g.id} side="away" team={g.away} roster={away} rows={g.scorers?.away ?? []} />
+            <div className="col-span-2 flex flex-col"><label className="field-label" htmlFor={`g-${g.id}-potg`}>Player of the game</label><input id={`g-${g.id}-potg`} name="potg" list={`g-${g.id}-potg-list`} defaultValue={g.scorers?.potg ?? ''} className="input text-xs" placeholder="One of the scorers above; gets the maple leaf" /><datalist id={`g-${g.id}-potg-list`}>{[...home, ...away].map((p) => <option key={p.id} value={p.name} />)}</datalist></div>
           </div>
         </details>
       </div>
@@ -128,5 +157,28 @@ function GameRow({ brand, g, slug }: { brand: string; g: LeagueGame; slug: strin
         <SubmitButton className="btn-ghost btn-sm" formAction={deleteGameAction} pendingLabel="…" doneLabel="Removed">Delete</SubmitButton>
       </div>
     </form>
+  );
+}
+
+/** Top five scorers for one side: roster dropdowns + points when the team has a roster, else "Name | points" lines. */
+function ScorerInputs({ gid, side, team, roster, rows }: { gid: number; side: 'home' | 'away'; team: string; roster: LeaguePlayer[]; rows: { name: string; pts: number }[] }) {
+  if (!roster.length) {
+    return <div className="flex flex-col"><label className="field-label" htmlFor={`g-${gid}-${side}5`}>{team}</label><textarea id={`g-${gid}-${side}5`} name={`${side}Scorers`} rows={5} defaultValue={rows.map((r) => `${r.name} | ${r.pts}`).join('\n')} className="input mono text-xs" placeholder={'Name | points\none per line, top five\n(or add a roster)'} /></div>;
+  }
+  const names = new Set(roster.map((p) => p.name));
+  return (
+    <fieldset className="flex flex-col gap-1">
+      <legend className="field-label">{team}</legend>
+      {[0, 1, 2, 3, 4].map((i) => (
+        <div key={i} className="grid grid-cols-[1fr_64px] gap-1">
+          <select name={`${side}P${i}`} defaultValue={rows[i]?.name ?? ''} className="input text-xs" aria-label={`${team} scorer ${i + 1}`}>
+            <option value="">—</option>
+            {roster.map((p) => <option key={p.id} value={p.name}>{p.number ? `#${p.number} ` : ''}{p.name}</option>)}
+            {rows[i] && !names.has(rows[i].name) && <option value={rows[i].name}>{rows[i].name}</option>}
+          </select>
+          <input name={`${side}Pts${i}`} type="number" min={0} defaultValue={rows[i]?.pts ?? ''} className="input text-xs" aria-label={`${team} scorer ${i + 1} points`} placeholder="Pts" />
+        </div>
+      ))}
+    </fieldset>
   );
 }

@@ -685,3 +685,16 @@
 .site .live-dot{display:inline-block;width:6px;height:6px;border-radius:50%;background:currentColor;animation:livepulse 1.4s ease-in-out infinite}
 @keyframes livepulse{0%,100%{opacity:1}50%{opacity:.3}}
 @media (prefers-reduced-motion:reduce){.site .live-dot{animation:none}}
+/* Circuit rosters: one expandable row per team */
+.site details.roster{border-bottom:1px solid var(--rule)}
+.site details.roster summary{list-style:none;display:grid;grid-template-columns:minmax(0,1fr) auto auto;align-items:center;gap:16px;min-height:60px;padding:10px 20px;cursor:pointer;transition:background var(--fast) var(--ease)}
+.site details.roster summary::-webkit-details-marker{display:none}
+.site details.roster summary:hover{background:var(--paper)}
+.site details.roster summary .nm{display:flex;align-items:center;gap:12px;font-weight:600}
+.site details.roster[open] summary .chev{transform:rotate(-135deg);vertical-align:-1px}
+.site .roster-count{font-size:var(--fs-label);color:var(--cg11);font-weight:600;letter-spacing:.02em}
+.site .roster-list{list-style:none;margin:0;padding:4px 20px 20px;display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:0 var(--gutter)}
+.site .roster-list li{display:grid;grid-template-columns:44px 1fr;gap:8px;padding:9px 0;border-bottom:1px solid var(--rule);font-size:var(--fs-list)}
+.site .roster-no{font-weight:600;color:var(--red);font-variant-numeric:tabular-nums}
+.site .roster-empty{padding:0 20px 18px;font-size:var(--fs-list)}
+.site .scorer-no{color:var(--cg11);font-weight:600;margin-right:6px;font-size:.9em}
