@@ -629,9 +629,7 @@ async function About({ ctx, page }: { ctx: Ctx; page: SitePage | null }) {
   return (
     <>
       <PageHead kicker="About" title={`${ctx.site.name}.`} titleLogoUrl={`/sites/${ctx.brandKey}/logos/sport-horizontal-on-white.png`} lede={ctx.site.seo.default_description} crumbs={[['Home', '/'], ['About', '']]} />
-      <Section tight><SecHead label="Structure" /><SplitGrid left={<h2>One name.<br />{SPORTS.length} sports.</h2>} right={<div className="rows">
-        {SPORTS.map((s) => <div key={s.slug} className="row" style={{ gridTemplateColumns: 'minmax(0,.7fr) minmax(0,1.6fr) auto' }}><h3>{s.name}</h3><span className="meta">{s.programs.map((l) => l[0]).join(' · ')}</span><span className="end">{s.status === 'live' ? <span className="status status--live">Now playing</span> : <span className="status">Coming soon</span>}</span></div>)}
-      </div>} /></Section>
+      <Section tight><SecHead label="Structure" /><h2 className="lp-h2">One name.<br />{SPORTS.length} sports.</h2><SportTiles /></Section>
       <BlockRenderer blocks={blocks} ctx={ctx} />
       <Section id="contact"><SecHead label="Contact" /><SplitGrid left={<h2>Talk to us.</h2>} right={<>
         <FactsDl preview={ctx.preview} facts={[['Email', ctx.site.contact.email ?? '[TBC]'], ['Phone', ctx.site.contact.phone ?? '[TBC]']]} />
