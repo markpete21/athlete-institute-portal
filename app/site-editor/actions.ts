@@ -441,6 +441,16 @@ export async function resendInviteAction(fd: FormData): Promise<void> {
 
 // --- Site-run league games -------------------------------------------------------
 
+/** Top scorers picked from the roster: <side>P0..4 (player name) and <side>Pts0..4. */
+function picked(fd: FormData, side: 'home' | 'away'): { name: string; pts: number }[] {
+  const out: { name: string; pts: number }[] = [];
+  for (let i = 0; i < 5; i++) {
+    const name = str(fd.get(`${side}P${i}`));
+    if (name) out.push({ name, pts: Math.max(0, Math.min(200, num(fd.get(`${side}Pts${i}`)) ?? 0)) });
+  }
+  return out.sort((a, b) => b.pts - a.pts);
+}
+
 export async function saveGameAction(fd: FormData): Promise<void> {
   const brand = str(fd.get('brand'));
   const { session } = await requireSiteRole(brand, ['super', 'admin', 'editor']);
@@ -453,7 +463,7 @@ export async function saveGameAction(fd: FormData): Promise<void> {
     venue: str(fd.get('venue')), home: str(fd.get('home')), away: str(fd.get('away')),
     homeScore: num(fd.get('homeScore')), awayScore: num(fd.get('awayScore')), status: (str(fd.get('status')) || 'scheduled') as 'scheduled' | 'final' | 'postponed', note: str(fd.get('note')),
     ...(fd.has('streamUrl') ? { streamUrl: /^https:\/\//i.test(str(fd.get('streamUrl'))) ? str(fd.get('streamUrl')) : null } : {}),
-    ...(fd.has('homeScorers') ? { scorers: { home: parseScorers(str(fd.get('homeScorers'))), away: parseScorers(str(fd.get('awayScorers'))), potg: str(fd.get('potg')) || null } } : {}),
+    ...(fd.has('homeScorers') || fd.has('homeP0') ? { scorers: { home: fd.has('homeP0') ? picked(fd, 'home') : parseScorers(str(fd.get('homeScorers'))), away: fd.has('awayP0') ? picked(fd, 'away') : parseScorers(str(fd.get('awayScorers'))), potg: str(fd.get('potg')) || null } } : {}),
   }, session.userId!);
   revalidateSite(brand);
 }
@@ -472,6 +482,14 @@ export async function deleteGameAction(fd: FormData): Promise<void> {
   const { session } = await requireSiteRole(brand, ['super', 'admin', 'editor']);
   const { deleteGame } = await import('@/lib/site/league');
   await deleteGame(brand, Number(fd.get('id')), session.userId!);
+  revalidateSite(brand);
+}
+
+export async function saveRosterAction(fd: FormData): Promise<void> {
+  const brand = str(fd.get('brand'));
+  const { session } = await requireSiteRole(brand, ['super', 'admin', 'editor']);
+  const { saveRoster, parseRoster } = await import('@/lib/site/league');
+  await saveRoster(brand, str(fd.get('leagueSlug')) || 'circuit', str(fd.get('team')), str(fd.get('division')), parseRoster(str(fd.get('roster'))), session.userId!);
   revalidateSite(brand);
 }
 

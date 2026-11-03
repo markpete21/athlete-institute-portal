@@ -100,6 +100,34 @@ export async function listTeams(brandKey: string, leagueSlug: string): Promise<L
   return (data ?? []).map((r) => ({ id: r.id as number, name: r.name as string, shortName: (r.short_name as string) ?? null, city: (r.city as string) ?? null, logoUrl: (r.logo_url as string) ?? null }));
 }
 
+export interface LeaguePlayer { id: number; team: string; division: string; number: string | null; name: string }
+
+/** Every rostered player in a league, by division, team, then jersey number. */
+export async function listPlayers(brandKey: string, leagueSlug: string): Promise<LeaguePlayer[]> {
+  const { data } = await supabaseAdmin().from('site_league_players').select('id, team, division, number, name, sort_order').eq('brand_key', brandKey).eq('league_slug', leagueSlug).order('division').order('team').order('sort_order').order('id');
+  return (data ?? []).map((r) => ({ id: r.id as number, team: r.team as string, division: (r.division as string) ?? '', number: (r.number as string) ?? null, name: r.name as string }));
+}
+
+/** "23 | Jordan Smith" (or "#23 Jordan Smith", or a name alone) per line -> players, in the order typed. */
+export function parseRoster(text: string): { number: string | null; name: string }[] {
+  return text.split('\n').map((l) => l.trim()).filter(Boolean).map((l) => {
+    const m = l.match(/^#?\s*(\d{1,3})\s*[|,.:\-\s]\s*(.+)$/);
+    return m ? { number: m[1], name: m[2].trim() } : { number: null, name: l.replace(/^[|,\s]+/, '') };
+  }).filter((p) => p.name).slice(0, 30);
+}
+
+/** Replace one team's roster in one division. */
+export async function saveRoster(brandKey: string, leagueSlug: string, team: string, division: string, players: { number: string | null; name: string }[], actorClerkId: string): Promise<void> {
+  const db = supabaseAdmin();
+  const { error: delErr } = await db.from('site_league_players').delete().eq('brand_key', brandKey).eq('league_slug', leagueSlug).eq('team', team).eq('division', division);
+  if (delErr) throw new Error(delErr.message);
+  if (players.length) {
+    const { error } = await db.from('site_league_players').insert(players.map((p, i) => ({ brand_key: brandKey, league_slug: leagueSlug, team, division, number: p.number, name: p.name.slice(0, 120), sort_order: i, created_by: actorClerkId })));
+    if (error) throw new Error(error.message);
+  }
+  await audit({ actorId: actorClerkId, action: 'site.league.roster', target: `site:${brandKey}`, meta: { league: leagueSlug, team, division, players: players.length } });
+}
+
 /** Upsert a team's logo / short name by its name as it appears in the games. */
 export async function saveTeam(brandKey: string, leagueSlug: string, input: { name: string; shortName?: string; city?: string; logoUrl?: string | null }, actorClerkId: string): Promise<void> {
   const name = input.name.trim();
