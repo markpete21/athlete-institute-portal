@@ -439,11 +439,13 @@ async function Circuit({ ctx, page, division }: { ctx: Ctx; page: SitePage | nul
       {rep && (
         <Section tight>
           <SecHead label={`${season ? `${season} season` : 'Season'}`} right={<StatusPill label={programStatusLabel(rep).label} live={programStatusLabel(rep).live} />} />
-          <SplitGrid left={<><h2>Key info.</h2>{rep.description && <p className="muted" style={{ marginTop: 12 }}>{rep.description}</p>}</>} right={<>
-            {(() => { const dome = loc?.photos.find((p) => /dome/i.test(p.caption)) ?? null; return dome ? <VenuePhotos photos={[{ ...dome, caption: `${dome.caption} · Home court` }]} single /> : null; })()}
-            <dl className="circuit-facts">{rep.facts.map(([k, v]) => <div key={k}><dt>{k}</dt><dd><T preview={ctx.preview}>{v}</T></dd></div>)}</dl>
+          {/* Facts and team logos fill the left column under the description; the Dome photo sits on the right. */}
+          <SplitGrid left={<>
+            <h2>Key info.</h2>
+            {rep.description && <p className="muted" style={{ marginTop: 12 }}>{rep.description}</p>}
+            <dl className="circuit-facts" style={{ marginTop: 24 }}>{rep.facts.map(([k, v]) => <div key={k}><dt>{k}</dt><dd><T preview={ctx.preview}>{v}</T></dd></div>)}</dl>
             {teams.length > 0 && <div className="circuit-programs"><p className="circuit-programs-h">Programs</p><div className="circuit-teams">{teams.map((t) => <span key={t}><TeamLogo url={logoOf(t)} small />{t}</span>)}</div></div>}
-          </>} />
+          </>} right={(() => { const dome = loc?.photos.find((p) => /dome/i.test(p.caption)) ?? null; return dome ? <VenuePhotos photos={[{ ...dome, caption: `${dome.caption} · Home court` }]} single /> : null; })()} />
         </Section>
       )}
 
