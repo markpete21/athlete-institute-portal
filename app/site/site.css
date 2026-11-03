@@ -727,3 +727,8 @@
 .site .img-dialog[open]{display:flex;flex-direction:column;overflow:hidden}
 /* The whole image fits the popup: never taller than the screen allows, never wider than the popup */
 .site .img-dialog img{display:block;flex:1 1 auto;min-height:0;width:auto;height:auto;max-width:100%;max-height:calc(92vh - 58px);object-fit:contain;margin:0 auto}
+/* Location pages, Programs here: the program names lead (red, bold, larger); the sport is the smaller label */
+.site .rows--programs .row h3{font-size:16px;font-weight:600;color:var(--cg11)}
+.site .rows--programs .row .meta{font-size:clamp(19px,1.7vw,22px);font-weight:700;color:var(--red);line-height:1.25}
+.site .rows--programs a.row:hover .meta{opacity:.86}
+.site .lp-lede{font-size:clamp(18px,1.6vw,21px);line-height:1.35;max-width:36ch}
