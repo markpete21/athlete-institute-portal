@@ -706,3 +706,7 @@
 /* Page head: a logo in place of the title (About) */
 .site .page-head h1.page-head-logo{line-height:0;margin-top:10px}
 .site .page-head h1.page-head-logo img{display:block;width:min(640px,100%);height:auto}
+/* About: the home tagline under the ALL CAN Sport logo */
+.site .about-tagline{margin-top:18px;max-width:none;font-family:"AC Pillars","Jost",var(--font);font-weight:700;font-size:clamp(30px,4vw,56px);line-height:1.02;letter-spacing:-.01em;color:var(--ink)}
+.site .about-tagline>span{display:block}
+.site .about-tagline .tag-red{display:inline;color:var(--red)}

@@ -626,9 +626,19 @@ function Scorers({ game, leaf, players }: { game: LeagueGame; leaf: string; play
 
 async function About({ ctx, page }: { ctx: Ctx; page: SitePage | null }) {
   const blocks = page ? (ctx.preview ? page.blocksDraft : page.blocksPublished ?? []) : [];
+  // The home page's tagline and Why band, so About always says the same thing.
+  const home = await getPageBySlug(ctx.brandKey, '');
+  const homeBlocks = home ? (ctx.preview ? home.blocksDraft : home.blocksPublished ?? []) : [];
+  const hero = homeBlocks.find((b) => b.type === 'hero' && !b.hidden);
+  const lines = ((hero?.props.headingLines as string[] | undefined) ?? []).filter(Boolean);
+  const accent = typeof hero?.props.accentWord === 'string' ? hero.props.accentWord : '';
+  const why = homeBlocks.find((b) => b.type === 'why_band' && !b.hidden);
   return (
     <>
-      <PageHead kicker="About" title={`${ctx.site.name}.`} titleLogoUrl={`/sites/${ctx.brandKey}/logos/sport-horizontal-on-white.png`} lede={ctx.site.seo.default_description} crumbs={[['Home', '/'], ['About', '']]} />
+      <PageHead kicker="About" title={`${ctx.site.name}.`} titleLogoUrl={`/sites/${ctx.brandKey}/logos/sport-horizontal-on-white.png`} lede={lines.length ? null : ctx.site.seo.default_description} crumbs={[['Home', '/'], ['About', '']]}>
+        {lines.length > 0 && <p className="about-tagline">{lines.map((l, i) => <span key={i}>{accent && l.startsWith(accent) ? <><span className="tag-red">{accent}</span>{l.slice(accent.length)}</> : l}</span>)}</p>}
+      </PageHead>
+      {why && <BlockRenderer blocks={[{ ...why, props: { ...why.props, showSports: false } }]} ctx={ctx} />}
       <Section tight><SecHead label="Structure" /><h2 className="lp-h2">One name.<br />{SPORTS.length} sports.</h2><SportTiles /></Section>
       <BlockRenderer blocks={blocks} ctx={ctx} />
       <Section id="contact"><SecHead label="Contact" /><SplitGrid left={<h2>Talk to us.</h2>} right={<>
