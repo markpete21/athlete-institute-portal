@@ -315,7 +315,10 @@ async function SportOverview({ ctx, sport, page }: { ctx: Ctx; sport: NonNullabl
  */
 async function ProgramLinePage({ ctx, sport, line, page }: { ctx: Ctx; sport: NonNullable<ReturnType<typeof sportBySlug>>; line: ProgramLine; page: SitePage | null }) {
   const locs = await listLocations(ctx.brandKey);
-  const blocks = page ? (ctx.preview ? page.blocksDraft : page.blocksPublished ?? []) : [];
+  const allBlocks = page ? (ctx.preview ? page.blocksDraft : page.blocksPublished ?? []) : [];
+  // A page menu placed first sits right under the header (as on landing pages); the rest render after the locations.
+  const navFirst = allBlocks[0]?.type === 'page_nav' ? [allBlocks[0]] : [];
+  const blocks = navFirst.length ? allBlocks.slice(1) : allBlocks;
   const here = line.programs.map((p) => ({ p, loc: locs.find((l) => l.slug === p.locationSlug) ?? null }));
   const photoLoc = here.find((h) => h.loc?.photoUrl)?.loc ?? null;
   const first = line.programs[0];
@@ -326,11 +329,12 @@ async function ProgramLinePage({ ctx, sport, line, page }: { ctx: Ctx; sport: No
   return (
     <>
       {photoLoc ? <PhotoHead loc={photoLoc} ctx={ctx} {...head} /> : <PageHead {...head} preview={ctx.preview} />}
-      <Section tight><SecHead label="The program" /><SplitGrid
+      {navFirst.length > 0 && <BlockRenderer blocks={navFirst} ctx={ctx} />}
+      <Section tight id="program"><SecHead label="The program" /><SplitGrid
         left={<h2>What it is.</h2>}
         right={<>{line.description ? <p><T preview={ctx.preview}>{line.description}</T></p> : <p className="muted">Program details are <T preview={ctx.preview}>[TBC]</T>.</p>}{shared.length > 0 && <div style={{ marginTop: 20 }}><FactsDl facts={shared} preview={ctx.preview} /></div>}</>}
       /></Section>
-      <Section><SecHead label="Locations" right={<span className="note">{here.length} location{here.length === 1 ? '' : 's'}</span>} /><SplitGrid
+      <Section id="locations"><SecHead label="Locations" right={<span className="note">{here.length} location{here.length === 1 ? '' : 's'}</span>} /><SplitGrid
         left={<h2>Where it<br />runs.</h2>}
         right={<div className="rows">{here.map(({ p, loc }) => { const st = programStatusLabel(p); return <Row key={p.id} href={`/${p.locationSlug}/${sport.slug}#${p.slug}`} title={loc?.name ?? p.locationSlug} meta={<>{loc?.venue ?? ''}{loc?.city ? ` · ${loc.city}, ${loc.region}` : ''}</>} end={<StatusPill label={st.label} live={st.live} />} />; })}</div>}
       /></Section>

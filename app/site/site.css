@@ -732,3 +732,5 @@
 .site .rows--programs .row .meta{font-size:clamp(19px,1.7vw,22px);font-weight:700;color:var(--red);line-height:1.25}
 .site .rows--programs a.row:hover .meta{opacity:.86}
 .site .lp-lede{font-size:clamp(18px,1.6vw,21px);line-height:1.35;max-width:36ch}
+/* Pages with a page menu: in-page jumps clear the header and the menu */
+.site:has(.pnav) section[id]{scroll-margin-top:calc(76px + 56px)}
