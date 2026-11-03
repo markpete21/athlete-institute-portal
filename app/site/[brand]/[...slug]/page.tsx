@@ -105,7 +105,7 @@ export default async function SitePage({ params, searchParams }: { params: { bra
       return (
         <>
           <PageHead kicker="Sport · Coming soon" title={`${sport.name}.`} lede={`${sport.programs.map((l) => l[0]).join(' and ')} are coming to ${ctx.site.name}.`} crumbs={[['Home', '/'], [sport.name, '']]} />
-          <Section tight><SplitGrid left={<><h2>Be first<br />to know.</h2><p className="muted" style={{ marginTop: 12 }}>Locations and dates are <T preview={ctx.preview}>[TBC]</T>.</p></>} right={<LeadForm brandKey={ctx.site.brandKey} variant="interest" context={sport.name} siteName={ctx.site.name} />} /></Section>
+          <Section tight><SplitGrid left={<><h2>Be first<br />to know.</h2><p className="muted" style={{ marginTop: 12 }}>Locations and dates are coming soon.</p></>} right={<LeadForm brandKey={ctx.site.brandKey} variant="interest" context={sport.name} siteName={ctx.site.name} />} /></Section>
           <Section><SecHead label="Request near you" /><SplitGrid left={<h2>Bring {sport.name.toLowerCase()}<br />to your area.</h2>} right={<LeadForm brandKey={ctx.site.brandKey} variant="location" initialSport={sport.slug} siteName={ctx.site.name} />} /></Section>
           <BlockRenderer blocks={blocks(page)} ctx={rctx} />
         </>
@@ -210,10 +210,11 @@ async function LocationHub({ ctx, loc, page }: { ctx: Ctx; loc: SiteLocation; pa
       <PhotoHead loc={loc} ctx={ctx} kicker={st.label} title={`${loc.name}.`} lede={progs.length ? `${progs.map((p) => p.name).join(' and ')} at ${loc.venue ?? loc.name}.` : ''} ledeNode={progs.some((p) => p.logoUrl) ? <><span className="lede-at">{loc.venue ?? loc.name}</span><span className="lede-logos">{progs.map((p, i) => <span key={p.id}>{i > 0 && ' and '}{p.logoUrl ? <LedeLogo url={p.logoUrl} name={p.name} /> : p.name}</span>)}</span></> : undefined} crumbs={[['Home', '/'], ['Locations', '/locations'], [loc.name, '']]} />
       <Section tight><SecHead label="Venue" /><SplitGrid
         left={<><h2>{loc.venue ?? loc.name}.</h2><p className="muted" style={{ marginTop: 12 }}>{[loc.city, loc.region].filter(Boolean).join(', ')}</p>{loc.note && <p className="note" style={{ marginTop: 8 }}><T preview={ctx.preview}>{loc.note}</T></p>}</>}
-        right={<FactsDl preview={ctx.preview} facts={[
-          ['Address', loc.address ? <span className="addr">{loc.address}<a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent([loc.venue, loc.address].filter(Boolean).join(', '))}`} target="_blank" rel="noopener">Google Maps</a></span> : '[TBC]'],
-          ['Parking', loc.parking ?? '[TBC]'], ['Arrival', loc.arrival ?? '[TBC]'], ['Contact', loc.contact ?? ctx.site.contact.email ?? '[TBC]'],
-        ]} />}
+        right={<FactsDl preview={ctx.preview} facts={([
+          // Only the rows a location has filled in (launch, Nov 3 2026: no "To be confirmed" rows).
+          ['Address', loc.address ? <span className="addr">{loc.address}<a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent([loc.venue, loc.address].filter(Boolean).join(', '))}`} target="_blank" rel="noopener">Google Maps</a></span> : null],
+          ['Parking', loc.parking], ['Arrival', loc.arrival], ['Contact', loc.contact ?? ctx.site.contact.email ?? null],
+        ] as [string, React.ReactNode][]).filter((f) => f[1] != null && f[1] !== '')} />}
       />
         {loc.photos.length > 0 && <VenuePhotos photos={loc.photos} />}
       </Section>
@@ -424,7 +425,6 @@ async function Circuit({ ctx, page, division }: { ctx: Ctx; page: SitePage | nul
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img className="hero-img" src={`/sites/${ctx.brandKey}/photos/circuit-hero.jpg`} alt="Three ALL CAN Circuit players mid-game: a layup, a drive down the lane and a guard surveying the court." />
         <span className="hero-scrim" aria-hidden="true" />
-        <span className="vcredit">Photo <T preview={ctx.preview}>[TBC]</T></span>
         <div className="wrap"><div className="grid"><div className="left" style={{ gridColumn: '1 / span 8' }}>
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src={`/sites/${ctx.brandKey}/logos/circuit-on-dark.png`} alt={`${ctx.site.name.replace(/\s+Sport$/, '')} Circuit`} style={{ width: 'min(320px,80%)', height: 'auto', display: 'block', marginBottom: 28 }} />

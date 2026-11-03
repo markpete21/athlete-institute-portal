@@ -251,7 +251,7 @@ async function renderBlock(b: Block, ctx: RenderCtx): Promise<JSX.Element | null
       let facts = (p.facts as unknown as [string, string][]) ?? [];
       let heading = s(p.heading);
       if (s(p.programSlug)) { const pr = await getProgram(ctx.brandKey, s(p.programSlug)); if (pr) { facts = pr.facts; heading = heading || `${pr.name}.`; } }
-      if (s(p.locationSlug)) { const l = await getLocation(ctx.brandKey, s(p.locationSlug)); if (l) { facts = [['Address', l.address ?? '[TBC]'], ['Parking', l.parking ?? '[TBC]'], ['Arrival', l.arrival ?? '[TBC]'], ['Contact', l.contact ?? '[TBC]']]; heading = heading || `${l.venue ?? l.name}.`; } }
+      if (s(p.locationSlug)) { const l = await getLocation(ctx.brandKey, s(p.locationSlug)); if (l) { facts = ([['Address', l.address], ['Parking', l.parking], ['Arrival', l.arrival], ['Contact', l.contact]] as [string, string | null][]).filter((f): f is [string, string] => !!f[1]); heading = heading || `${l.venue ?? l.name}.`; } }
       return (
         <section key={key} className="sec"><div className="wrap">{s(p.label) && <SecHead label={s(p.label)} />}<div className="grid">
           <div className="left">{heading && <h2>{heading.split('<br>').map((x, i) => <span key={i}>{i > 0 && <br />}{x}</span>)}</h2>}</div>
@@ -319,7 +319,8 @@ function Hero({ p, ctx }: { p: Record<string, never>; ctx: RenderCtx }) {
       {/* eslint-disable-next-line @next/next/no-img-element */}
       {photo && <img className="hero-img" src={s(p.imageUrl)} alt={s(p.imageAlt)} />}
       {photo && <span className="hero-scrim" aria-hidden="true" />}
-      {(s(p.credit) || photo || photoSpot) && <span className="vcredit">Photo <T preview={ctx.preview}>{s(p.credit) || '[TBC]'}</T></span>}
+      {/* A credit shows only when one is entered (launch, Nov 3 2026). */}
+      {s(p.credit) && s(p.credit) !== '[TBC]' && <span className="vcredit">Photo {s(p.credit)}</span>}
       <div className="wrap"><div className="grid">
         <div className="left" style={{ gridColumn: '1 / span 8' }}>
           {/* eslint-disable-next-line @next/next/no-img-element */}
