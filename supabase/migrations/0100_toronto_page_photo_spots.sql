@@ -17,3 +17,11 @@ from (
   where p.brand_key = 'all-can' and p.slug = 'toronto-midtown/basketball'
 ) x
 where pg.id = x.id;
+
+-- The page menu follows the new order: Coach right after Why it works.
+update public.site_pages set
+  blocks_draft = replace(replace(blocks_draft::text, ', {"href": "#coach", "label": "Coach"}', ''), '{"href": "#why", "label": "Why it works"}', '{"href": "#why", "label": "Why it works"}, {"href": "#coach", "label": "Coach"}')::jsonb,
+  blocks_published = replace(replace(blocks_published::text, ', {"href": "#coach", "label": "Coach"}', ''), '{"href": "#why", "label": "Why it works"}', '{"href": "#why", "label": "Why it works"}, {"href": "#coach", "label": "Coach"}')::jsonb,
+  updated_at = now()
+ where brand_key = 'all-can' and slug = 'toronto-midtown/basketball'
+   and blocks_published::text not like '%"Why it works"}, {"href": "#coach"%';
