@@ -222,21 +222,22 @@ async function LocationHub({ ctx, loc, page }: { ctx: Ctx; loc: SiteLocation; pa
       </div></Section>
       <DevelopmentArm brandKey={ctx.brandKey} />
       <Section><SecHead label="Season calendar" /><SplitGrid left={<h2>Key dates.</h2>} right={<FactsDl preview={ctx.preview} facts={loc.calendar.length ? loc.calendar : DEFAULT_KEY_DATES} />} /></Section>
-      <Section><SecHead label="Program leadership" /><SplitGrid
+      {/* Only once a location has leaders entered (owner, Nov 2 2026: no [TBC] placeholder). */}
+      {loc.leaders.length > 0 && <Section><SecHead label="Program leadership" /><SplitGrid
         left={<h2>Program<br />leadership.</h2>}
         right={<>
-          {loc.leaders.length > 0 ? (
+          {(
             <div className="leaders">{loc.leaders.map((l) => (
               <article key={l.name} className="leader">
                 <div className="leader-photo">{l.photoUrl ? <LeaderPhoto url={l.photoUrl} name={l.name} /> : <span aria-hidden="true">{l.name.split(/\s+/).map((w) => w[0]).join('').slice(0, 2).toUpperCase()}</span>}</div>
                 <div><h3>{l.name}</h3>{l.role && <p className="kicker" style={{ marginTop: 4 }}>{l.role}</p>}{l.bio && <p className="muted" style={{ marginTop: 10 }}>{l.bio}</p>}</div>
               </article>
             ))}</div>
-          ) : <p className="muted">Program leadership for {loc.name} is <T preview={ctx.preview}>[TBC]</T>.</p>}
+          )}
           <p className="muted" style={{ marginTop: 20 }}>Every coach is screened before working with players.</p>
           <CoachingPartners brandKey={ctx.brandKey} />
         </>}
-      /></Section>
+      /></Section>}
       {results.length > 0 && <Section><SecHead label="Scores" right={<Link href="/scores">All games</Link>} /><div className="site-compete"><div className="cs-gamegrid">{results.map((g) => <GameCard key={g.id} g={{ id: g.id, startsAt: g.startsAt, round: null, stage: 'regular', status: 'final', homeTeamId: null, awayTeamId: null, homeTeam: g.homeTeam, awayTeam: g.awayTeam, homeScore: g.homeScore, awayScore: g.awayScore, overtime: g.overtime, liveStreamRef: g.liveStreamRef }} />)}</div></div></Section>}
       <BlockRenderer blocks={blocks} ctx={ctx} />
     </>
