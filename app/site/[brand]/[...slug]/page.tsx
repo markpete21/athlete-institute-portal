@@ -221,7 +221,7 @@ async function LocationHub({ ctx, loc, page }: { ctx: Ctx; loc: SiteLocation; pa
         {loc.sports.map((s) => { const sp = sportBySlug(s); const here = progs.filter((p) => p.sport === s); return <Row key={s} href={`/${loc.slug}/${s}`} title={sp?.name ?? s} meta={here.map((p) => p.name).join(' · ')} end={<StatusPill label={st.label} live={st.live} />} />; })}
       </div></Section>
       <DevelopmentArm brandKey={ctx.brandKey} />
-      <Section><SecHead label="Season calendar" /><SplitGrid left={<h2>Key dates.</h2>} right={<FactsDl preview={ctx.preview} facts={loc.calendar.length ? loc.calendar : DEFAULT_KEY_DATES} />} /></Section>
+      {/* Season calendar hidden on location pages for now (owner, Nov 2 2026); the dates stay on the location record. */}
       {/* Only once a location has leaders entered (owner, Nov 2 2026: no [TBC] placeholder). */}
       {loc.leaders.length > 0 && <Section><SecHead label="Program leadership" /><SplitGrid
         left={<h2>Program<br />leadership.</h2>}
@@ -548,7 +548,6 @@ function VenuePhotos({ photos, single }: { photos: { url: string; alt: string; c
   );
 }
 
-const DEFAULT_KEY_DATES: [string, string][] = [['Registration opens', '[TBC]'], ['Registration deadline', '[TBC]'], ['First session and evaluations', '[TBC]'], ['Team formation and uniforms', '[TBC]'], ['Last session & championships', '[TBC]']];
 
 /** "ALL CAN Basketball is the development arm of All Canadian Basketball Games, est. 2015." with the All Canadian Games x ALL CAN Basketball lockup, on black. */
 function DevelopmentArm({ brandKey }: { brandKey: string }) {
