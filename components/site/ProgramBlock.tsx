@@ -33,8 +33,7 @@ export default function ProgramBlock({ program, location, ctx, primary }: { prog
         <div className="right">
           {isRep ? (
             <>
-              <p><T preview={ctx.preview}>Selection and tryout details are [TBC].</T></p>
-              <div style={{ marginTop: 16 }}><Link className={`pill ${primary ? 'pill--red' : 'pill--ink'}`} href="/circuit">Circuit details</Link></div>
+              <div><Link className={`pill ${primary ? 'pill--red' : 'pill--ink'}`} href="/circuit">Circuit details</Link></div>
             </>
           ) : program.status === 'open' && program.programId ? (
             <div><Link className="pill pill--red" href={`/programs/${program.programId}`}>Register</Link></div>
