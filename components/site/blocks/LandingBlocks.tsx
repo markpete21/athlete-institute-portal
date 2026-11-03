@@ -52,7 +52,12 @@ export function DivisionCards({ p, ctx }: { p: Props; ctx: RenderCtx }) {
   return (
     <section className="sec"><div className="wrap">
       {s(p.label) && <SecHead label={s(p.label)} />}
-      {(s(p.heading) || s(p.intro)) && <div className="grid lp-intro"><div className="left">{s(p.heading) && <h2>{s(p.heading)}</h2>}</div><div className="right">{s(p.intro) && <p className="muted"><T preview={ctx.preview}>{s(p.intro)}</T></p>}</div></div>}
+      {/* With a heading: heading left, intro right, footnote under the cards. Without one: intro left, footnote right, above the cards. */}
+      {s(p.heading) ? (
+        <div className="grid lp-intro"><div className="left"><h2>{s(p.heading)}</h2></div><div className="right">{s(p.intro) && <p className="muted"><T preview={ctx.preview}>{s(p.intro)}</T></p>}</div></div>
+      ) : (s(p.intro) || s(p.footnote)) ? (
+        <div className="grid lp-intro"><div className="left">{s(p.intro) && <p className="lp-lede"><T preview={ctx.preview}>{s(p.intro)}</T></p>}</div><div className="right">{s(p.footnote) && <p className="muted"><T preview={ctx.preview}>{s(p.footnote)}</T></p>}</div></div>
+      ) : null}
       <div className="divs">{items.map((d, i) => (
         <article key={i} className="div-card">
           <p className="div-name">{d.name}</p>
@@ -64,7 +69,7 @@ export function DivisionCards({ p, ctx }: { p: Props; ctx: RenderCtx }) {
           <div className="div-cta"><Btn label={s(p.ctaLabel) ? `${s(p.ctaLabel)} · ${d.name}` : ''} href={s(p.ctaHref)} tone="ink" /></div>
         </article>
       ))}</div>
-      {s(p.footnote) && <p className="note" style={{ marginTop: 16 }}><T preview={ctx.preview}>{s(p.footnote)}</T></p>}
+      {s(p.heading) && s(p.footnote) && <p className="note" style={{ marginTop: 16 }}><T preview={ctx.preview}>{s(p.footnote)}</T></p>}
     </div></section>
   );
 }
