@@ -126,7 +126,10 @@ export function Person({ p, ctx }: { p: Props; ctx: RenderCtx }) {
     <section className="sec"><div className="wrap">
       {s(p.label) && <SecHead label={s(p.label)} />}
       <div className="grid person" style={{ rowGap: 28 }}>
-        <div className="left"><PhotoSpot url={s(p.imageUrl)} alt={s(p.imageAlt)} caption={s(p.caption)} preview={ctx.preview} portrait /></div>
+        <div className="left">{s(p.videoUrl) ? (
+          // Muted, looping and inline so it plays on phones; controls let a visitor turn the sound on.
+          <video className="lp-photo lp-photo--portrait lp-video" src={s(p.videoUrl)} poster={s(p.imageUrl) || undefined} aria-label={s(p.videoLabel) || `Video: ${s(p.name)}`} autoPlay muted loop playsInline controls preload="metadata" />
+        ) : <PhotoSpot url={s(p.imageUrl)} alt={s(p.imageAlt)} caption={s(p.caption)} preview={ctx.preview} portrait />}</div>
         <div className="right">
           <h2>{s(p.name)}</h2>
           {s(p.role) && <p className="kicker" style={{ marginTop: 10 }}>{s(p.role)}</p>}

@@ -615,6 +615,7 @@
 .site .lp-intro{row-gap:12px;margin-bottom:28px}
 .site .lp-photo{display:block;width:100%;aspect-ratio:16/9;object-fit:cover}
 .site .lp-photo--portrait{aspect-ratio:4/5;max-width:420px}
+.site .lp-video{aspect-ratio:9/16;max-width:360px;background:#000}
 /* Page menu: sticks under the header; links scroll sideways on phones */
 .site .pnav{position:sticky;top:calc(76px + env(safe-area-inset-top,0px));z-index:30;background:var(--white);border-bottom:1px solid var(--rule-strong);transition:box-shadow var(--fast) var(--ease)}
 .site .pnav.is-stuck{box-shadow:0 1px 0 var(--rule-strong),0 8px 24px rgba(0,0,0,.06)}

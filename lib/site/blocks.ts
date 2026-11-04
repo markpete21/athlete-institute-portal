@@ -74,7 +74,7 @@ export const BLOCK_TYPES: BlockTypeDef[] = [
   { type: 'steps', label: 'Steps', group: 'Content', hint: 'Numbered steps, e.g. how the season works', defaults: { label: 'How it works', heading: '', items: [{ title: 'Register.', body: '' }] } },
   { type: 'timeline', label: 'Schedule', group: 'Locations & programs', hint: 'Dated rows, with highlighted ones (semifinals, finals)', defaults: { label: 'Schedule', heading: '', items: [{ label: 'Week 1', date: '[TBC]', tag: '' }], note: '' } },
   { type: 'checklist', label: 'Checklist', group: 'Content', hint: 'What\'s included, with an optional photo', defaults: { label: 'Included', heading: '', intro: '', items: [{ text: '' }], imageUrl: '', imageAlt: '', caption: '', ctaLabel: '', ctaHref: '' } },
-  { type: 'person', label: 'Person', group: 'Content', hint: 'A coach or staff member: photo, name, role, bio, link', defaults: { label: 'Your coach', name: '', role: '', bio: '', imageUrl: '', imageAlt: '', caption: '', linkLabel: '', linkHref: '' } },
+  { type: 'person', label: 'Person', group: 'Content', hint: 'A coach or staff member: photo, name, role, bio, link', defaults: { label: 'Your coach', name: '', role: '', bio: '', imageUrl: '', imageAlt: '', caption: '', videoUrl: '', videoLabel: '', linkLabel: '', linkHref: '' } },
   { type: 'venue', label: 'Venue', group: 'Locations & programs', hint: 'Photo, address, directions and an optional map', defaults: { label: 'Venue', name: '', address: '', facts: [], imageUrl: '', imageAlt: '', directionsUrl: '', mapEmbedUrl: '' } },
   { type: 'lockup_band', label: 'Partnership band', group: 'Content', hint: 'A partner lockup with one line, on black', defaults: { imageUrl: '/sites/all-can/logos/lockup-all-canadian-basketball.png', alt: 'All Canadian Games and ALL CAN Basketball', text: 'ALL CAN Basketball is the development arm of All Canadian Basketball Games, est. 2015.' } },
   { type: 'spacer', label: 'Space', group: 'Layout', hint: 'Vertical space', defaults: { size: 'md' } },
@@ -371,7 +371,8 @@ export function validateBlocks(input: unknown, depth = 0): { blocks: Block[]; is
         if (props.imageUrl && !props.imageAlt) issues.push({ blockId: id, message: 'Photo needs alt text.' });
         break;
       case 'person':
-        props = { label: str(p.label, 80), name: str(p.name, 120), role: str(p.role, 160), bio: str(p.bio, 1500), imageUrl: imageUrl(p.imageUrl, issues, id), imageAlt: str(p.imageAlt, 400), caption: str(p.caption, 400), linkLabel: str(p.linkLabel, 60), linkHref: href(p.linkHref, issues, id, 'Link') };
+        props = { label: str(p.label, 80), name: str(p.name, 120), role: str(p.role, 160), bio: str(p.bio, 1500), imageUrl: imageUrl(p.imageUrl, issues, id), imageAlt: str(p.imageAlt, 400), caption: str(p.caption, 400), videoUrl: href(p.videoUrl, issues, id, 'Video'), videoLabel: str(p.videoLabel, 200), linkLabel: str(p.linkLabel, 60), linkHref: href(p.linkHref, issues, id, 'Link') };
+        if (props.videoUrl && !/\.(mp4|webm|mov)(\?|$)/i.test(String(props.videoUrl))) { issues.push({ blockId: id, message: 'Video must be an .mp4, .webm or .mov file.' }); props.videoUrl = ''; }
         if (props.imageUrl && !props.imageAlt) issues.push({ blockId: id, message: 'Photo needs alt text.' });
         break;
       case 'venue':

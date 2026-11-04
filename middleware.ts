@@ -228,7 +228,7 @@ export default clerkMiddleware(async (auth, req) => {
 export const config = {
   // Everything except Next internals and static files; always run for API.
   matcher: [
-    '/((?!_next|[^?]*\\.(?:html?|css|js(?!on)|jpe?g|webp|png|gif|svg|ttf|woff2?|ico|webmanifest)).*)',
+    '/((?!_next|[^?]*\\.(?:html?|css|js(?!on)|jpe?g|webp|png|gif|svg|ttf|woff2?|ico|webmanifest|mp4|webm|mov)).*)',
     '/(api)(.*)',
   ],
 };
