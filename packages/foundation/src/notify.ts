@@ -149,5 +149,14 @@ export async function notify<K extends TemplateKey>(input: NotifyInput<K>): Prom
   }
 
   const results = await Promise.all(jobs);
+  // Never fail silently: a send error, or a channel skipped because its keys
+  // are missing, is logged so it shows up in the Vercel logs. A skip for a
+  // missing recipient (no phone, no push subscription) is normal and stays quiet.
+  for (const x of results) {
+    const missingConfig = x.status === 'skipped' && /not set/.test(x.detail ?? '');
+    if (x.status === 'error' || missingConfig) {
+      console.error(`[notify] ${x.channel} ${x.status} (template=${String(input.template)}, brand=${input.brandKey ?? '-'}): ${x.detail ?? ''}`);
+    }
+  }
   return { results, ok: results.every((x) => x.status === 'sent') };
 }
