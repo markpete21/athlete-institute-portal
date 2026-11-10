@@ -47,7 +47,8 @@ export async function createLead(brandKey: string, input: LeadInput): Promise<{ 
     const legal = site.contact.legal_name ?? site.name;
     const address = site.contact.address ?? '';
     if (input.kind === 'interest') {
-      await notify({ to: { email }, channels: ['email'], brandKey, template: 'site.interest', data: { siteName: site.name, context: fields.program || fields.context || site.name, siteUrl: origin, legalName: legal, address } }).catch(() => {});
+      await notify({ to: { email }, channels: ['email'], brandKey, template: 'site.interest', data: { siteName: site.name, context: fields.program || fields.context || site.name, siteUrl: origin, legalName: legal, address } })
+        .catch((err: unknown) => { console.error(`[site-lead] interest confirmation threw for ${brandKey}:`, err); });
     }
     // Staff copy for requests and enquiries (never for the confidential assistance form's details).
     const inbox = site.contact.email;
@@ -55,7 +56,9 @@ export async function createLead(brandKey: string, input: LeadInput): Promise<{ 
       const summary = input.kind === 'assistance'
         ? `A confidential financial assistance request was received from ${email}. Open Websites > Leads to review it.`
         : `${input.kind === 'host' ? 'Hosting enquiry' : input.kind === 'request' ? 'Location request' : 'Message'} from ${input.name ?? email} (${email}${input.phone ? `, ${input.phone}` : ''}).\n\n${Object.entries(fields).map(([k, v]) => `${k}: ${v}`).join('\n')}`;
-      await notify({ to: { email: inbox }, channels: ['email'], brandKey, template: 'generic', data: { heading: `${site.name}: new ${input.kind} from the website`, body: summary, ctaLabel: 'Open leads', ctaUrl: `${origin}/admin/leads` } }).catch(() => {});
+      const sent = await notify({ to: { email: inbox }, channels: ['email'], brandKey, template: 'generic', data: { heading: `${site.name}: new ${input.kind} from the website`, body: summary, ctaLabel: 'Open leads', ctaUrl: `${origin}/admin/leads` } })
+        .catch((err: unknown) => { console.error(`[site-lead] staff email threw for ${brandKey} ${input.kind}:`, err); return null; });
+      if (sent && !sent.ok) console.error(`[site-lead] staff email to the ${brandKey} inbox was not sent (${input.kind} from ${input.sourcePath ?? '?'}). The lead is saved in Websites > Leads.`, sent.results);
     }
   }
   return { ok: true };
