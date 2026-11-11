@@ -16,6 +16,8 @@ import { pageDescription, pageTitle, breadcrumbJsonLd } from '@/lib/site/seo';
 import { PRIVACY_POLICY } from '@/lib/site/privacy-policy';
 import { listDivisions, recentResults, upcomingGames } from '@/lib/compete/compete';
 import type { Block } from '@/lib/site/blocks';
+import { boxesFor, gameStatLines, hasFullStats, statLinesByGame, type StatLine, type TeamBox } from '@/lib/site/league-stats';
+import { pct, teamTotals, topLines } from '@/lib/site/boxscore';
 
 export const dynamic = 'force-dynamic';
 
@@ -43,6 +45,7 @@ export async function generateMetadata({ params }: { params: { brand: string; sl
   if (page) {
     return { title: { absolute: pageTitle(ctx.site, page) }, description: pageDescription(ctx.site, page), alternates: { canonical: `${ctx.origin}/${slug}` }, robots: page.seo.noindex ? { index: false } : undefined };
   }
+  if (params.slug.length === 3 && params.slug[0] === 'circuit' && params.slug[1] === 'games') return { title: { absolute: `Full stats · ${ctx.site.name.replace(/\s+Sport$/, '')} Circuit` }, robots: { index: false, follow: true } };
   // Location/sport pages without a page row still get a formatted title.
   if (params.slug.length === 2 && sportBySlug(params.slug[0])) {
     const line = await getProgramLine(params.brand, params.slug[0], params.slug[1]);
@@ -112,6 +115,7 @@ export default async function SitePage({ params, searchParams }: { params: { bra
       );
     }
     case 'circuit': return <Circuit ctx={rctx} page={page} division={searchParams.division} />;
+    case 'league-game': return <LeagueGamePage ctx={rctx} gameId={Number(params.slug[2])} />;
     case 'training': {
       const skills = (await listPrograms(params.brand)).filter((p) => /skills/i.test(p.leagueType));
       const locs = await listLocations(params.brand);
@@ -160,6 +164,7 @@ async function inferTemplate(brand: string, parts: string[]): Promise<string> {
   }
   if (parts.length === 2 && sportBySlug(parts[1]) && (await getLocation(brand, parts[0]))) return 'location-sport';
   if (parts.length === 2 && sportBySlug(parts[0]) && (await getProgramLine(brand, parts[0], parts[1]))) return 'program-line';
+  if (parts.length === 3 && parts[0] === 'circuit' && parts[1] === 'games' && /^\d+$/.test(parts[2])) return 'league-game';
   return 'missing';
 }
 
@@ -352,6 +357,7 @@ async function Circuit({ ctx, page, division }: { ctx: Ctx; page: SitePage | nul
   const games = await listGames(ctx.brandKey, rep?.slug ?? 'circuit');
   const teamRows = await listTeams(ctx.brandKey, rep?.slug ?? 'circuit');
   const players = await listPlayers(ctx.brandKey, rep?.slug ?? 'circuit');
+  const stats = await statLinesByGame(ctx.brandKey, rep?.slug ?? 'circuit');
   const logoOf = (name: string) => teamRows.find((t) => t.name === name)?.logoUrl ?? null;
   const Team = ({ name, jersey }: { name: string; jersey?: 'Light' | 'Dark' }) => <span className="nm"><TeamLogo url={logoOf(name)} />{name}{jersey && <small>({jersey})</small>}</span>;
   const divs = divisionsOf(games);
@@ -394,7 +400,8 @@ async function Circuit({ ctx, page, division }: { ctx: Ctx; page: SitePage | nul
           const fin = g.status === 'final' && g.homeScore != null && g.awayScore != null;
           const hw = fin && g.homeScore! > g.awayScore!, aw = fin && g.awayScore! > g.homeScore!;
           const ppd = g.status === 'postponed';
-          const hasScorers = fin && !!g.scorers && ((g.scorers.home?.length ?? 0) > 0 || (g.scorers.away?.length ?? 0) > 0);
+          const hasStats = fin && hasFullStats(stats.get(g.id));
+          const hasScorers = fin && (hasStats || (!!g.scorers && ((g.scorers.home?.length ?? 0) > 0 || (g.scorers.away?.length ?? 0) > 0)));
           // On air from 10 minutes before tip-off until about two hours after.
           const t0 = g.startsAt ? new Date(g.startsAt).getTime() : NaN;
           const live = !fin && Number.isFinite(t0) && now >= t0 - 10 * 60_000 && now <= t0 + 2 * 3600_000;
@@ -416,7 +423,9 @@ async function Circuit({ ctx, page, division }: { ctx: Ctx; page: SitePage | nul
           return hasScorers ? (
             <details key={g.id} className="sched-game">
               <summary className="sched-row" aria-label={`${g.home} ${g.homeScore} – ${g.away} ${g.awayScore}. Top scorers`}>{rowInner}</summary>
-              <Scorers game={g} leaf={`/sites/${ctx.brandKey}/icon-512.png`} players={players} />
+              {hasStats
+                ? <StatsPreview game={g} lines={stats.get(g.id) ?? []} leaf={`/sites/${ctx.brandKey}/icon-512.png`} players={players} logoOf={logoOf} />
+                : <Scorers game={g} leaf={`/sites/${ctx.brandKey}/icon-512.png`} players={players} />}
             </details>
           ) : (
             <div key={g.id} className="sched-row">{rowInner}</div>
@@ -629,6 +638,146 @@ function Scorers({ game, leaf, players }: { game: LeagueGame; leaf: string; play
       {col(game.away, sc.away ?? [])}
       {sc.potg && <p className="scorers-potg"><span className="kicker">Player of the game</span> <b>{sc.potg}</b></p>}
     </div>
+  );
+}
+
+/** A player's label: roster or uploaded name, with the jersey number. */
+function playerLabel(l: StatLine, game: LeagueGame, players: LeaguePlayer[]): { no: string | null; name: string } {
+  const rost = players.find((p) => p.team === l.team && p.division === game.division && ((l.number && String(p.number ?? '').replace(/^#/, '') === l.number) || (l.name && p.name.trim().toLowerCase() === l.name.trim().toLowerCase())));
+  return { no: l.number, name: l.name ?? rost?.name ?? '' };
+}
+const isPotg = (l: StatLine, label: { no: string | null; name: string }, potg: string | null | undefined) => {
+  if (!potg) return false;
+  const p = potg.trim().toLowerCase().replace(/^#/, '');
+  return (!!label.name && label.name.trim().toLowerCase() === p) || (!!l.number && l.number === p);
+};
+
+/**
+ * Schedule expand, once full stats are uploaded: the top five stat lines per
+ * team (points, then rebounds, then assists), player of the game with the
+ * leaf, and the Full stats button.
+ */
+function StatsPreview({ game, lines, leaf, players, logoOf }: { game: LeagueGame; lines: StatLine[]; leaf: string; players: LeaguePlayer[]; logoOf: (team: string) => string | null }) {
+  const boxes = boxesFor(lines, game.home, game.away);
+  const potg = game.scorers?.potg ?? null;
+  const col = (b: TeamBox) => {
+    const tot = teamTotals(b.lines, b.total);
+    return (
+      <div className="scorers-col" key={b.team}>
+        <p className="kicker sp-team"><TeamLogo url={logoOf(b.team)} small />{b.team}</p>
+        {b.lines.length > 0 ? (
+          <table className="sp-table">
+            <thead><tr><th scope="col">Player</th><th scope="col" className="num">PTS</th><th scope="col" className="num">REB</th><th scope="col" className="num">AST</th></tr></thead>
+            <tbody>{topLines(b.lines).map((l) => {
+              const lab = playerLabel(l, game, players); const star = isPotg(l, lab, potg);
+              return (
+                <tr key={l.id} className={star ? 'is-potg' : undefined}>
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <td><span className="scorer-nm">{star && <img src={leaf} alt="Player of the game" className="leaf" />}{lab.no && <span className="scorer-no">#{lab.no}</span>}{lab.name}</span></td>
+                  <td className="num"><b>{l.pts}</b></td><td className="num">{l.reb}</td><td className="num">{l.ast}</td>
+                </tr>
+              );
+            })}</tbody>
+          </table>
+        ) : <p className="muted sp-none">Player stats not uploaded.</p>}
+        {tot && <p className="sp-tot">Team · <b>{tot.pts}</b> PTS · {tot.reb} REB · {tot.ast} AST{tot.fga ? ` · FG ${tot.fgm}-${tot.fga}` : ''}</p>}
+      </div>
+    );
+  };
+  return (
+    <div className="scorers">
+      {boxes.map(col)}
+      <div className="sp-foot">
+        {potg ? <p className="scorers-potg"><span className="kicker">Player of the game</span> <b>{potg}</b></p> : <span />}
+        <Link className="pill pill--ink pill--sm" href={`/circuit/games/${game.id}`}>Full stats</Link>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * /circuit/games/<id>: the full box score for one game, in the Circuit's
+ * day-card style. Only exists once stats are uploaded (404 before), and is
+ * kept out of search (youth players).
+ */
+async function LeagueGamePage({ ctx, gameId }: { ctx: Ctx; gameId: number }) {
+  const rep = (await listPrograms(ctx.brandKey)).find((p) => p.leagueType === 'Rep' || p.slug === 'circuit');
+  const slug = rep?.slug ?? 'circuit';
+  const games = await listGames(ctx.brandKey, slug);
+  const game = games.find((g) => g.id === gameId);
+  if (!game) notFound();
+  const lines = await gameStatLines(ctx.brandKey, game.id);
+  if (!hasFullStats(lines)) notFound();
+  const [teamRows, players] = await Promise.all([listTeams(ctx.brandKey, slug), listPlayers(ctx.brandKey, slug)]);
+  const logoOf = (name: string) => teamRows.find((t) => t.name === name)?.logoUrl ?? null;
+  const no = games.findIndex((g) => g.id === game.id) + 1;
+  const boxes = boxesFor(lines, game.home, game.away);
+  const [wd, md, yr] = fmtDateStacked(game.startsAt);
+  const potg = game.scorers?.potg ?? null;
+  const leaf = `/sites/${ctx.brandKey}/icon-512.png`;
+  const fin = game.homeScore != null && game.awayScore != null;
+  const shoot = (m: number | null, a: number | null) => (m == null || a == null ? '–' : `${m}-${a}`);
+  const has = (b: TeamBox, k: keyof StatLine) => b.lines.some((l) => l[k] != null) || (b.total?.[k] ?? null) != null;
+  const Box = ({ b, score, won }: { b: TeamBox; score: number | null; won: boolean }) => {
+    const tot = teamTotals(b.lines, b.total) as StatLine | null;
+    const cols: [keyof StatLine, string][] = (([['pts', 'PTS'], ['reb', 'REB'], ['ast', 'AST'], ['stl', 'STL'], ['blk', 'BLK'], ['tov', 'TO']] as [keyof StatLine, string][]).filter(([k]) => k === 'pts' || k === 'reb' || k === 'ast' || has(b, k)));
+    const shots = ([['fgm', 'fga', 'FG'], ['tpm', 'tpa', '3PT'], ['ftm', 'fta', 'FT']] as [keyof StatLine, keyof StatLine, string][]).filter(([m]) => has(b, m));
+    return (
+      <section className="sched-day box">
+        <div className="sched-head box-head"><h3><TeamLogo url={logoOf(b.team)} />{b.team}</h3>{score != null && <span className={`box-score${won ? ' w' : ''}`}>{score}</span>}</div>
+        {tot && <p className="box-sum">{([tot.fga != null && `FG ${tot.fgm}-${tot.fga}${pct(tot.fgm, tot.fga) != null ? ` (${pct(tot.fgm, tot.fga)}%)` : ''}`, tot.tpa != null && `3PT ${tot.tpm}-${tot.tpa}${pct(tot.tpm, tot.tpa) != null ? ` (${pct(tot.tpm, tot.tpa)}%)` : ''}`, tot.fta != null && `FT ${tot.ftm}-${tot.fta}${pct(tot.ftm, tot.fta) != null ? ` (${pct(tot.ftm, tot.fta)}%)` : ''}`, `${tot.reb} REB`, `${tot.ast} AST`, tot.stl != null && `${tot.stl} STL`, tot.blk != null && `${tot.blk} BLK`, tot.tov != null && `${tot.tov} TO`].filter(Boolean) as string[]).map((t, k) => <span key={k} className="bs-item">{t}</span>)}</p>}
+        {b.lines.length > 0 ? (
+          <div className="tbl-wrap">
+            <table className="box-table">
+              <thead><tr><th scope="col">Player</th>{cols.map(([, l]) => <th key={l} scope="col" className="num">{l}</th>)}{shots.map(([, , l]) => <th key={l} scope="col" className="num">{l}</th>)}</tr></thead>
+              <tbody>
+                {b.lines.map((l) => {
+                  const lab = playerLabel(l, game, players); const star = isPotg(l, lab, potg);
+                  return (
+                    <tr key={l.id} className={star ? 'is-potg' : undefined}>
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <td className="team"><span className="scorer-nm">{star && <img src={leaf} alt="Player of the game" className="leaf" />}{lab.no && <span className="scorer-no">#{lab.no}</span>}{lab.name}</span></td>
+                      {cols.map(([k, lb]) => <td key={lb} className="num">{k === 'pts' ? <b>{l.pts}</b> : (l[k] as number | null) ?? '–'}</td>)}
+                      {shots.map(([m, a, lb]) => <td key={lb} className="num">{shoot(l[m] as number | null, l[a] as number | null)}</td>)}
+                    </tr>
+                  );
+                })}
+              </tbody>
+              {tot && <tfoot><tr><th scope="row">Team</th>{cols.map(([k, lb]) => <td key={lb} className="num">{(tot[k] as number | null) ?? '–'}</td>)}{shots.map(([m, a, lb]) => <td key={lb} className="num">{shoot(tot[m] as number | null, tot[a] as number | null)}</td>)}</tr></tfoot>}
+            </table>
+          </div>
+        ) : <p className="muted box-none">Player stats weren&apos;t uploaded for this team.</p>}
+      </section>
+    );
+  };
+  return (
+    <>
+      <div className="wrap"><Crumbs items={[['Home', '/'], ['Circuit', '/circuit'], [`Game ${no}`, '']]} /></div>
+      <section className="sec" style={{ paddingTop: 24 }}><div className="wrap">
+        <div className="sched-day game-card">
+          <div className="sched-head"><h3>{game.startsAt ? `${wd}, ${md}` : 'Date to be confirmed'}{game.startsAt && <span className="sched-count">{yr.replace(/\.$/, '')}</span>}</h3><span className="sched-div">Game {no} · {game.division}{game.note ? ` · ${game.note}` : ''}</span></div>
+          <div className="game-line">
+            <span className="gl-team"><TeamLogo url={logoOf(game.home)} />{game.home}<small>Home</small></span>
+            <span className={`gl-sc${fin && game.homeScore! > game.awayScore! ? ' w' : ''}`}>{game.homeScore ?? '–'}</span>
+            <span className="sched-status is-final">Final</span>
+            <span className={`gl-sc${fin && game.awayScore! > game.homeScore! ? ' w' : ''}`}>{game.awayScore ?? '–'}</span>
+            <span className="gl-team gl-away"><TeamLogo url={logoOf(game.away)} />{game.away}<small>Away</small></span>
+          </div>
+          {potg && (
+            <p className="gl-potg">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={leaf} alt="" className="leaf" />
+              <span className="kicker">Player of the game</span> <b>{potg}</b>
+            </p>
+          )}
+        </div>
+        <div className="sched-list" style={{ marginTop: 28 }}>
+          <Box b={boxes[0]} score={game.homeScore} won={fin && game.homeScore! > game.awayScore!} />
+          <Box b={boxes[1]} score={game.awayScore} won={fin && game.awayScore! > game.homeScore!} />
+        </div>
+        <p style={{ marginTop: 28 }}><Link className="pill pill--line pill--sm" href="/circuit#schedule">Back to the schedule</Link></p>
+      </div></section>
+    </>
   );
 }
 

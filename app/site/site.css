@@ -735,3 +735,38 @@
 .site .lp-lede{font-size:clamp(18px,1.6vw,21px);line-height:1.35;max-width:36ch}
 /* Pages with a page menu: in-page jumps clear the header and the menu */
 .site:has(.pnav) section[id]{scroll-margin-top:calc(76px + 56px)}
+
+/* Full stats: schedule preview (top five) and the box-score page */
+.site .sp-team{display:flex;align-items:center;gap:8px}
+.site .sp-table, .site .box-table{width:100%;border-collapse:collapse;font-size:15px}
+.site .sp-table th, .site .box-table th{font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--cg11);font-weight:600;text-align:left;padding:6px 8px 6px 0;border-bottom:1px solid var(--rule-strong)}
+.site .sp-table td, .site .box-table td{padding:8px 8px 8px 0;border-bottom:1px solid var(--rule)}
+.site .sp-table .num, .site .box-table .num{text-align:right}
+.site .sp-table tr.is-potg td, .site .box-table tr.is-potg td{font-weight:700}
+.site .scorer-no{color:var(--cg11);font-weight:600;margin-right:6px;font-size:13px}
+.site .sp-tot{max-width:none;font-size:13px;color:var(--cg11);margin-top:8px}
+.site .sp-none{font-size:14px}
+.site .sp-foot{grid-column:1/-1;display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px}
+.site .game-card{width:100%}
+.site .sched-list>*{min-width:0} /* wide box scores scroll inside their card, never the page */
+.site .game-line{display:grid;grid-template-columns:minmax(0,1fr) auto auto auto minmax(0,1fr);gap:18px;align-items:center;padding:22px 20px}
+.site .gl-team{display:inline-flex;align-items:center;gap:12px;font-size:20px;font-weight:700;min-width:0}
+.site .gl-team small{font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--cg11);font-weight:600}
+.site .gl-away{justify-content:flex-end;text-align:right;flex-direction:row-reverse}
+.site .gl-team .tl{width:44px;height:44px}
+.site .gl-sc{font-size:44px;font-weight:700;line-height:1;color:var(--cg9)}
+.site .gl-sc.w{color:var(--red)}
+.site .gl-potg{display:flex;align-items:center;gap:8px;padding:0 20px 18px;font-size:15px}
+.site .gl-potg .leaf{width:14px;height:14px}
+.site .box-head{align-items:center}
+.site .box-head h3{display:inline-flex;align-items:center;gap:10px}
+.site .box-head .tl{width:32px;height:32px}
+.site .box-score{font-size:30px;font-weight:700;color:var(--white)}
+.site .box-score.w{color:var(--red)}
+.site .bs-item{white-space:nowrap}
+.site .bs-item+.bs-item::before{content:" · "}
+.site .box-sum{max-width:none;padding:12px 20px;font-size:13px;color:var(--cg11);background:var(--paper);border-bottom:1px solid var(--rule)}
+.site .box .tbl-wrap{padding:4px 20px 12px}
+.site .box-table tfoot th, .site .box-table tfoot td{font-weight:700;border-bottom:0;border-top:1px solid var(--rule-strong);padding-top:10px}
+.site .box-none{padding:16px 20px}
+@media (max-width:640px){.site .game-line{grid-template-columns:1fr auto;row-gap:10px}.site .game-line .sched-status{display:none}.site .gl-away{flex-direction:row;justify-content:flex-start;text-align:left}.site .gl-sc{font-size:34px}.site .game-line>:nth-child(4){grid-row:2;grid-column:2}.site .game-line>:nth-child(5){grid-row:2;grid-column:1}}

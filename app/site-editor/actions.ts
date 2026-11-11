@@ -508,3 +508,27 @@ export async function saveTeamAction(fd: FormData): Promise<void> {
   await saveTeam(brand, str(fd.get('leagueSlug')) || 'circuit', { name: str(fd.get('name')), shortName: str(fd.get('shortName')), city: str(fd.get('city')), ...(logoUrl ? { logoUrl } : bool(fd.get('clearLogo')) ? { logoUrl: null } : {}) }, session.userId!);
   revalidateSite(brand);
 }
+
+// --- Full stats (box scores) for site-run league games ------------------------
+
+export async function saveBoxScoreAction(fd: FormData): Promise<void> {
+  const brand = str(fd.get('brand'));
+  const { session } = await requireSiteRole(brand, ['super', 'admin', 'editor']);
+  const { saveTeamBox } = await import('@/lib/site/league-stats');
+  const game = { id: Number(fd.get('id')), division: str(fd.get('division')) };
+  const slug = str(fd.get('leagueSlug')) || 'circuit';
+  for (const side of ['Home', 'Away'] as const) {
+    const text = str(fd.get(`box${side}`));
+    const team = str(fd.get(side === 'Home' ? 'home' : 'away'));
+    if (text && team) await saveTeamBox(brand, slug, game, team, text, session.userId!);
+  }
+  revalidateSite(brand);
+}
+
+export async function clearBoxScoreAction(fd: FormData): Promise<void> {
+  const brand = str(fd.get('brand'));
+  const { session } = await requireSiteRole(brand, ['super', 'admin', 'editor']);
+  const { clearGameStats } = await import('@/lib/site/league-stats');
+  await clearGameStats(brand, Number(fd.get('id')), session.userId!);
+  revalidateSite(brand);
+}

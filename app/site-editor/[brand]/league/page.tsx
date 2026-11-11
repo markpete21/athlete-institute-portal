@@ -1,6 +1,7 @@
 import { listPrograms } from '@/lib/site/records';
 import { divisionsOf, listGames, listPlayers, listTeams, standings, type LeagueGame, type LeaguePlayer } from '@/lib/site/league';
-import { deleteGameAction, saveGameAction, saveRosterAction, saveTeamAction, setStreamForUpcomingAction } from '../../actions';
+import { clearBoxScoreAction, deleteGameAction, saveBoxScoreAction, saveGameAction, saveRosterAction, saveTeamAction, setStreamForUpcomingAction } from '../../actions';
+import { boxesFor, statLinesByGame, type StatLine } from '@/lib/site/league-stats';
 import { SubmitButton } from '@/app/admin/brands/SubmitButton';
 import { PreviewButton } from '../PreviewButton';
 
@@ -28,6 +29,7 @@ export default async function LeaguePage({ params, searchParams }: { params: { b
   const slug = searchParams.league ?? leagues.find((l) => l.slug === 'circuit')?.slug ?? leagues[0]?.slug ?? 'circuit';
   const league = leagues.find((l) => l.slug === slug);
   const games = await listGames(brand, slug);
+  const stats = await statLinesByGame(brand, slug);
   const teamRows = await listTeams(brand, slug);
   const players = await listPlayers(brand, slug);
   // Teams per division, as they appear in the schedule (a club fields one roster per division).
@@ -42,7 +44,7 @@ export default async function LeaguePage({ params, searchParams }: { params: { b
         {leagues.length > 1 && <nav className="seg">{leagues.map((l) => <a key={l.slug} href={`/admin/league?league=${l.slug}`} className={l.slug === slug ? 'on' : ''}>{l.name}</a>)}</nav>}
         {games.length === 0 && <p className="text-body text-sm">No games yet. Add the schedule on the right; enter scores here as games finish and the standings update themselves.</p>}
         <div className="flex flex-col gap-2">
-          {games.map((g) => <GameRow key={g.id} brand={brand} g={g} slug={slug} players={players} />)}
+          {games.map((g) => <GameRow key={g.id} brand={brand} g={g} slug={slug} players={players} stats={stats.get(g.id) ?? []} />)}
         </div>
       </section>
       <div className="flex flex-col gap-5">
@@ -126,7 +128,9 @@ export default async function LeaguePage({ params, searchParams }: { params: { b
   );
 }
 
-function GameRow({ brand, g, slug, players }: { brand: string; g: LeagueGame; slug: string; players: LeaguePlayer[] }) {
+function GameRow({ brand, g, slug, players, stats }: { brand: string; g: LeagueGame; slug: string; players: LeaguePlayer[]; stats: StatLine[] }) {
+  const [hb, ab] = boxesFor(stats, g.home, g.away);
+  const boxNote = (b: typeof hb) => (b.lines.length ? `${b.lines.length} players${b.total ? ' + team totals' : ''}` : b.total ? 'team totals only' : 'not uploaded');
   const rosterOf = (team: string) => players.filter((p) => p.team === team && p.division === g.division);
   const home = rosterOf(g.home), away = rosterOf(g.away);
   return (
@@ -149,6 +153,19 @@ function GameRow({ brand, g, slug, players }: { brand: string; g: LeagueGame; sl
             <ScorerInputs gid={g.id} side="home" team={g.home} roster={home} rows={g.scorers?.home ?? []} />
             <ScorerInputs gid={g.id} side="away" team={g.away} roster={away} rows={g.scorers?.away ?? []} />
             <div className="col-span-2 flex flex-col"><label className="field-label" htmlFor={`g-${g.id}-potg`}>Player of the game</label><input id={`g-${g.id}-potg`} name="potg" list={`g-${g.id}-potg-list`} defaultValue={g.scorers?.potg ?? ''} className="input text-xs" placeholder="One of the scorers above; gets the maple leaf" /><datalist id={`g-${g.id}-potg-list`}>{[...home, ...away].map((p) => <option key={p.id} value={p.name} />)}</datalist></div>
+          </div>
+        </details>
+        <details className="col-span-2 sm:col-span-4" open={stats.length > 0}>
+          <summary className="cursor-pointer text-xs font-bold">Full stats (box score){stats.length > 0 ? ' · uploaded' : ''}</summary>
+          <p className="mt-1 text-xs text-silver">Paste each team&apos;s box score: the table with its header row (e.g. Superstat&apos;s Player # PTS REB AST … FT%), or the one-line team summary. Players match the roster by jersey number. Uploading replaces that team&apos;s stats for this game; the public Full stats button appears once anything is uploaded.</p>
+          <div className="mt-2 grid grid-cols-2 gap-2">
+            <div className="flex flex-col"><label className="field-label" htmlFor={`g-${g.id}-boxh`}>{g.home} · {boxNote(hb)}</label><textarea id={`g-${g.id}-boxh`} name="boxHome" rows={6} className="input mono text-xs" placeholder={'Player # PTS REB AST STL BLK TO FG FG% 3PT 3P% FT FT%\n#15 15 14 3 2 1 0 1 6-11 54.5 1-4 25.0 1-1 100.0\n…\nTEAM 66 41 13 11 0 22 29-75 38.7 4-20 20.0 4-11 36.4'} /></div>
+            <div className="flex flex-col"><label className="field-label" htmlFor={`g-${g.id}-boxa`}>{g.away} · {boxNote(ab)}</label><textarea id={`g-${g.id}-boxa`} name="boxAway" rows={6} className="input mono text-xs" placeholder="Same, or the summary line: 47 PTS FG 19-51 (37.3%) … 20 TO" /></div>
+          </div>
+          <div className="mt-2 flex flex-wrap gap-2">
+            <SubmitButton className="btn-gold btn-sm" formAction={saveBoxScoreAction} pendingLabel="Uploading…" doneLabel="Uploaded">Upload full stats</SubmitButton>
+            {stats.length > 0 && <SubmitButton className="btn-ghost btn-sm" formAction={clearBoxScoreAction} pendingLabel="…" doneLabel="Cleared">Clear full stats</SubmitButton>}
+            {stats.length > 0 && <PreviewButton brand={brand} path={`/circuit/games/${g.id}`} label="Preview full stats" />}
           </div>
         </details>
       </div>

@@ -467,6 +467,12 @@ The Circuit page's Schedule and results and Standings use the Blue Arrow Classic
 - A "program" is every location's record of one program type (sport + league type), so a new location running the Youth League appears on `/basketball/youth-league` automatically, and a new league type gets its own page at `/<sport>/<type>` with no page work. The Rep line is the Circuit (`/circuit`).
 - Each location's program block links back to "About <program>". Program pages are in the sitemap. Play › Basketball › League now goes to `/basketball/youth-league`.
 
+### 10.5l Full stats per game (Nov 11, 2026; migration 0106) — preview, not live
+- `site_league_stat_lines`: one row per player per game plus an optional TEAM totals row. Core columns (pts, reb, ast) are the Compete portal's `game_stat_lines` shape, so a season moves into Compete row for row; the extra columns (stl, blk, tov, oreb, FG/3PT/FT made-attempted, min) are what a stat sheet exports.
+- Upload in the editor (Circuit tab › a game › **Full stats**): paste each team's box score — a table with its header row (Superstat's `Player # PTS REB AST STL BLK TO FG FG% 3PT 3P% FT FT%` works as copied) or the one-line team summary. Players match the roster by jersey number for names. Parser: `lib/site/boxscore.ts` (`npm run test:boxscore`, built on the Superstat sample).
+- Schedule expand on a finished game: once full stats exist it shows the **top five stat lines per team** (PTS, then REB, then AST; player of the game bold with the leaf), the team line, and a **Full stats** button. No stats uploaded, no button (the manual top-scorers panel still works).
+- **`/circuit/games/<id>`**: the box score in the Circuit day-card style — score header, then each team's card with its shooting summary, every player line and the team totals; columns appear only for stats that were uploaded. 404 until stats exist; kept out of search (youth players).
+
 ### 10.6 Still manual before launch
 Run 0064 → upload the real photos → replace every `[TBC]` in Programs → Settings › Domains (Vercel project + DNS; Clerk satellite only with Clerk Pro) → Verify DNS → Coming soon → SEO setup, Search Console, sitemap → Live. The §9 legal list is unchanged. Registration on the brand host, the Accessibility and Concussion pages, and Futura hosting remain later stages.
 
