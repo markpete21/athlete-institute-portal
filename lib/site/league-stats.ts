@@ -161,3 +161,16 @@ export async function visibleSeasonLines(brandKey: string, leagueSlug: string, p
   const [lines, meta] = await Promise.all([statLinesByGame(brandKey, leagueSlug), gameStatsMeta(brandKey, leagueSlug)]);
   return [...lines.entries()].filter(([id]) => preview || meta.get(id)?.published).flatMap(([, l]) => l);
 }
+
+/** Game id → where its highlight reels are sold (Live app). Empty before 0108. */
+export async function reelsUrls(brandKey: string, leagueSlug: string): Promise<Map<number, string>> {
+  const { data, error } = await supabaseAdmin().from('site_league_games').select('id, reels_url').eq('brand_key', brandKey).eq('league_slug', leagueSlug).not('reels_url', 'is', null);
+  if (error || !data) return new Map();
+  return new Map(data.map((r) => [r.id as number, r.reels_url as string]));
+}
+
+/** The Live app reports where a game's reels are sold (null takes them off sale). */
+export async function setReelsUrl(brandKey: string, leagueSlug: string, gameId: number, url: string | null): Promise<boolean> {
+  const { error } = await supabaseAdmin().from('site_league_games').update({ reels_url: url }).eq('brand_key', brandKey).eq('league_slug', leagueSlug).eq('id', gameId);
+  return !error;
+}

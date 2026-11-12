@@ -531,6 +531,20 @@ Each Live event is tied to its Circuit game by category, teams and start time, w
 
 **How processing starts (owner question).** Superstat's API is read-only: it cannot be sent video and a stream ending cannot start it. A game starts processing when its recording is uploaded in Superstat's own app with the two teams picked. From there it is automatic: the hourly sync (or Sync now) loads the box score, play-by-play and insights **unpublished**; staff check rosters and numbers in the editor preview, then publish per game or all at once.
 
+### 10.5q Highlight reels across the Live app and the Circuit (Nov 12, 2026; portal migration 0108, Live migration 0065)
+**Portal side (this repo).**
+- `GET/POST /api/ecosystem/league-stats` (auth: `x-ecosystem-key` = `LEAGUE_STATS_KEY`, or the general `ECOSYSTEM_API_KEY`): the Live app reads every Circuit game with its Superstat and publish state, one game's plays (with seconds into the uploaded footage) and players, and posts back where the game's reels are sold.
+- `site_league_games.reels_url` (0108). When set, the game page shows **Get the highlight reel** (with the price note and "you buy and download them in your Athlete Institute Live account"), the team page shows **Team reel** on each game, and the player page's game log shows **Get reel**.
+
+**Live app side (`athlete-institute-live`).**
+- Categories gain a **Stats and highlights** switch. `/admin/stats` is the queue: Recorded → upload to Superstat (prepare and download the full game there, upload it in Superstat, mark as uploaded) → Processing → Stats loaded → Reels on sale. Each event is tied to its Circuit game by the schedule's stream link or by both team names in the event title, with a manual pick.
+- Reels are cut by the existing clip-export worker from our own recording: a player reel ($10) is the player's made baskets, assists, steals and blocks; a team reel ($20) is every made basket; 7 seconds before and 4 after each play, in game order. Free throws are left out.
+- Clip timing: Superstat's play time is seconds into the uploaded file, which is our full-game export, so it maps onto the recording (gaps included). Staff play three baskets on the queue page, nudge if needed, tick **Timing checked**; reels cannot go on sale before that.
+- Public reel page `/reels/<event>`: pick a team or a player, see the plays and a free low-quality preview with a mark over it, buy with Stripe. Bought reels live in **My reels** (`/reels`) with the download, "Report a wrong clip" and a free re-cut when the file has expired. Emails: one when it is ordered, one when it is ready, both saying where the reel is and linking the free stats.
+- Wrong-clip reports show on the queue page; staff remove the play from the game's play list and re-cut.
+
+**Not built yet:** the opening title card with the final score (the clip worker only supports the intro/outro bumpers; a title card needs a worker change and redeploy), the "Stats are up" email to followers, season reels and share cards, and reel revenue in the Live finance reports.
+
 ### 10.6 Still manual before launch
 Run 0064 → upload the real photos → replace every `[TBC]` in Programs → Settings › Domains (Vercel project + DNS; Clerk satellite only with Clerk Pro) → Verify DNS → Coming soon → SEO setup, Search Console, sitemap → Live. The §9 legal list is unchanged. Registration on the brand host, the Accessibility and Concussion pages, and Futura hosting remain later stages.
 

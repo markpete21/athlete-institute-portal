@@ -3,7 +3,7 @@ import { notFound } from 'next/navigation';
 import { Crumbs } from '@/components/site/ui';
 import { fmtDay } from '@/lib/site/context';
 import { listGames, listTeams, type LeagueGame } from '@/lib/site/league';
-import { insightsFor, shotEvents, visibleSeasonLines, type GameEvent, type GameInsights } from '@/lib/site/league-stats';
+import { insightsFor, reelsUrls, shotEvents, visibleSeasonLines, type GameEvent, type GameInsights } from '@/lib/site/league-stats';
 import { leaders, playerSeasons, playerSlug, seasonHighs, teamSeasons, teamSlug, type PlayerSeason, type SeasonGame } from '@/lib/site/league-season';
 
 /**
@@ -20,10 +20,10 @@ export const playerHref = (division: string, team: string, number: string | null
 export const teamHref = (division: string, team: string) => `${BASE}/teams/${teamSlug(division, team)}`;
 
 async function load(ctx: Ctx, leagueSlug: string) {
-  const [games, lines, teams] = await Promise.all([listGames(ctx.brandKey, leagueSlug), visibleSeasonLines(ctx.brandKey, leagueSlug, ctx.preview), listTeams(ctx.brandKey, leagueSlug)]);
+  const [games, lines, teams, reels] = await Promise.all([listGames(ctx.brandKey, leagueSlug), visibleSeasonLines(ctx.brandKey, leagueSlug, ctx.preview), listTeams(ctx.brandKey, leagueSlug), reelsUrls(ctx.brandKey, leagueSlug)]);
   const seasonGames: SeasonGame[] = games.map((g) => ({ id: g.id, division: g.division, home: g.home, away: g.away, homeScore: g.homeScore, awayScore: g.awayScore, startsAt: g.startsAt }));
   const logoOf = (name: string) => teams.find((t) => t.name === name)?.logoUrl ?? null;
-  return { games, lines, players: playerSeasons(lines, seasonGames), teamRows: teamSeasons(lines, seasonGames), logoOf, fromSuperstat: lines.some((l) => l.source === 'superstat') };
+  return { games, lines, reels, players: playerSeasons(lines, seasonGames), teamRows: teamSeasons(lines, seasonGames), logoOf, fromSuperstat: lines.some((l) => l.source === 'superstat') };
 }
 
 function Logo({ url, size = 30 }: { url: string | null; size?: number }) {
@@ -167,7 +167,7 @@ export async function LeadersPage({ ctx, leagueSlug, division }: { ctx: Ctx; lea
 }
 
 export async function TeamStatsPage({ ctx, leagueSlug, slug }: { ctx: Ctx; leagueSlug: string; slug: string }) {
-  const { games, players, teamRows, logoOf, fromSuperstat, lines } = await load(ctx, leagueSlug);
+  const { games, players, teamRows, logoOf, fromSuperstat, lines, reels } = await load(ctx, leagueSlug);
   const team = teamRows.find((t) => t.slug === slug);
   if (!team) notFound();
   const roster = players.filter((p) => p.team === team.team && p.division === team.division);
@@ -198,7 +198,7 @@ export async function TeamStatsPage({ ctx, leagueSlug, slug }: { ctx: Ctx; leagu
             <div className="sched-head"><h3>Games</h3><span className="sched-div">{played.length} played</span></div>
             {played.map((g) => {
               const i = mine.find((x) => x.gameId === g.id);
-              const head = <><span className="pbp-t">{fmtDay(g.startsAt)}</span><span className="tg-opp">{g.home === team.team ? 'vs' : 'at'} {g.home === team.team ? g.away : g.home}</span><b>{resultOf(g, team.team)}</b>{statIds.has(g.id) && <Link className="pill pill--line pill--sm" href={`${BASE}/games/${g.id}`}>Full stats</Link>}</>;
+              const head = <><span className="pbp-t">{fmtDay(g.startsAt)}</span><span className="tg-opp">{g.home === team.team ? 'vs' : 'at'} {g.home === team.team ? g.away : g.home}</span><b>{resultOf(g, team.team)}</b>{statIds.has(g.id) && <Link className="pill pill--line pill--sm" href={`${BASE}/games/${g.id}`}>Full stats</Link>}{statIds.has(g.id) && reels.get(g.id) && <a className="pill pill--red pill--sm" href={`${reels.get(g.id)}?team=${encodeURIComponent(team.team)}`}>Team reel</a>}</>;
               return i ? <details key={g.id} className="team-game"><summary>{head}<span className="sched-chev" aria-hidden="true">▾</span></summary><InsightsBlock ins={i} /></details> : <div key={g.id} className="team-game"><div className="tg-row">{head}</div></div>;
             })}
           </section>
@@ -211,10 +211,11 @@ export async function TeamStatsPage({ ctx, leagueSlug, slug }: { ctx: Ctx; leagu
 }
 
 export async function PlayerStatsPage({ ctx, leagueSlug, slug }: { ctx: Ctx; leagueSlug: string; slug: string }) {
-  const { players, logoOf, fromSuperstat } = await load(ctx, leagueSlug);
+  const { players, logoOf, fromSuperstat, reels } = await load(ctx, leagueSlug);
   const p = players.find((x) => x.slug === slug);
   if (!p) notFound();
   const shots = p.number ? await shotEvents(ctx.brandKey, p.log.map((g) => g.gameId), p.team, p.number) : [];
+  const hasReel = Boolean(p.number) && p.log.some((g) => reels.get(g.gameId));
   const sh = (m: number | null, a: number | null) => (m == null || a == null ? '–' : `${m}-${a}`);
   return (
     <>
@@ -229,8 +230,8 @@ export async function PlayerStatsPage({ ctx, leagueSlug, slug }: { ctx: Ctx; lea
           <section className="sched-day box">
             <div className="sched-head"><h3>Game log</h3><span className="sched-div">{p.gp} game{p.gp === 1 ? '' : 's'}</span></div>
             <div className="tbl-wrap"><table className="box-table">
-              <thead><tr><th scope="col">Game</th><th scope="col">Result</th><th scope="col" className="num">PTS</th><th scope="col" className="num">REB</th><th scope="col" className="num">AST</th><th scope="col" className="num">STL</th><th scope="col" className="num">BLK</th><th scope="col" className="num">TO</th><th scope="col" className="num">FG</th><th scope="col" className="num">3PT</th><th scope="col" className="num">FT</th></tr></thead>
-              <tbody>{p.log.map((g) => <tr key={g.gameId}><td className="team"><Link href={`${BASE}/games/${g.gameId}`}>{fmtDay(g.startsAt)} · {g.home ? 'vs' : 'at'} {g.opponent}</Link></td><td>{g.result}</td><td className="num"><b>{g.line.pts}</b></td><td className="num">{g.line.reb}</td><td className="num">{g.line.ast}</td><td className="num">{g.line.stl ?? '–'}</td><td className="num">{g.line.blk ?? '–'}</td><td className="num">{g.line.tov ?? '–'}</td><td className="num">{sh(g.line.fgm, g.line.fga)}</td><td className="num">{sh(g.line.tpm, g.line.tpa)}</td><td className="num">{sh(g.line.ftm, g.line.fta)}</td></tr>)}</tbody>
+              <thead><tr><th scope="col">Game</th><th scope="col">Result</th><th scope="col" className="num">PTS</th><th scope="col" className="num">REB</th><th scope="col" className="num">AST</th><th scope="col" className="num">STL</th><th scope="col" className="num">BLK</th><th scope="col" className="num">TO</th><th scope="col" className="num">FG</th><th scope="col" className="num">3PT</th><th scope="col" className="num">FT</th>{hasReel && <th scope="col">Reel</th>}</tr></thead>
+              <tbody>{p.log.map((g) => <tr key={g.gameId}><td className="team"><Link href={`${BASE}/games/${g.gameId}`}>{fmtDay(g.startsAt)} · {g.home ? 'vs' : 'at'} {g.opponent}</Link></td><td>{g.result}</td><td className="num"><b>{g.line.pts}</b></td><td className="num">{g.line.reb}</td><td className="num">{g.line.ast}</td><td className="num">{g.line.stl ?? '–'}</td><td className="num">{g.line.blk ?? '–'}</td><td className="num">{g.line.tov ?? '–'}</td><td className="num">{sh(g.line.fgm, g.line.fga)}</td><td className="num">{sh(g.line.tpm, g.line.tpa)}</td><td className="num">{sh(g.line.ftm, g.line.fta)}</td>{hasReel && <td>{reels.get(g.gameId) ? <a href={`${reels.get(g.gameId)}?team=${encodeURIComponent(p.team)}&no=${encodeURIComponent(p.number ?? '')}`}>Get reel</a> : ''}</td>}</tr>)}</tbody>
             </table></div>
           </section>
           {shots.length > 0 && <section className="sched-day"><div className="sched-head"><h3>Shot map</h3><span className="sched-div">Season</span></div><div className="chart-pad"><ShotChart shots={shots} label={p.name} /></div></section>}
