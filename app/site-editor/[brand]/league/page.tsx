@@ -89,7 +89,7 @@ export default async function LeaguePage({ params, searchParams }: { params: { b
                   }))}
                   <div className="mt-1"><SubmitButton className="btn-ghost btn-sm" pendingLabel="…" doneLabel="Saved">Save team links</SubmitButton></div>
                 </form>
-                <div className="mt-2"><SuperstatSync brand={brand} leagueSlug={slug} /></div>
+                <div className="mt-2"><SuperstatSync brand={brand} leagueSlug={slug} games={games.filter((g) => !meta.get(g.id)?.superstatMatchId).map((g, i) => ({ id: g.id, label: `${g.division} · ${g.home} v ${g.away} · ${fmt(g.startsAt)}` }))} /></div>
               </>
             )}
           </div>

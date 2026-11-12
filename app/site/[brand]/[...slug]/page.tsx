@@ -16,7 +16,8 @@ import { pageDescription, pageTitle, breadcrumbJsonLd } from '@/lib/site/seo';
 import { PRIVACY_POLICY } from '@/lib/site/privacy-policy';
 import { listDivisions, recentResults, upcomingGames } from '@/lib/compete/compete';
 import type { Block } from '@/lib/site/blocks';
-import { boxesFor, gameStatLines, gameStatsMeta, hasFullStats, statLinesByGame, type StatLine, type TeamBox } from '@/lib/site/league-stats';
+import { boxesFor, gameEvents, gameStatLines, gameStatsMeta, hasFullStats, statLinesByGame, type StatLine, type TeamBox } from '@/lib/site/league-stats';
+import { LeadersPage, PlayByPlay, PlayerStatsPage, ShotChart, TeamStatsPage, playerHref, teamHref } from '@/components/site/league/StatsPages';
 import { pct, teamTotals, topLines } from '@/lib/site/boxscore';
 
 export const dynamic = 'force-dynamic';
@@ -46,6 +47,10 @@ export async function generateMetadata({ params }: { params: { brand: string; sl
     return { title: { absolute: pageTitle(ctx.site, page) }, description: pageDescription(ctx.site, page), alternates: { canonical: `${ctx.origin}/${slug}` }, robots: page.seo.noindex ? { index: false } : undefined };
   }
   if (params.slug.length === 3 && params.slug[0] === 'circuit' && params.slug[1] === 'games') return { title: { absolute: `Full stats · ${ctx.site.name.replace(/\s+Sport$/, '')} Circuit` }, robots: { index: false, follow: true } };
+  // Player pages stay out of search (youth players); team and leader pages may be indexed.
+  if (params.slug.length === 3 && params.slug[0] === 'circuit' && params.slug[1] === 'players') return { title: { absolute: `Player stats · ${ctx.site.name.replace(/\s+Sport$/, '')} Circuit` }, robots: { index: false, follow: true } };
+  if (params.slug.length === 3 && params.slug[0] === 'circuit' && params.slug[1] === 'teams') return { title: { absolute: `Team stats · ${ctx.site.name.replace(/\s+Sport$/, '')} Circuit` }, alternates: { canonical: `${ctx.origin}/${slug}` } };
+  if (params.slug.length === 2 && params.slug[0] === 'circuit' && params.slug[1] === 'stats') return { title: { absolute: `Season leaders · ${ctx.site.name.replace(/\s+Sport$/, '')} Circuit` }, description: 'Scoring, rebounding and assist leaders, season highs and team stats for the ALL CAN Circuit.', alternates: { canonical: `${ctx.origin}/${slug}` } };
   // Location/sport pages without a page row still get a formatted title.
   if (params.slug.length === 2 && sportBySlug(params.slug[0])) {
     const line = await getProgramLine(params.brand, params.slug[0], params.slug[1]);
@@ -116,6 +121,9 @@ export default async function SitePage({ params, searchParams }: { params: { bra
     }
     case 'circuit': return <Circuit ctx={rctx} page={page} division={searchParams.division} />;
     case 'league-game': return <LeagueGamePage ctx={rctx} gameId={Number(params.slug[2])} />;
+    case 'league-player': return <PlayerStatsPage ctx={{ brandKey: rctx.brandKey, preview: rctx.preview, siteName: ctx.site.name }} leagueSlug="circuit" slug={params.slug[2]} />;
+    case 'league-team': return <TeamStatsPage ctx={{ brandKey: rctx.brandKey, preview: rctx.preview, siteName: ctx.site.name }} leagueSlug="circuit" slug={params.slug[2]} />;
+    case 'league-stats': return <LeadersPage ctx={{ brandKey: rctx.brandKey, preview: rctx.preview, siteName: ctx.site.name }} leagueSlug="circuit" division={searchParams.division} />;
     case 'training': {
       const skills = (await listPrograms(params.brand)).filter((p) => /skills/i.test(p.leagueType));
       const locs = await listLocations(params.brand);
@@ -165,6 +173,9 @@ async function inferTemplate(brand: string, parts: string[]): Promise<string> {
   if (parts.length === 2 && sportBySlug(parts[1]) && (await getLocation(brand, parts[0]))) return 'location-sport';
   if (parts.length === 2 && sportBySlug(parts[0]) && (await getProgramLine(brand, parts[0], parts[1]))) return 'program-line';
   if (parts.length === 3 && parts[0] === 'circuit' && parts[1] === 'games' && /^\d+$/.test(parts[2])) return 'league-game';
+  if (parts.length === 3 && parts[0] === 'circuit' && parts[1] === 'players') return 'league-player';
+  if (parts.length === 3 && parts[0] === 'circuit' && parts[1] === 'teams') return 'league-team';
+  if (parts.length === 2 && parts[0] === 'circuit' && parts[1] === 'stats') return 'league-stats';
   return 'missing';
 }
 
@@ -480,7 +491,7 @@ async function Circuit({ ctx, page, division }: { ctx: Ctx; page: SitePage | nul
       </Section>
 
       <Section id="standings" tight>
-        <SecHead label="Standings" />
+        <SecHead label="Standings" right={[...stats.keys()].some((id) => ctx.preview || statsMeta.get(id)?.published) ? <Link href="/circuit/stats">Season leaders</Link> : undefined} />
         {table.size === 0 ? <p className="muted">Standings appear once the schedule is set. Wins first, then point difference.</p> : (
           <div className="sched-list">
             {/* Every scheduled team shows from the start, at 0 until its first final score. */}
@@ -675,7 +686,7 @@ function StatsPreview({ game, lines, leaf, players, logoOf }: { game: LeagueGame
               return (
                 <tr key={l.id} className={star ? 'is-potg' : undefined}>
                   {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <td><span className="scorer-nm">{star && <img src={leaf} alt="Player of the game" className="leaf" />}{lab.no && <span className="scorer-no">#{lab.no}</span>}{lab.name}</span></td>
+                  <td><Link className="scorer-nm" href={playerHref(game.division, l.team, l.number, l.name)}>{star && <img src={leaf} alt="Player of the game" className="leaf" />}{lab.no && <span className="scorer-no">#{lab.no}</span>}{lab.name}</Link></td>
                   <td className="num"><b>{l.pts}</b></td><td className="num">{l.reb}</td><td className="num">{l.ast}</td>
                 </tr>
               );
@@ -712,6 +723,8 @@ async function LeagueGamePage({ ctx, gameId }: { ctx: Ctx; gameId: number }) {
   if (!hasFullStats(lines)) notFound();
   if (!ctx.preview && !(await gameStatsMeta(ctx.brandKey, slug)).get(game.id)?.published) notFound();
   const fromSuperstat = lines.some((l) => l.source === 'superstat');
+  const events = await gameEvents(ctx.brandKey, game.id);
+  const shotsOf = (team: string) => events.filter((e) => e.team === team && (e.type === 'two_point' || e.type === 'three_point') && e.x != null && e.y != null);
   const [teamRows, players] = await Promise.all([listTeams(ctx.brandKey, slug), listPlayers(ctx.brandKey, slug)]);
   const logoOf = (name: string) => teamRows.find((t) => t.name === name)?.logoUrl ?? null;
   const no = games.findIndex((g) => g.id === game.id) + 1;
@@ -728,7 +741,7 @@ async function LeagueGamePage({ ctx, gameId }: { ctx: Ctx; gameId: number }) {
     const shots = ([['fgm', 'fga', 'FG'], ['tpm', 'tpa', '3PT'], ['ftm', 'fta', 'FT']] as [keyof StatLine, keyof StatLine, string][]).filter(([m]) => has(b, m));
     return (
       <section className="sched-day box">
-        <div className="sched-head box-head"><h3><TeamLogo url={logoOf(b.team)} />{b.team}</h3>{score != null && <span className={`box-score${won ? ' w' : ''}`}>{score}</span>}</div>
+        <div className="sched-head box-head"><h3><TeamLogo url={logoOf(b.team)} /><Link href={teamHref(game.division, b.team)} className="box-teamlink">{b.team}</Link></h3>{score != null && <span className={`box-score${won ? ' w' : ''}`}>{score}</span>}</div>
         {tot && <p className="box-sum">{([tot.fga != null && `FG ${tot.fgm}-${tot.fga}${pct(tot.fgm, tot.fga) != null ? ` (${pct(tot.fgm, tot.fga)}%)` : ''}`, tot.tpa != null && `3PT ${tot.tpm}-${tot.tpa}${pct(tot.tpm, tot.tpa) != null ? ` (${pct(tot.tpm, tot.tpa)}%)` : ''}`, tot.fta != null && `FT ${tot.ftm}-${tot.fta}${pct(tot.ftm, tot.fta) != null ? ` (${pct(tot.ftm, tot.fta)}%)` : ''}`, `${tot.reb} REB`, `${tot.ast} AST`, tot.stl != null && `${tot.stl} STL`, tot.blk != null && `${tot.blk} BLK`, tot.tov != null && `${tot.tov} TO`].filter(Boolean) as string[]).map((t, k) => <span key={k} className="bs-item">{t}</span>)}</p>}
         {b.lines.length > 0 ? (
           <div className="tbl-wrap">
@@ -740,7 +753,7 @@ async function LeagueGamePage({ ctx, gameId }: { ctx: Ctx; gameId: number }) {
                   return (
                     <tr key={l.id} className={star ? 'is-potg' : undefined}>
                       {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <td className="team"><span className="scorer-nm">{star && <img src={leaf} alt="Player of the game" className="leaf" />}{lab.no && <span className="scorer-no">#{lab.no}</span>}{lab.name}</span></td>
+                      <td className="team"><Link className="scorer-nm" href={playerHref(game.division, l.team, l.number, l.name)}>{star && <img src={leaf} alt="Player of the game" className="leaf" />}{lab.no && <span className="scorer-no">#{lab.no}</span>}{lab.name}</Link></td>
                       {cols.map(([k, lb]) => <td key={lb} className="num">{k === 'pts' ? <b>{l.pts}</b> : (l[k] as number | null) ?? '–'}</td>)}
                       {shots.map(([m, a, lb]) => <td key={lb} className="num">{shoot(l[m] as number | null, l[a] as number | null)}</td>)}
                     </tr>
@@ -779,8 +792,15 @@ async function LeagueGamePage({ ctx, gameId }: { ctx: Ctx; gameId: number }) {
           <Box b={boxes[0]} score={game.homeScore} won={fin && game.homeScore! > game.awayScore!} />
           <Box b={boxes[1]} score={game.awayScore} won={fin && game.awayScore! > game.homeScore!} />
         </div>
+        {(shotsOf(game.home).length > 0 || shotsOf(game.away).length > 0) && (
+          <section className="sched-day" style={{ marginTop: 28 }}>
+            <div className="sched-head"><h3>Shot maps</h3></div>
+            <div className="chart-pad chart-pair"><ShotChart shots={shotsOf(game.home)} label={game.home} /><ShotChart shots={shotsOf(game.away)} label={game.away} /></div>
+          </section>
+        )}
+        {events.length > 0 && <div style={{ marginTop: 28 }}><PlayByPlay events={events} division={game.division} /></div>}
         {fromSuperstat && <p className="note" style={{ marginTop: 20 }}><a href="https://superstatsport.com" target="_blank" rel="noopener">Powered by Superstat</a></p>}
-        <p style={{ marginTop: 28 }}><Link className="pill pill--line pill--sm" href="/circuit#schedule">Back to the schedule</Link></p>
+        <p style={{ marginTop: 28, display: 'flex', gap: 10, flexWrap: 'wrap' }}><Link className="pill pill--line pill--sm" href="/circuit#schedule">Back to the schedule</Link><Link className="pill pill--line pill--sm" href={`/circuit/stats?division=${encodeURIComponent(game.division)}`}>Season leaders</Link></p>
       </div></section>
     </>
   );

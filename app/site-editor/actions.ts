@@ -566,3 +566,12 @@ export async function setStatsPublishedAction(fd: FormData): Promise<void> {
   await setStatsPublished(brand, str(fd.get('leagueSlug')) || 'circuit', id, bool(fd.get('published')), session.userId!);
   revalidateSite(brand);
 }
+
+export async function linkSuperstatMatchAction(brand: string, leagueSlug: string, gameId: number, matchId: string): Promise<import('@/lib/superstat/sync').SyncSummary> {
+  const { session } = await requireSiteRole(brand, ['super', 'admin', 'editor']);
+  const { linkMatchToGame, syncLeague } = await import('@/lib/superstat/sync');
+  await linkMatchToGame(brand, leagueSlug, gameId, matchId, session.userId!);
+  const summary = await syncLeague(brand, leagueSlug, session.userId!, { force: false });
+  revalidateSite(brand);
+  return summary;
+}

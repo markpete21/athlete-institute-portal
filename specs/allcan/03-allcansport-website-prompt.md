@@ -518,6 +518,19 @@ Each Live event is tied to its Circuit game by category, teams and start time, w
 
 **Superstat account setup** (owner is creating the account): one club; one team per Circuit team per division, named to match the schedule (e.g. "Orangeville Bears U13") with age group set; rosters with jersey numbers; both teams tagged in every game. The API key (Settings › API keys, owner only, shown once) goes into the portal's Vercel project as `SUPERSTAT_API_KEY`, never into chat or the repo.
 
+### 10.5p Free season stats pages and Superstat match linking (Nov 12, 2026) — built, held behind the publish switch
+**Pages** (all read only games whose stats are published; the editor preview sees every loaded game; each 404s until there is something to show):
+- `/circuit/stats` — season leaders per division (points, rebounds, assists, steals, blocks per game; threes made; FG% and FT% with minimum attempts), season highs, and a team table. Per-game boards need half the most games played by anyone.
+- `/circuit/teams/<team>-<division>` — per-game tiles, players table, season shot map, and the game list with Superstat's written insights (what's working, focus areas, suggestions) opening under each game.
+- `/circuit/players/<division>-<team>-<number>` — per-game tiles, season highs, game log, season shot map. Not indexed by search engines (youth players).
+- `/circuit/games/<id>` now also carries both teams' shot maps and the play-by-play by period. Player names in the box score and the schedule preview link to the player page; team names link to the team page. A "Season leaders" link shows beside Standings once any stats are visible.
+
+**Code:** `lib/site/league-season.ts` (pure season maths, `npm run test:season`), `components/site/league/StatsPages.tsx`, new readers in `lib/site/league-stats.ts` (`gameEvents`, `shotEvents`, `insightsFor`, `visibleSeasonLines`).
+
+**Linking a Superstat match to a scheduled game.** Superstat's `playedAt` is the upload time, not the game time, so the sync links by teams: both teams ours → the game between them that had already tipped off before the upload (unique, or the closest within two days). Anything it cannot place is listed in the editor's Superstat panel with a "Which game is this?" picker (`linkSuperstatMatchAction`).
+
+**How processing starts (owner question).** Superstat's API is read-only: it cannot be sent video and a stream ending cannot start it. A game starts processing when its recording is uploaded in Superstat's own app with the two teams picked. From there it is automatic: the hourly sync (or Sync now) loads the box score, play-by-play and insights **unpublished**; staff check rosters and numbers in the editor preview, then publish per game or all at once.
+
 ### 10.6 Still manual before launch
 Run 0064 → upload the real photos → replace every `[TBC]` in Programs → Settings › Domains (Vercel project + DNS; Clerk satellite only with Clerk Pro) → Verify DNS → Coming soon → SEO setup, Search Console, sitemap → Live. The §9 legal list is unchanged. Registration on the brand host, the Accessibility and Concussion pages, and Futura hosting remain later stages.
 

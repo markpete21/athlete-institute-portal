@@ -27,6 +27,7 @@
     "test:blocks": "tsc lib/site/blocks.ts --module esnext --target es2022 --moduleResolution bundler --outDir lib/site/__compiled__ && node lib/site/blocks.test.mjs",
     "test:boxscore": "tsc lib/site/boxscore.ts --module esnext --target es2022 --moduleResolution bundler --outDir lib/site/__compiled__ && node lib/site/boxscore.test.mjs",
     "test:superstat": "tsc lib/superstat/map.ts --module esnext --target es2022 --moduleResolution bundler --outDir lib/superstat/__compiled__ && node scripts/fix-superstat-imports.mjs && node lib/superstat/map.test.mjs",
+    "test:season": "tsc lib/site/league-season.ts --module esnext --target es2022 --moduleResolution bundler --outDir lib/site/__compiled__ && node scripts/fix-site-imports.mjs && node lib/site/league-season.test.mjs",
     "test:retention": "tsc packages/foundation/src/retention-core.ts --module esnext --target es2022 --moduleResolution bundler --outDir packages/foundation/src/__compiled__ && node scripts/fix-compiled-imports.mjs && node packages/foundation/src/retention-core.test.mjs"
   },
   "dependencies": {

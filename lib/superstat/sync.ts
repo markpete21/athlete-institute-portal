@@ -16,6 +16,8 @@ import type { SsMatch } from './types';
 export interface SyncSummary {
   connected: boolean; club: string | null; teamsLinked: number; matchesSeen: number; gamesLinked: number; statsLoaded: number;
   waiting: string[]; unlinked: string[]; skipped: string[]; errors: string[];
+  /** Matches the sync could not tie to a scheduled game: a person picks the game. */
+  unlinkedMatches: { id: string; label: string; status: string }[];
 }
 
 export interface StoredTeamLink extends TeamLink { superstatName: string | null }
@@ -40,7 +42,7 @@ export async function saveTeamLink(brandKey: string, leagueSlug: string, team: s
 const label = (m: SsMatch) => `${m.team.name} v ${m.opponent.name}${m.playedAt ? ` (${new Date(m.playedAt).toLocaleDateString('en-CA', { timeZone: 'America/Toronto', month: 'short', day: 'numeric' })})` : ''}`;
 
 export async function syncLeague(brandKey: string, leagueSlug: string, actorClerkId: string, opts: { force?: boolean } = {}): Promise<SyncSummary> {
-  const sum: SyncSummary = { connected: false, club: null, teamsLinked: 0, matchesSeen: 0, gamesLinked: 0, statsLoaded: 0, waiting: [], unlinked: [], skipped: [], errors: [] };
+  const sum: SyncSummary = { connected: false, club: null, teamsLinked: 0, matchesSeen: 0, gamesLinked: 0, statsLoaded: 0, waiting: [], unlinked: [], skipped: [], errors: [], unlinkedMatches: [] };
   if (!superstatConfigured()) return sum;
   const db = supabaseAdmin();
   const club = (await listClubs())[0];
@@ -76,7 +78,7 @@ export async function syncLeague(brandKey: string, leagueSlug: string, actorCler
       // By id, the side that uploaded the footage is `team`: the box score uses the same view.
       const m = listed.status === 'complete' ? await getMatch(listed.id) : listed;
       const link = linkMatch(m, games, links);
-      if (!link) { sum.unlinked.push(label(m)); continue; }
+      if (!link) { sum.unlinked.push(label(m)); sum.unlinkedMatches.push({ id: m.id, label: label(m), status: m.status }); continue; }
       const game = games.find((g) => g.id === link.gameId)!;
       const now = new Date().toISOString();
       const wasLinked = game.superstatMatchId === m.id;
@@ -139,4 +141,18 @@ export async function syncLeague(brandKey: string, leagueSlug: string, actorCler
   }
   await audit({ actorId: actorClerkId, action: 'site.league.superstat.sync', target: `site:${brandKey}`, meta: { league: leagueSlug, matches: sum.matchesSeen, linked: sum.gamesLinked, loaded: sum.statsLoaded, errors: sum.errors.length } });
   return sum;
+}
+
+
+/**
+ * Tie a Superstat match to a scheduled game by hand (when the sync could not
+ * tell which game it is), or clear the tie with matchId null. The next sync
+ * loads its stats.
+ */
+export async function linkMatchToGame(brandKey: string, leagueSlug: string, gameId: number, matchId: string | null, actorClerkId: string): Promise<void> {
+  const db = supabaseAdmin();
+  if (matchId) await db.from('site_league_games').update({ superstat_match_id: null, superstat_status: null, superstat_synced_at: null }).eq('brand_key', brandKey).eq('league_slug', leagueSlug).eq('superstat_match_id', matchId).neq('id', gameId);
+  const { error } = await db.from('site_league_games').update({ superstat_match_id: matchId, superstat_status: null, superstat_synced_at: null }).eq('brand_key', brandKey).eq('league_slug', leagueSlug).eq('id', gameId);
+  if (error) throw new Error(error.message);
+  await audit({ actorId: actorClerkId, action: 'site.league.superstat.link', target: `site:${brandKey}`, meta: { league: leagueSlug, gameId, matchId } });
 }

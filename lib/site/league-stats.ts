@@ -113,3 +113,51 @@ export async function setStatsPublished(brandKey: string, leagueSlug: string, ga
   await audit({ actorId: actorClerkId, action: published ? 'site.league.stats.publish' : 'site.league.stats.unpublish', target: `site:${brandKey}`, meta: { league: leagueSlug, games: ids.length } });
   return ids.length;
 }
+
+
+// --- Play-by-play, insights and season data (free, public once published) ---------
+
+export interface GameEvent { seq: number; type: string; success: boolean | null; team: string; number: string | null; name: string | null; periodNumber: number | null; periodType: string | null; periodSeconds: number | null; matchSeconds: number | null; x: number | null; y: number | null; customName: string | null; gameId: number }
+
+const EV_COLS = 'game_id, seq, type, success, team, number, name, period_number, period_type, period_seconds, match_seconds, x, y, custom_name';
+function toEvent(r: Record<string, unknown>): GameEvent {
+  const n = (k: string) => (r[k] == null ? null : Number(r[k]));
+  return { gameId: r.game_id as number, seq: r.seq as number, type: r.type as string, success: (r.success as boolean) ?? null, team: r.team as string, number: (r.number as string) ?? null, name: (r.name as string) ?? null, periodNumber: n('period_number'), periodType: (r.period_type as string) ?? null, periodSeconds: n('period_seconds'), matchSeconds: n('match_seconds'), x: n('x'), y: n('y'), customName: (r.custom_name as string) ?? null };
+}
+
+/** One game's play-by-play, in order. Empty before 0107 or when nothing was synced. */
+export async function gameEvents(brandKey: string, gameId: number): Promise<GameEvent[]> {
+  const { data, error } = await supabaseAdmin().from('site_league_events').select(EV_COLS).eq('brand_key', brandKey).eq('game_id', gameId).order('seq').limit(2000);
+  return error || !data ? [] : data.map(toEvent);
+}
+
+/** Field-goal attempts (with court positions) across games, for a team or one player. */
+export async function shotEvents(brandKey: string, gameIds: number[], team: string, number?: string | null): Promise<GameEvent[]> {
+  if (!gameIds.length) return [];
+  let q = supabaseAdmin().from('site_league_events').select(EV_COLS).eq('brand_key', brandKey).in('game_id', gameIds).eq('team', team).in('type', ['two_point', 'three_point']);
+  if (number) q = q.eq('number', number);
+  const { data, error } = await q.limit(5000);
+  return error || !data ? [] : data.map(toEvent).filter((e) => e.x != null && e.y != null);
+}
+
+export interface GameInsights { gameId: number; team: string; status: string; summary: { whatsWorking?: string[]; focusAreas?: string[]; suggestions?: string[] } | null; ratings: Record<string, { value: number; comment: string }> | null }
+
+/** Written team insights per game (ready ones only). */
+export async function insightsFor(brandKey: string, gameIds: number[]): Promise<GameInsights[]> {
+  if (!gameIds.length) return [];
+  const { data, error } = await supabaseAdmin().from('site_league_insights').select('game_id, team, status, payload').eq('brand_key', brandKey).in('game_id', gameIds).eq('status', 'ready');
+  if (error || !data) return [];
+  return data.map((r) => { const p = (r.payload ?? {}) as { summary?: GameInsights['summary']; ratings?: GameInsights['ratings'] }; return { gameId: r.game_id as number, team: r.team as string, status: r.status as string, summary: p.summary ?? null, ratings: p.ratings ?? null }; });
+}
+
+/** Ids of games whose stats the public may see (every loaded game in the editor's preview). */
+export async function visibleStatGameIds(brandKey: string, leagueSlug: string, preview: boolean): Promise<Set<number>> {
+  const [lines, meta] = await Promise.all([statLinesByGame(brandKey, leagueSlug), gameStatsMeta(brandKey, leagueSlug)]);
+  return new Set([...lines.keys()].filter((id) => preview || meta.get(id)?.published));
+}
+
+/** Every stat line of the visible games (for season averages, team pages and leaders). */
+export async function visibleSeasonLines(brandKey: string, leagueSlug: string, preview: boolean): Promise<StatLine[]> {
+  const [lines, meta] = await Promise.all([statLinesByGame(brandKey, leagueSlug), gameStatsMeta(brandKey, leagueSlug)]);
+  return [...lines.entries()].filter(([id]) => preview || meta.get(id)?.published).flatMap(([, l]) => l);
+}

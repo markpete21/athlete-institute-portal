@@ -80,13 +80,27 @@ export function linkMatch(m: SsMatch, games: GameRef[], links: TeamLink[]): { ga
   if (!us) return null;
   const involves = (g: GameRef, name: string) => g.home === name || g.away === name;
   const other = (g: GameRef, name: string) => (g.home === name ? g.away : g.home);
-  const pool = already ? [already] : games.filter((g) => !g.superstatMatchId && g.division === us.division && involves(g, us.team) && (!teamLink || !oppLink || involves(g, oppLink.team)));
+  const both = !!(teamLink && oppLink);
+  const pool = already ? [already] : games.filter((g) => !g.superstatMatchId && g.division === us.division && involves(g, us.team) && (!both || involves(g, oppLink!.team)));
   const day = dayOf(m.playedAt);
-  const ranked = pool.map((g) => ({ g, gap: day && g.startsAt ? dayGap(day, dayOf(g.startsAt)) : 99 })).filter((x) => already || x.gap <= 2).sort((a, b) => a.gap - b.gap);
-  const best = ranked[0]?.g;
+  const gapOf = (g: GameRef) => (day && g.startsAt ? dayGap(day, dayOf(g.startsAt)) : 99);
+  let best: GameRef | undefined;
+  if (already) best = already;
+  else if (both) {
+    // Superstat's date is when the footage was uploaded, not when the game
+    // was played. With both teams known, the game is one between them that
+    // had already tipped off by then: the only such game, or the one within
+    // two days when there are several. Otherwise leave it for a person.
+    const cutoff = m.playedAt ? Date.parse(m.playedAt) + 12 * 3600_000 : Infinity;
+    const played = pool.filter((g) => !g.startsAt || Date.parse(g.startsAt) <= cutoff);
+    const near = played.filter((g) => gapOf(g) <= 2);
+    best = played.length === 1 ? played[0] : near.length === 1 ? near[0] : undefined;
+  } else {
+    const ranked = pool.map((g) => ({ g, gap: gapOf(g) })).filter((x) => x.gap <= 2).sort((a, b) => a.gap - b.gap);
+    // Two games the same distance away and nothing else to tell them apart: don't guess.
+    best = ranked.length > 1 && ranked[1].gap === ranked[0].gap ? undefined : ranked[0]?.g;
+  }
   if (!best) return null;
-  // More than one game the same distance away (a double-header) and nothing else to tell them apart: don't guess.
-  if (!already && ranked.length > 1 && ranked[1].gap === ranked[0].gap && !(teamLink && oppLink)) return null;
   const teamName = teamLink ? teamLink.team : other(best, oppLink!.team);
   return { gameId: best.id, teamName, opponentName: other(best, teamName) };
 }
