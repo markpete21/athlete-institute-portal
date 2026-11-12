@@ -483,7 +483,7 @@ The Circuit page's Schedule and results and Standings use the Blue Arrow Classic
 ### 10.5n Circuit stats and highlights: product decisions (owner, Nov 12, 2026)
 Supersedes the free/paid split in 10.5m.
 - **All Circuit stats are free and public:** full box scores, play-by-play, shot charts, player pages, team pages with the written insights, season leaders and awards. Stats sourced from the API carry "Powered by Superstat".
-- **The paid product is exported video highlights**, sold per game: **Player reel $10**, **Team reel $25** (starting prices to test). Reels are cut **automatically** from ALL CAN's own recordings using Superstat's play timestamps; Superstat's API supplies no video.
+- **The paid product is exported video highlights**, sold per game: **Player reel $10**, **Team reel $20** (starting prices to test). Reels are cut **automatically** from ALL CAN's own recordings using Superstat's play timestamps; Superstat's API supplies no video.
 - Recordings: one file per game, kept by ALL CAN (OVH server, then Supabase storage).
 - Both teams' players are tagged in Superstat for every game, so every player has stats, a page and a reel to buy.
 - Stats are approved by staff each game night (the publish switch); the stats pages stay unpublished until the first four games are loaded.
@@ -491,6 +491,32 @@ Supersedes the free/paid split in 10.5m.
 - Source video: the stored stream recording in Supabase storage, **1080p30 version**; the same recording is what goes into Superstat, so play times should line up with it (to be confirmed by the one-game test). The OVH server is not part of this.
 - **Anyone with an account can buy** any player's or team's reel (same as the live stream). **Circuit only** to start.
 - Open: where the cutting job runs (to be decided in the build, not an owner question), which Supabase project and bucket hold the recordings, exactly which plays make a reel.
+
+### 10.5o Stats and highlights flow across the Live app and the Circuit (owner, Nov 12, 2026)
+**What already exists in the Live app** (`athlete-institute-live`, migrations 0048–0057): its own ingest records every stream as segments into Supabase storage (source and proxy renditions), a browser clip editor, export jobs for a single clip, a stitched highlight tape, separate clips, and a full-game download, with admin intro/outro bumpers. Auto reels reuse this: a reel is a clip project pre-filled with in/out ranges computed from Superstat's play timestamps and rendered by the existing export pipeline from the 1080p30 source. No new video service.
+
+**Choosing which games are processed.** In the Live app admin a **category** (e.g. ALL CAN Circuit) gets a "Stats and highlights" switch. Every game in a switched-on category enters a queue with one row per game and its stage:
+1. Recorded (automatic).
+2. Sent to Superstat. The one manual step, because Superstat's API cannot receive video: download the full game (1080p30) from the queue row, upload it in Superstat and pick the two teams. The row flips on its own when the match appears through the API.
+3. Superstat processing (polled).
+4. Stats loaded to the Circuit and Compete, unpublished; staff approve them for the game night.
+5. Reels ready: player and team reels are built from the play timestamps and offered for sale.
+Each Live event is tied to its Circuit game by category, teams and start time, with a manual pick as the fallback.
+
+**Where things land, and saying so clearly.**
+- Stats and results: allcansport.ca/circuit (game Full stats, player pages, team pages, leaders) and the Compete portal. Free.
+- Reels: bought and downloaded in the buyer's **Live app account**.
+- The Full stats page and player/team pages carry "Get the highlight reel" buttons that go to the Live app checkout; the Live app's game page links "Stats on allcansport.ca".
+- Emails: when a game night is approved, followers get "Stats are up" with the stats link and the reel link; a purchase email says the reel is in the Live account, with the download link and the stats link.
+
+**Reel product (suggestions accepted).**
+- Free preview, paid download: the play list and a short watermarked preview are public; the purchase is the clean file.
+- Player reel: every made basket, assist, steal and block, a few seconds either side, an opening title card and the final score. Team reel: every scoring play.
+- Wrong-clip button: a buyer can flag a bad clip and get a corrected reel.
+- Later: a season reel and a share card for social.
+- The existing self-serve clip editor and its pricing stay as they are alongside the automatic reels.
+
+**Superstat account setup** (owner is creating the account): one club; one team per Circuit team per division, named to match the schedule (e.g. "Orangeville Bears U13") with age group set; rosters with jersey numbers; both teams tagged in every game. The API key (Settings › API keys, owner only, shown once) goes into the portal's Vercel project as `SUPERSTAT_API_KEY`, never into chat or the repo.
 
 ### 10.6 Still manual before launch
 Run 0064 → upload the real photos → replace every `[TBC]` in Programs → Settings › Domains (Vercel project + DNS; Clerk satellite only with Clerk Pro) → Verify DNS → Coming soon → SEO setup, Search Console, sitemap → Live. The §9 legal list is unchanged. Registration on the brand host, the Accessibility and Concussion pages, and Futura hosting remain later stages.
