@@ -40,7 +40,9 @@ const norm = (s: string | null | undefined) => (s ?? '').toLowerCase().replace(/
 export function teamFitsDivision(t: Pick<SsTeam, 'name' | 'ageGroup' | 'gender'>, division: string): boolean {
   const d = norm(division);
   if (!d) return true;
-  const age = norm(t.ageGroup) || (norm(t.name).match(/\bu\s?(\d{1,2})\b/)?.[0].replace(/\s/g, '') ?? '');
+  // The age in the team's name wins ("U13 Orangeville Bears" set to age group "open" is still U13).
+  const uAge = (v: string) => v.match(/\bu\s?(\d{1,2})\b/)?.[0].replace(/\s/g, '') ?? '';
+  const age = uAge(norm(t.name)) || uAge(norm(t.ageGroup));
   const dAge = d.match(/\bu\s?(\d{1,2})\b/)?.[0].replace(/\s/g, '') ?? '';
   if (age && dAge && age !== dAge) return false;
   const g = norm(t.gender), dg = /\bgirls?\b|\bwomen\b/.test(d) ? 'girls' : /\bboys?\b|\bmen\b/.test(d) ? 'boys' : '';
