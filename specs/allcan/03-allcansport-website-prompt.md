@@ -488,7 +488,9 @@ Supersedes the free/paid split in 10.5m.
 - Both teams' players are tagged in Superstat for every game, so every player has stats, a page and a reel to buy.
 - Stats are approved by staff each game night (the publish switch); the stats pages stay unpublished until the first four games are loaded.
 - Build order: player page → team page with insights → automatic leaders and awards → highlight reels (after a clock-alignment test on one game: do Superstat's match seconds line up with the stored file?).
-- Open: how the cutting job reaches the files (OVH server access), whether the file given to Superstat is the stored file, who may buy a given player's reel, exactly which plays make a reel.
+- Source video: the stored stream recording in Supabase storage, **1080p30 version**; the same recording is what goes into Superstat, so play times should line up with it (to be confirmed by the one-game test). The OVH server is not part of this.
+- **Anyone with an account can buy** any player's or team's reel (same as the live stream). **Circuit only** to start.
+- Open: where the cutting job runs (to be decided in the build, not an owner question), which Supabase project and bucket hold the recordings, exactly which plays make a reel.
 
 ### 10.6 Still manual before launch
 Run 0064 → upload the real photos → replace every `[TBC]` in Programs → Settings › Domains (Vercel project + DNS; Clerk satellite only with Clerk Pro) → Verify DNS → Coming soon → SEO setup, Search Console, sitemap → Live. The §9 legal list is unchanged. Registration on the brand host, the Accessibility and Concussion pages, and Futura hosting remain later stages.
