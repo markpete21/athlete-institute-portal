@@ -480,6 +480,16 @@ The Circuit page's Schedule and results and Standings use the Blue Arrow Classic
 - Public stats sourced from the API carry "Powered by Superstat". Tests: `npm run test:superstat` (mapping, linking), `npm run test:boxscore`.
 - **Open:** Superstat's written terms for selling stats/insights to teams outside the account; whether insights can be read for the non-uploading team; lining up Superstat's match clock with our replay for jump-to-play video.
 
+### 10.5n Circuit stats and highlights: product decisions (owner, Nov 12, 2026)
+Supersedes the free/paid split in 10.5m.
+- **All Circuit stats are free and public:** full box scores, play-by-play, shot charts, player pages, team pages with the written insights, season leaders and awards. Stats sourced from the API carry "Powered by Superstat".
+- **The paid product is exported video highlights**, sold per game: **Player reel $10**, **Team reel $25** (starting prices to test). Reels are cut **automatically** from ALL CAN's own recordings using Superstat's play timestamps; Superstat's API supplies no video.
+- Recordings: one file per game, kept by ALL CAN (OVH server, then Supabase storage).
+- Both teams' players are tagged in Superstat for every game, so every player has stats, a page and a reel to buy.
+- Stats are approved by staff each game night (the publish switch); the stats pages stay unpublished until the first four games are loaded.
+- Build order: player page → team page with insights → automatic leaders and awards → highlight reels (after a clock-alignment test on one game: do Superstat's match seconds line up with the stored file?).
+- Open: how the cutting job reaches the files (OVH server access), whether the file given to Superstat is the stored file, who may buy a given player's reel, exactly which plays make a reel.
+
 ### 10.6 Still manual before launch
 Run 0064 → upload the real photos → replace every `[TBC]` in Programs → Settings › Domains (Vercel project + DNS; Clerk satellite only with Clerk Pro) → Verify DNS → Coming soon → SEO setup, Search Console, sitemap → Live. The §9 legal list is unchanged. Registration on the brand host, the Accessibility and Concussion pages, and Futura hosting remain later stages.
 
