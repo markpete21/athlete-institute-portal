@@ -9,18 +9,18 @@ import { parseBoxScore, type BoxLine } from '@/lib/site/boxscore';
  * shape plus the extra box-score columns. Tolerant before migration 0106:
  * every read returns empty instead of throwing.
  */
-export interface StatLine extends BoxLine { id: number; gameId: number; team: string; division: string; playerId: number | null }
+export interface StatLine extends BoxLine { id: number; gameId: number; team: string; division: string; playerId: number | null; source: string | null }
 export interface TeamBox { team: string; lines: StatLine[]; total: StatLine | null }
 
-const COLS = 'id, game_id, division, team, is_total, player_id, number, name, pts, reb, ast, stl, blk, tov, oreb, fgm, fga, tpm, tpa, ftm, fta, min, sort_order';
+const COLS = 'id, game_id, division, team, is_total, player_id, number, name, pts, reb, ast, stl, blk, tov, oreb, dreb, pf, fgm, fga, tpm, tpa, ftm, fta, min, sort_order, source';
 
 function toLine(r: Record<string, unknown>): StatLine {
   const n = (k: string) => (r[k] == null ? null : Number(r[k]));
   return {
-    id: r.id as number, gameId: r.game_id as number, team: r.team as string, division: (r.division as string) ?? '', playerId: (r.player_id as number) ?? null,
+    id: r.id as number, gameId: r.game_id as number, team: r.team as string, division: (r.division as string) ?? '', playerId: (r.player_id as number) ?? null, source: (r.source as string) ?? null,
     isTotal: !!r.is_total, number: (r.number as string) ?? null, name: (r.name as string) ?? null,
     pts: Number(r.pts ?? 0), reb: Number(r.reb ?? 0), ast: Number(r.ast ?? 0),
-    stl: n('stl'), blk: n('blk'), tov: n('tov'), oreb: n('oreb'), fgm: n('fgm'), fga: n('fga'), tpm: n('tpm'), tpa: n('tpa'), ftm: n('ftm'), fta: n('fta'), min: (r.min as string) ?? null,
+    stl: n('stl'), blk: n('blk'), tov: n('tov'), oreb: n('oreb'), dreb: n('dreb'), pf: n('pf'), fgm: n('fgm'), fga: n('fga'), tpm: n('tpm'), tpa: n('tpa'), ftm: n('ftm'), fta: n('fta'), min: (r.min as string) ?? null,
   };
 }
 
@@ -62,7 +62,7 @@ export async function saveTeamBox(brandKey: string, leagueSlug: string, game: { 
     return {
       brand_key: brandKey, league_slug: leagueSlug, game_id: game.id, division: game.division, team, is_total: l.isTotal, player_id: p?.id ?? null,
       number: l.number, name: l.isTotal ? 'TEAM' : (l.name ?? p?.name ?? null),
-      pts: l.pts, reb: l.reb, ast: l.ast, stl: l.stl, blk: l.blk, tov: l.tov, oreb: l.oreb, fgm: l.fgm, fga: l.fga, tpm: l.tpm, tpa: l.tpa, ftm: l.ftm, fta: l.fta, min: l.min,
+      pts: l.pts, reb: l.reb, ast: l.ast, stl: l.stl, blk: l.blk, tov: l.tov, oreb: l.oreb, dreb: l.dreb, pf: l.pf, fgm: l.fgm, fga: l.fga, tpm: l.tpm, tpa: l.tpa, ftm: l.ftm, fta: l.fta, min: l.min,
       sort_order: l.isTotal ? 999 : i, source: 'paste', created_by: actorClerkId,
     };
   };
@@ -78,4 +78,38 @@ export async function saveTeamBox(brandKey: string, leagueSlug: string, game: { 
 export async function clearGameStats(brandKey: string, gameId: number, actorClerkId: string): Promise<void> {
   await supabaseAdmin().from('site_league_stat_lines').delete().eq('brand_key', brandKey).eq('game_id', gameId);
   await audit({ actorId: actorClerkId, action: 'site.league.stats.clear', target: `site:${brandKey}`, meta: { gameId } });
+}
+
+
+// --- Publishing and Superstat link state (columns from migration 0107) ------------
+
+export interface GameStatsMeta { published: boolean; superstatMatchId: string | null; superstatStatus: string | null; syncedAt: string | null }
+
+/**
+ * Per-game stats state. Stats are loaded and checked privately; the public
+ * Full stats button and page need `published`. Tolerant before 0107: every
+ * game reads as unpublished.
+ */
+export async function gameStatsMeta(brandKey: string, leagueSlug: string): Promise<Map<number, GameStatsMeta>> {
+  const out = new Map<number, GameStatsMeta>();
+  const { data, error } = await supabaseAdmin().from('site_league_games').select('id, stats_published, superstat_match_id, superstat_status, superstat_synced_at').eq('brand_key', brandKey).eq('league_slug', leagueSlug);
+  if (error || !data) return out;
+  for (const r of data) out.set(r.id as number, { published: !!r.stats_published, superstatMatchId: (r.superstat_match_id as string) ?? null, superstatStatus: (r.superstat_status as string) ?? null, syncedAt: (r.superstat_synced_at as string) ?? null });
+  return out;
+}
+
+/** Publish or unpublish stats: one game, or (gameId null) every game in the league that has stats loaded. */
+export async function setStatsPublished(brandKey: string, leagueSlug: string, gameId: number | null, published: boolean, actorClerkId: string): Promise<number> {
+  const db = supabaseAdmin();
+  let ids: number[];
+  if (gameId != null) ids = [gameId];
+  else {
+    const { data } = await db.from('site_league_stat_lines').select('game_id').eq('brand_key', brandKey).eq('league_slug', leagueSlug);
+    ids = [...new Set((data ?? []).map((r) => r.game_id as number))];
+  }
+  if (!ids.length) return 0;
+  const { error } = await db.from('site_league_games').update({ stats_published: published }).eq('brand_key', brandKey).eq('league_slug', leagueSlug).in('id', ids);
+  if (error) throw new Error(error.message);
+  await audit({ actorId: actorClerkId, action: published ? 'site.league.stats.publish' : 'site.league.stats.unpublish', target: `site:${brandKey}`, meta: { league: leagueSlug, games: ids.length } });
+  return ids.length;
 }

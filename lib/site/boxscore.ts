@@ -22,12 +22,14 @@ export interface BoxLine {
   stl: number | null; blk: number | null; tov: number | null;
   fgm: number | null; fga: number | null; tpm: number | null; tpa: number | null; ftm: number | null; fta: number | null;
   oreb: number | null;
+  dreb: number | null;
+  pf: number | null;
   min: string | null;
 }
 
 export interface ParsedBox { lines: BoxLine[]; total: BoxLine | null; warnings: string[] }
 
-const blank = (): BoxLine => ({ number: null, name: null, isTotal: false, pts: 0, reb: 0, ast: 0, stl: null, blk: null, tov: null, fgm: null, fga: null, tpm: null, tpa: null, ftm: null, fta: null, oreb: null, min: null });
+const blank = (): BoxLine => ({ number: null, name: null, isTotal: false, pts: 0, reb: 0, ast: 0, stl: null, blk: null, tov: null, fgm: null, fga: null, tpm: null, tpa: null, ftm: null, fta: null, oreb: null, dreb: null, pf: null, min: null });
 
 const ALIASES: Record<string, string> = {
   player: 'player', name: 'player', players: 'player',
@@ -35,6 +37,8 @@ const ALIASES: Record<string, string> = {
   pts: 'pts', points: 'pts', p: 'pts',
   reb: 'reb', rebs: 'reb', rebounds: 'reb', tr: 'reb', trb: 'reb',
   oreb: 'oreb', or: 'oreb', off: 'oreb',
+  dreb: 'dreb', dr: 'dreb', def: 'dreb',
+  pf: 'pf', fouls: 'pf', fls: 'pf', f: 'pf',
   ast: 'ast', asts: 'ast', assists: 'ast', a: 'ast',
   stl: 'stl', steals: 'stl', st: 'stl',
   blk: 'blk', blocks: 'blk', bs: 'blk',
@@ -105,7 +109,7 @@ export function parseBoxScore(text: string): ParsedBox {
     line.number = isTotal ? null : num || null;
     line.name = isTotal ? 'TEAM' : (/^#?\d{1,3}$/.test(who.trim()) ? null : who.trim() || null);
     line.pts = int(get('pts')) ?? 0; line.reb = int(get('reb')) ?? 0; line.ast = int(get('ast')) ?? 0;
-    line.stl = int(get('stl')); line.blk = int(get('blk')); line.tov = int(get('tov')); line.oreb = int(get('oreb'));
+    line.stl = int(get('stl')); line.blk = int(get('blk')); line.tov = int(get('tov')); line.oreb = int(get('oreb')); line.dreb = int(get('dreb')); line.pf = int(get('pf'));
     [line.fgm, line.fga] = get('fg') !== undefined ? pair(get('fg')) : [int(get('fgm')), int(get('fga'))];
     [line.tpm, line.tpa] = get('tp') !== undefined ? pair(get('tp')) : [int(get('tpm')), int(get('tpa'))];
     [line.ftm, line.fta] = get('ft') !== undefined ? pair(get('ft')) : [int(get('ftm')), int(get('fta'))];
@@ -127,7 +131,7 @@ export function teamTotals(lines: BoxLine[], total: BoxLine | null): BoxLine | n
   if (total) return total;
   if (!lines.length) return null;
   const add = (k: keyof BoxLine) => { const v = lines.map((l) => l[k]).filter((x): x is number => typeof x === 'number'); return v.length ? v.reduce((a, b) => a + b, 0) : null; };
-  return { ...blank(), isTotal: true, name: 'TEAM', pts: add('pts') ?? 0, reb: add('reb') ?? 0, ast: add('ast') ?? 0, stl: add('stl'), blk: add('blk'), tov: add('tov'), fgm: add('fgm'), fga: add('fga'), tpm: add('tpm'), tpa: add('tpa'), ftm: add('ftm'), fta: add('fta'), oreb: add('oreb') };
+  return { ...blank(), isTotal: true, name: 'TEAM', pts: add('pts') ?? 0, reb: add('reb') ?? 0, ast: add('ast') ?? 0, stl: add('stl'), blk: add('blk'), tov: add('tov'), fgm: add('fgm'), fga: add('fga'), tpm: add('tpm'), tpa: add('tpa'), ftm: add('ftm'), fta: add('fta'), oreb: add('oreb'), dreb: add('dreb'), pf: add('pf') };
 }
 
 /** Top lines for the schedule preview: points, then rebounds, then assists. */

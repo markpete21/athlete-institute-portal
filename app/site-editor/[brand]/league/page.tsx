@@ -1,7 +1,11 @@
 import { listPrograms } from '@/lib/site/records';
 import { divisionsOf, listGames, listPlayers, listTeams, standings, type LeagueGame, type LeaguePlayer } from '@/lib/site/league';
-import { clearBoxScoreAction, deleteGameAction, saveBoxScoreAction, saveGameAction, saveRosterAction, saveTeamAction, setStreamForUpcomingAction } from '../../actions';
-import { boxesFor, statLinesByGame, type StatLine } from '@/lib/site/league-stats';
+import { clearBoxScoreAction, deleteGameAction, saveBoxScoreAction, saveGameAction, saveRosterAction, saveSuperstatTeamsAction, saveTeamAction, setStatsPublishedAction, setStreamForUpcomingAction } from '../../actions';
+import { boxesFor, gameStatsMeta, statLinesByGame, type GameStatsMeta, type StatLine } from '@/lib/site/league-stats';
+import { clubTeamsOrNull } from '@/lib/superstat/client';
+import { listTeamLinks } from '@/lib/superstat/sync';
+import { suggestTeam } from '@/lib/superstat/map';
+import { SuperstatSync } from './SuperstatSync';
 import { SubmitButton } from '@/app/admin/brands/SubmitButton';
 import { PreviewButton } from '../PreviewButton';
 
@@ -30,6 +34,9 @@ export default async function LeaguePage({ params, searchParams }: { params: { b
   const league = leagues.find((l) => l.slug === slug);
   const games = await listGames(brand, slug);
   const stats = await statLinesByGame(brand, slug);
+  const meta = await gameStatsMeta(brand, slug);
+  const [ss, ssLinks] = await Promise.all([clubTeamsOrNull(), listTeamLinks(brand, slug)]);
+  const loaded = [...stats.keys()].length, live = [...stats.keys()].filter((id) => meta.get(id)?.published).length;
   const teamRows = await listTeams(brand, slug);
   const players = await listPlayers(brand, slug);
   // Teams per division, as they appear in the schedule (a club fields one roster per division).
@@ -44,10 +51,49 @@ export default async function LeaguePage({ params, searchParams }: { params: { b
         {leagues.length > 1 && <nav className="seg">{leagues.map((l) => <a key={l.slug} href={`/admin/league?league=${l.slug}`} className={l.slug === slug ? 'on' : ''}>{l.name}</a>)}</nav>}
         {games.length === 0 && <p className="text-body text-sm">No games yet. Add the schedule on the right; enter scores here as games finish and the standings update themselves.</p>}
         <div className="flex flex-col gap-2">
-          {games.map((g) => <GameRow key={g.id} brand={brand} g={g} slug={slug} players={players} stats={stats.get(g.id) ?? []} />)}
+          {games.map((g) => <GameRow key={g.id} brand={brand} g={g} slug={slug} players={players} stats={stats.get(g.id) ?? []} meta={meta.get(g.id) ?? null} />)}
         </div>
       </section>
       <div className="flex flex-col gap-5">
+        <section className="card flex flex-col gap-3 p-5">
+          <div className="card-head"><h2>Full stats</h2><span className="card-head-lbl">{loaded} game{loaded === 1 ? '' : 's'} loaded · {live} published</span></div>
+          <p className="text-body text-xs">Stats are loaded privately (pasted per game, or synced from Superstat) and only show on the public site once published.</p>
+          <div className="flex flex-wrap gap-2">
+            <form action={setStatsPublishedAction}><input type="hidden" name="brand" value={brand} /><input type="hidden" name="leagueSlug" value={slug} /><input type="hidden" name="published" value="on" /><SubmitButton className="btn-gold btn-sm" pendingLabel="…" doneLabel="Published">Publish all loaded</SubmitButton></form>
+            <form action={setStatsPublishedAction}><input type="hidden" name="brand" value={brand} /><input type="hidden" name="leagueSlug" value={slug} /><input type="hidden" name="published" value="" /><SubmitButton className="btn-ghost btn-sm" pendingLabel="…" doneLabel="Hidden">Unpublish all</SubmitButton></form>
+          </div>
+          <div className="border-t border-hairline pt-3">
+            <p className="text-sm font-extrabold">Superstat</p>
+            {ss === null ? (
+              <p className="text-body text-xs">Not connected. The owner of the league&apos;s Superstat club creates an API key (Settings › API keys) and it goes into the environment as <span className="mono">SUPERSTAT_API_KEY</span>. Until then, paste box scores per game.</p>
+            ) : 'error' in ss ? (
+              <p className="text-xs" style={{ color: '#b4483c' }}>Connected, but Superstat answered: {ss.error}</p>
+            ) : (
+              <>
+                <p className="text-body text-xs">Connected to <b>{ss.club.name}</b> · {ss.teams.length} team{ss.teams.length === 1 ? '' : 's'}. Syncs hourly; finished games load here unpublished.</p>
+                <form action={saveSuperstatTeamsAction} className="mt-2 flex flex-col gap-1">
+                  <input type="hidden" name="brand" value={brand} /><input type="hidden" name="leagueSlug" value={slug} />
+                  {rosterSlots.flatMap((slot) => slot.teams.map((team) => {
+                    const linkRow = ssLinks.find((l) => l.team === team && l.division === slot.division);
+                    const guess = linkRow ? null : suggestTeam(team, slot.division, ss.teams);
+                    const cur = ss.teams.find((t) => t.id === (linkRow?.superstatTeamId ?? guess?.id));
+                    return (
+                      <label key={`${slot.division}|${team}`} className="grid grid-cols-[1fr_1fr] items-center gap-2 text-xs">
+                        <span>{team} <span className="text-silver">· {slot.division}</span></span>
+                        <select name={`map:${slot.division}|${team}`} defaultValue={cur ? `${cur.id}|${cur.name}` : ''} className="input text-xs">
+                          <option value="">Not linked</option>
+                          {ss.teams.map((t) => <option key={t.id} value={`${t.id}|${t.name}`}>{t.name}</option>)}
+                        </select>
+                      </label>
+                    );
+                  }))}
+                  <div className="mt-1"><SubmitButton className="btn-ghost btn-sm" pendingLabel="…" doneLabel="Saved">Save team links</SubmitButton></div>
+                </form>
+                <div className="mt-2"><SuperstatSync brand={brand} leagueSlug={slug} /></div>
+              </>
+            )}
+          </div>
+        </section>
         <section className="card flex flex-col gap-3 p-5">
           <div className="card-head"><h2>Rosters</h2><span className="card-head-lbl">{players.length} player{players.length === 1 ? '' : 's'}</span></div>
           <p className="text-body text-xs">One player per line: <span className="mono">23 | Jordan Smith</span>. Shown on the Circuit page under Rosters (full names), and offered when you enter top scorers.</p>
@@ -128,7 +174,7 @@ export default async function LeaguePage({ params, searchParams }: { params: { b
   );
 }
 
-function GameRow({ brand, g, slug, players, stats }: { brand: string; g: LeagueGame; slug: string; players: LeaguePlayer[]; stats: StatLine[] }) {
+function GameRow({ brand, g, slug, players, stats, meta }: { brand: string; g: LeagueGame; slug: string; players: LeaguePlayer[]; stats: StatLine[]; meta: GameStatsMeta | null }) {
   const [hb, ab] = boxesFor(stats, g.home, g.away);
   const boxNote = (b: typeof hb) => (b.lines.length ? `${b.lines.length} players${b.total ? ' + team totals' : ''}` : b.total ? 'team totals only' : 'not uploaded');
   const rosterOf = (team: string) => players.filter((p) => p.team === team && p.division === g.division);
@@ -156,14 +202,15 @@ function GameRow({ brand, g, slug, players, stats }: { brand: string; g: LeagueG
           </div>
         </details>
         <details className="col-span-2 sm:col-span-4" open={stats.length > 0}>
-          <summary className="cursor-pointer text-xs font-bold">Full stats (box score){stats.length > 0 ? ' · uploaded' : ''}</summary>
-          <p className="mt-1 text-xs text-silver">Paste each team&apos;s box score: the table with its header row (e.g. Superstat&apos;s Player # PTS REB AST … FT%), or the one-line team summary. Players match the roster by jersey number. Uploading replaces that team&apos;s stats for this game; the public Full stats button appears once anything is uploaded.</p>
+          <summary className="cursor-pointer text-xs font-bold">Full stats (box score){stats.length > 0 ? (meta?.published ? ' · published' : ' · loaded, not published') : ''}{meta?.superstatStatus ? ` · Superstat: ${meta.superstatStatus.replace('_', ' ')}` : ''}</summary>
+          <p className="mt-1 text-xs text-silver">Paste each team&apos;s box score: the table with its header row (e.g. Superstat&apos;s Player # PTS REB AST … FT%), or the one-line team summary. Players match the roster by jersey number. Uploading replaces that team&apos;s stats for this game. Stats stay private until you publish them; Preview shows them as they will look.</p>
           <div className="mt-2 grid grid-cols-2 gap-2">
             <div className="flex flex-col"><label className="field-label" htmlFor={`g-${g.id}-boxh`}>{g.home} · {boxNote(hb)}</label><textarea id={`g-${g.id}-boxh`} name="boxHome" rows={6} className="input mono text-xs" placeholder={'Player # PTS REB AST STL BLK TO FG FG% 3PT 3P% FT FT%\n#15 15 14 3 2 1 0 1 6-11 54.5 1-4 25.0 1-1 100.0\n…\nTEAM 66 41 13 11 0 22 29-75 38.7 4-20 20.0 4-11 36.4'} /></div>
             <div className="flex flex-col"><label className="field-label" htmlFor={`g-${g.id}-boxa`}>{g.away} · {boxNote(ab)}</label><textarea id={`g-${g.id}-boxa`} name="boxAway" rows={6} className="input mono text-xs" placeholder="Same, or the summary line: 47 PTS FG 19-51 (37.3%) … 20 TO" /></div>
           </div>
           <div className="mt-2 flex flex-wrap gap-2">
             <SubmitButton className="btn-gold btn-sm" formAction={saveBoxScoreAction} pendingLabel="Uploading…" doneLabel="Uploaded">Upload full stats</SubmitButton>
+            {stats.length > 0 && <><input type="hidden" name="gameId" value={g.id} /><input type="hidden" name="published" value={meta?.published ? '' : 'on'} /><SubmitButton className="btn-ghost btn-sm" formAction={setStatsPublishedAction} pendingLabel="…" doneLabel="Done">{meta?.published ? 'Unpublish stats' : 'Publish stats'}</SubmitButton></>}
             {stats.length > 0 && <SubmitButton className="btn-ghost btn-sm" formAction={clearBoxScoreAction} pendingLabel="…" doneLabel="Cleared">Clear full stats</SubmitButton>}
             {stats.length > 0 && <PreviewButton brand={brand} path={`/circuit/games/${g.id}`} label="Preview full stats" />}
           </div>

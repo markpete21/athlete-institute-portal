@@ -16,7 +16,7 @@ import { pageDescription, pageTitle, breadcrumbJsonLd } from '@/lib/site/seo';
 import { PRIVACY_POLICY } from '@/lib/site/privacy-policy';
 import { listDivisions, recentResults, upcomingGames } from '@/lib/compete/compete';
 import type { Block } from '@/lib/site/blocks';
-import { boxesFor, gameStatLines, hasFullStats, statLinesByGame, type StatLine, type TeamBox } from '@/lib/site/league-stats';
+import { boxesFor, gameStatLines, gameStatsMeta, hasFullStats, statLinesByGame, type StatLine, type TeamBox } from '@/lib/site/league-stats';
 import { pct, teamTotals, topLines } from '@/lib/site/boxscore';
 
 export const dynamic = 'force-dynamic';
@@ -358,6 +358,8 @@ async function Circuit({ ctx, page, division }: { ctx: Ctx; page: SitePage | nul
   const teamRows = await listTeams(ctx.brandKey, rep?.slug ?? 'circuit');
   const players = await listPlayers(ctx.brandKey, rep?.slug ?? 'circuit');
   const stats = await statLinesByGame(ctx.brandKey, rep?.slug ?? 'circuit');
+  // Stats are loaded privately; the public sees them once published (the editor's preview sees all).
+  const statsMeta = await gameStatsMeta(ctx.brandKey, rep?.slug ?? 'circuit');
   const logoOf = (name: string) => teamRows.find((t) => t.name === name)?.logoUrl ?? null;
   const Team = ({ name, jersey }: { name: string; jersey?: 'Light' | 'Dark' }) => <span className="nm"><TeamLogo url={logoOf(name)} />{name}{jersey && <small>({jersey})</small>}</span>;
   const divs = divisionsOf(games);
@@ -400,7 +402,7 @@ async function Circuit({ ctx, page, division }: { ctx: Ctx; page: SitePage | nul
           const fin = g.status === 'final' && g.homeScore != null && g.awayScore != null;
           const hw = fin && g.homeScore! > g.awayScore!, aw = fin && g.awayScore! > g.homeScore!;
           const ppd = g.status === 'postponed';
-          const hasStats = fin && hasFullStats(stats.get(g.id));
+          const hasStats = fin && hasFullStats(stats.get(g.id)) && (ctx.preview || !!statsMeta.get(g.id)?.published);
           const hasScorers = fin && (hasStats || (!!g.scorers && ((g.scorers.home?.length ?? 0) > 0 || (g.scorers.away?.length ?? 0) > 0)));
           // On air from 10 minutes before tip-off until about two hours after.
           const t0 = g.startsAt ? new Date(g.startsAt).getTime() : NaN;
@@ -688,7 +690,7 @@ function StatsPreview({ game, lines, leaf, players, logoOf }: { game: LeagueGame
     <div className="scorers">
       {boxes.map(col)}
       <div className="sp-foot">
-        {potg ? <p className="scorers-potg"><span className="kicker">Player of the game</span> <b>{potg}</b></p> : <span />}
+        {potg ? <p className="scorers-potg"><span className="kicker">Player of the game</span> <b>{potg}</b></p> : lines.some((l) => l.source === 'superstat') ? <a className="note" href="https://superstatsport.com" target="_blank" rel="noopener">Powered by Superstat</a> : <span />}
         <Link className="pill pill--ink pill--sm" href={`/circuit/games/${game.id}`}>Full stats</Link>
       </div>
     </div>
@@ -708,6 +710,8 @@ async function LeagueGamePage({ ctx, gameId }: { ctx: Ctx; gameId: number }) {
   if (!game) notFound();
   const lines = await gameStatLines(ctx.brandKey, game.id);
   if (!hasFullStats(lines)) notFound();
+  if (!ctx.preview && !(await gameStatsMeta(ctx.brandKey, slug)).get(game.id)?.published) notFound();
+  const fromSuperstat = lines.some((l) => l.source === 'superstat');
   const [teamRows, players] = await Promise.all([listTeams(ctx.brandKey, slug), listPlayers(ctx.brandKey, slug)]);
   const logoOf = (name: string) => teamRows.find((t) => t.name === name)?.logoUrl ?? null;
   const no = games.findIndex((g) => g.id === game.id) + 1;
@@ -720,7 +724,7 @@ async function LeagueGamePage({ ctx, gameId }: { ctx: Ctx; gameId: number }) {
   const has = (b: TeamBox, k: keyof StatLine) => b.lines.some((l) => l[k] != null) || (b.total?.[k] ?? null) != null;
   const Box = ({ b, score, won }: { b: TeamBox; score: number | null; won: boolean }) => {
     const tot = teamTotals(b.lines, b.total) as StatLine | null;
-    const cols: [keyof StatLine, string][] = (([['pts', 'PTS'], ['reb', 'REB'], ['ast', 'AST'], ['stl', 'STL'], ['blk', 'BLK'], ['tov', 'TO']] as [keyof StatLine, string][]).filter(([k]) => k === 'pts' || k === 'reb' || k === 'ast' || has(b, k)));
+    const cols: [keyof StatLine, string][] = (([['pts', 'PTS'], ['reb', 'REB'], ['ast', 'AST'], ['stl', 'STL'], ['blk', 'BLK'], ['tov', 'TO'], ['pf', 'PF']] as [keyof StatLine, string][]).filter(([k]) => k === 'pts' || k === 'reb' || k === 'ast' || has(b, k)));
     const shots = ([['fgm', 'fga', 'FG'], ['tpm', 'tpa', '3PT'], ['ftm', 'fta', 'FT']] as [keyof StatLine, keyof StatLine, string][]).filter(([m]) => has(b, m));
     return (
       <section className="sched-day box">
@@ -775,6 +779,7 @@ async function LeagueGamePage({ ctx, gameId }: { ctx: Ctx; gameId: number }) {
           <Box b={boxes[0]} score={game.homeScore} won={fin && game.homeScore! > game.awayScore!} />
           <Box b={boxes[1]} score={game.awayScore} won={fin && game.awayScore! > game.homeScore!} />
         </div>
+        {fromSuperstat && <p className="note" style={{ marginTop: 20 }}><a href="https://superstatsport.com" target="_blank" rel="noopener">Powered by Superstat</a></p>}
         <p style={{ marginTop: 28 }}><Link className="pill pill--line pill--sm" href="/circuit#schedule">Back to the schedule</Link></p>
       </div></section>
     </>

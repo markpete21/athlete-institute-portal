@@ -20,11 +20,12 @@ create table if not exists public.site_league_stat_lines (
   pts         integer not null default 0 check (pts >= 0),
   reb         integer not null default 0 check (reb >= 0),
   ast         integer not null default 0 check (ast >= 0),
-  stl integer, blk integer, tov integer, oreb integer,
+  stl integer, blk integer, tov integer, oreb integer, dreb integer, pf integer,
   fgm integer, fga integer, tpm integer, tpa integer, ftm integer, fta integer,
   min         text,
   sort_order  integer not null default 100,
-  source      text,
+  source      text,                          -- 'paste' (editor) or 'superstat' (API sync)
+  superstat_player_id text,
   created_by  text,
   created_at  timestamptz not null default now()
 );

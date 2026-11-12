@@ -532,3 +532,37 @@ export async function clearBoxScoreAction(fd: FormData): Promise<void> {
   await clearGameStats(brand, Number(fd.get('id')), session.userId!);
   revalidateSite(brand);
 }
+
+// --- Superstat connection + stats publishing ---------------------------------------
+
+export async function superstatSyncAction(brand: string, leagueSlug: string): Promise<import('@/lib/superstat/sync').SyncSummary> {
+  const { session } = await requireSiteRole(brand, ['super', 'admin', 'editor']);
+  const { syncLeague } = await import('@/lib/superstat/sync');
+  const summary = await syncLeague(brand, leagueSlug, session.userId!, { force: true });
+  revalidateSite(brand);
+  return summary;
+}
+
+export async function saveSuperstatTeamsAction(fd: FormData): Promise<void> {
+  const brand = str(fd.get('brand'));
+  const { session } = await requireSiteRole(brand, ['super', 'admin', 'editor']);
+  const { saveTeamLink } = await import('@/lib/superstat/sync');
+  const slug = str(fd.get('leagueSlug')) || 'circuit';
+  for (const [k, v] of fd.entries()) {
+    if (!k.startsWith('map:') || typeof v !== 'string') continue;
+    const [division, team] = k.slice(4).split('|');
+    const [id, name] = v ? v.split('|') : ['', ''];
+    await saveTeamLink(brand, slug, team, division, id || null, name || null, session.userId!);
+  }
+  revalidateSite(brand);
+}
+
+export async function setStatsPublishedAction(fd: FormData): Promise<void> {
+  const brand = str(fd.get('brand'));
+  const { session, role } = await requireSiteRole(brand);
+  if (!canPublish(role)) throw new Error('Writers draft; an editor publishes.');
+  const { setStatsPublished } = await import('@/lib/site/league-stats');
+  const id = num(fd.get('gameId'));
+  await setStatsPublished(brand, str(fd.get('leagueSlug')) || 'circuit', id, bool(fd.get('published')), session.userId!);
+  revalidateSite(brand);
+}
