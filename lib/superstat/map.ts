@@ -45,8 +45,11 @@ export function teamFitsDivision(t: Pick<SsTeam, 'name' | 'ageGroup' | 'gender'>
   const age = uAge(norm(t.name)) || uAge(norm(t.ageGroup));
   const dAge = d.match(/\bu\s?(\d{1,2})\b/)?.[0].replace(/\s/g, '') ?? '';
   if (age && dAge && age !== dAge) return false;
-  const g = norm(t.gender), dg = /\bgirls?\b|\bwomen\b/.test(d) ? 'girls' : /\bboys?\b|\bmen\b/.test(d) ? 'boys' : '';
-  if (g && dg && !g.startsWith(dg.slice(0, 3))) return false;
+  // Superstat says male / female; divisions say Boys / Girls. Mixed or unset never rules a team out.
+  const raw = norm(t.gender);
+  const g = /^(male|boys?|men|m)$/.test(raw) ? 'boys' : /^(female|girls?|women|f)$/.test(raw) ? 'girls' : '';
+  const dg = /\bgirls?\b|\bwomen\b/.test(d) ? 'girls' : /\bboys?\b|\bmen\b/.test(d) ? 'boys' : '';
+  if (g && dg && g !== dg) return false;
   return !!(age && dAge) || norm(t.name).includes(d);
 }
 
@@ -82,7 +85,8 @@ export function linkMatch(m: SsMatch, games: GameRef[], links: TeamLink[]): { ga
   const other = (g: GameRef, name: string) => (g.home === name ? g.away : g.home);
   const both = !!(teamLink && oppLink);
   const pool = already ? [already] : games.filter((g) => !g.superstatMatchId && g.division === us.division && involves(g, us.team) && (!both || involves(g, oppLink!.team)));
-  const day = dayOf(m.playedAt);
+  // A date with no time (midnight UTC) is the calendar day the uploader picked, not an instant.
+  const day = m.playedAt && /T00:00:00(\.000)?Z$/.test(m.playedAt) ? m.playedAt.slice(0, 10) : dayOf(m.playedAt);
   const gapOf = (g: GameRef) => (day && g.startsAt ? dayGap(day, dayOf(g.startsAt)) : 99);
   let best: GameRef | undefined;
   if (already) best = already;
