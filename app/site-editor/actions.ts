@@ -485,6 +485,24 @@ export async function deleteGameAction(fd: FormData): Promise<void> {
   revalidateSite(brand);
 }
 
+/** Per-game jersey fixes: who actually wore each tagged number in this one game. */
+export async function saveGameJerseysAction(fd: FormData): Promise<void> {
+  const brand = str(fd.get('brand'));
+  const { session } = await requireSiteRole(brand, ['super', 'admin', 'editor']);
+  const { saveGameJerseys } = await import('@/lib/site/league-stats');
+  const { parsePick } = await import('@/lib/site/jerseys');
+  const gameId = Number(fd.get('id'));
+  if (!Number.isInteger(gameId)) throw new Error('Missing game.');
+  for (const side of ['home', 'away']) {
+    const team = str(fd.get(`jf_team_${side}`));
+    const count = Math.min(60, Number(fd.get(`jf_count_${side}`)) || 0);
+    if (!team || !count) continue;
+    const rows = Array.from({ length: count }, (_, i) => ({ worn: str(fd.get(`jf_${side}_${i}_worn`)), fix: parsePick(str(fd.get(`jf_${side}_${i}_pick`)), str(fd.get(`jf_${side}_${i}_num`)), str(fd.get(`jf_${side}_${i}_name`))) }));
+    await saveGameJerseys(brand, str(fd.get('leagueSlug')) || 'circuit', gameId, team, rows, session.userId!);
+  }
+  revalidateSite(brand);
+}
+
 export async function saveRosterAction(fd: FormData): Promise<void> {
   const brand = str(fd.get('brand'));
   const { session } = await requireSiteRole(brand, ['super', 'admin', 'editor']);

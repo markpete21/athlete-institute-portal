@@ -545,6 +545,11 @@ Each Live event is tied to its Circuit game by category, teams and start time, w
 
 **Not built yet:** the opening title card with the final score (the clip worker only supports the intro/outro bumpers; a title card needs a worker change and redeploy), the "Stats are up" email to followers, season reels and share cards, and reel revenue in the Live finance reports.
 
+### 10.5r Per-game player fixes (Nov 13, 2026; migration 0109)
+The season roster stays the default: a jersey number means the roster player with that number. Because jerseys change and numbers get misread, each loaded game has **Players in this game** in the editor (League › the game › Full stats). For every tagged line, staff choose: as the roster says, a roster player, someone else (typed number and name), or "not a player: hide". Two lines set to the same player are added together.
+- Stored in `site_league_game_jerseys` (game, team, worn number → as number / as name / hidden) and applied when stats are read (`lib/site/jerseys.ts`, `npm run test:jerseys`), so a re-sync never loses a fix. Team total rows are never changed.
+- Flows through the box score, season leaders, team and player pages, shot maps, and the plays the Live app cuts reels from. A hidden jersey keeps its plays (the basket still counted for the team) but loses the player.
+
 ### 10.6 Still manual before launch
 Run 0064 → upload the real photos → replace every `[TBC]` in Programs → Settings › Domains (Vercel project + DNS; Clerk satellite only with Clerk Pro) → Verify DNS → Coming soon → SEO setup, Search Console, sitemap → Live. The §9 legal list is unchanged. Registration on the brand host, the Accessibility and Concussion pages, and Futura hosting remain later stages.
 

@@ -2,6 +2,7 @@ import 'server-only';
 import { audit } from '@ai/foundation';
 import { supabaseAdmin } from '@ai/foundation/supabase';
 import { parseBoxScore, type BoxLine } from '@/lib/site/boxscore';
+import { applyJerseyFixes, applyJerseyFixesToEvents, type JerseyFix } from '@/lib/site/jerseys';
 
 /**
  * Full stats (box scores) for site-run league games. Stored one row per
@@ -24,18 +25,57 @@ function toLine(r: Record<string, unknown>): StatLine {
   };
 }
 
-/** Every uploaded line for a league, by game id. */
-export async function statLinesByGame(brandKey: string, leagueSlug: string): Promise<Map<number, StatLine[]>> {
+// --- Per-game jersey fixes (migration 0109; empty before it is run) ---------------
+
+async function loadFixes(brandKey: string, by: { leagueSlug?: string; gameIds?: number[] }): Promise<JerseyFix[]> {
+  if (by.gameIds && !by.gameIds.length) return [];
+  let q = supabaseAdmin().from('site_league_game_jerseys').select('game_id, team, worn, as_number, as_name, hidden').eq('brand_key', brandKey);
+  if (by.leagueSlug) q = q.eq('league_slug', by.leagueSlug);
+  if (by.gameIds) q = q.in('game_id', by.gameIds);
+  const { data, error } = await q.limit(5000);
+  if (error || !data) return [];
+  return data.map((r) => ({ gameId: r.game_id as number, team: r.team as string, worn: r.worn as string, asNumber: (r.as_number as string) ?? null, asName: (r.as_name as string) ?? null, hidden: !!r.hidden }));
+}
+
+/** Every fix in a league (the editor shows them beside the lines as tagged). */
+export const leagueJerseyFixes = (brandKey: string, leagueSlug: string) => loadFixes(brandKey, { leagueSlug });
+
+/** Replace one team's fixes for one game. A null fix means "as the roster says". */
+export async function saveGameJerseys(brandKey: string, leagueSlug: string, gameId: number, team: string, rows: { worn: string; fix: { asNumber: string | null; asName: string | null; hidden: boolean } | null }[], actorClerkId: string): Promise<number> {
+  const db = supabaseAdmin();
+  const { error: delErr } = await db.from('site_league_game_jerseys').delete().eq('brand_key', brandKey).eq('game_id', gameId).eq('team', team);
+  if (delErr) throw new Error(/site_league_game_jerseys/.test(delErr.message) ? 'Run migration 0109 first.' : delErr.message);
+  const keep = rows.filter((r) => r.fix && r.worn);
+  if (keep.length) {
+    const { error } = await db.from('site_league_game_jerseys').insert(keep.map((r) => ({ brand_key: brandKey, league_slug: leagueSlug, game_id: gameId, team, worn: r.worn, as_number: r.fix!.asNumber, as_name: r.fix!.asName, hidden: r.fix!.hidden, updated_by: actorClerkId })));
+    if (error) throw new Error(error.message);
+  }
+  await audit({ actorId: actorClerkId, action: 'site.league.stats.jerseys', target: `site:${brandKey}`, meta: { gameId, team, fixes: keep.length } });
+  return keep.length;
+}
+
+/**
+ * Every uploaded line for a league, by game id, with the per-game jersey
+ * fixes applied. `raw` returns the lines as tagged (the editor needs both).
+ */
+export async function statLinesByGame(brandKey: string, leagueSlug: string, opts: { raw?: boolean } = {}): Promise<Map<number, StatLine[]>> {
   const out = new Map<number, StatLine[]>();
-  const { data, error } = await supabaseAdmin().from('site_league_stat_lines').select(COLS).eq('brand_key', brandKey).eq('league_slug', leagueSlug).order('game_id').order('sort_order').order('id');
+  const [{ data, error }, fixes] = await Promise.all([
+    supabaseAdmin().from('site_league_stat_lines').select(COLS).eq('brand_key', brandKey).eq('league_slug', leagueSlug).order('game_id').order('sort_order').order('id'),
+    opts.raw ? Promise.resolve([] as JerseyFix[]) : loadFixes(brandKey, { leagueSlug }),
+  ]);
   if (error || !data) return out;
   for (const r of data) { const l = toLine(r); out.set(l.gameId, [...(out.get(l.gameId) ?? []), l]); }
+  if (fixes.length) for (const [id, lines] of out) out.set(id, applyJerseyFixes(lines, fixes));
   return out;
 }
 
 export async function gameStatLines(brandKey: string, gameId: number): Promise<StatLine[]> {
-  const { data, error } = await supabaseAdmin().from('site_league_stat_lines').select(COLS).eq('brand_key', brandKey).eq('game_id', gameId).order('sort_order').order('id');
-  return error || !data ? [] : data.map(toLine);
+  const [{ data, error }, fixes] = await Promise.all([
+    supabaseAdmin().from('site_league_stat_lines').select(COLS).eq('brand_key', brandKey).eq('game_id', gameId).order('sort_order').order('id'),
+    loadFixes(brandKey, { gameIds: [gameId] }),
+  ]);
+  return error || !data ? [] : applyJerseyFixes(data.map(toLine), fixes);
 }
 
 /** Split a game's lines into its two teams (home first). */
@@ -127,17 +167,23 @@ function toEvent(r: Record<string, unknown>): GameEvent {
 
 /** One game's play-by-play, in order. Empty before 0107 or when nothing was synced. */
 export async function gameEvents(brandKey: string, gameId: number): Promise<GameEvent[]> {
-  const { data, error } = await supabaseAdmin().from('site_league_events').select(EV_COLS).eq('brand_key', brandKey).eq('game_id', gameId).order('seq').limit(2000);
-  return error || !data ? [] : data.map(toEvent);
+  const [{ data, error }, fixes] = await Promise.all([
+    supabaseAdmin().from('site_league_events').select(EV_COLS).eq('brand_key', brandKey).eq('game_id', gameId).order('seq').limit(2000),
+    loadFixes(brandKey, { gameIds: [gameId] }),
+  ]);
+  return error || !data ? [] : applyJerseyFixesToEvents(data.map(toEvent), fixes);
 }
 
 /** Field-goal attempts (with court positions) across games, for a team or one player. */
 export async function shotEvents(brandKey: string, gameIds: number[], team: string, number?: string | null): Promise<GameEvent[]> {
   if (!gameIds.length) return [];
-  let q = supabaseAdmin().from('site_league_events').select(EV_COLS).eq('brand_key', brandKey).in('game_id', gameIds).eq('team', team).in('type', ['two_point', 'three_point']);
-  if (number) q = q.eq('number', number);
-  const { data, error } = await q.limit(5000);
-  return error || !data ? [] : data.map(toEvent).filter((e) => e.x != null && e.y != null);
+  // The jersey a player wore can differ per game, so the number filter runs after the fixes.
+  const [{ data, error }, fixes] = await Promise.all([
+    supabaseAdmin().from('site_league_events').select(EV_COLS).eq('brand_key', brandKey).in('game_id', gameIds).eq('team', team).in('type', ['two_point', 'three_point']).limit(10000),
+    loadFixes(brandKey, { gameIds }),
+  ]);
+  if (error || !data) return [];
+  return applyJerseyFixesToEvents(data.map(toEvent), fixes).filter((e) => e.x != null && e.y != null && (!number || e.number === number));
 }
 
 export interface GameInsights { gameId: number; team: string; status: string; summary: { whatsWorking?: string[]; focusAreas?: string[]; suggestions?: string[] } | null; ratings: Record<string, { value: number; comment: string }> | null }

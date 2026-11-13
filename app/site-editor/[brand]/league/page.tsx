@@ -1,7 +1,8 @@
 import { listPrograms } from '@/lib/site/records';
 import { divisionsOf, listGames, listPlayers, listTeams, standings, type LeagueGame, type LeaguePlayer } from '@/lib/site/league';
-import { clearBoxScoreAction, deleteGameAction, saveBoxScoreAction, saveGameAction, saveRosterAction, saveSuperstatTeamsAction, saveTeamAction, setStatsPublishedAction, setStreamForUpcomingAction } from '../../actions';
-import { boxesFor, gameStatsMeta, statLinesByGame, type GameStatsMeta, type StatLine } from '@/lib/site/league-stats';
+import { clearBoxScoreAction, deleteGameAction, saveBoxScoreAction, saveGameAction, saveGameJerseysAction, saveRosterAction, saveSuperstatTeamsAction, saveTeamAction, setStatsPublishedAction, setStreamForUpcomingAction } from '../../actions';
+import { boxesFor, gameStatsMeta, leagueJerseyFixes, statLinesByGame, type GameStatsMeta, type StatLine } from '@/lib/site/league-stats';
+import { wornKey, type JerseyFix } from '@/lib/site/jerseys';
 import { clubTeamsOrNull } from '@/lib/superstat/client';
 import { listTeamLinks } from '@/lib/superstat/sync';
 import { suggestTeam } from '@/lib/superstat/map';
@@ -34,6 +35,8 @@ export default async function LeaguePage({ params, searchParams }: { params: { b
   const league = leagues.find((l) => l.slug === slug);
   const games = await listGames(brand, slug);
   const stats = await statLinesByGame(brand, slug);
+  // As tagged (before per-game jersey fixes), and the fixes themselves, for the per-game editor.
+  const [rawStats, jerseyFixes] = await Promise.all([statLinesByGame(brand, slug, { raw: true }), leagueJerseyFixes(brand, slug)]);
   const meta = await gameStatsMeta(brand, slug);
   const [ss, ssLinks] = await Promise.all([clubTeamsOrNull(), listTeamLinks(brand, slug)]);
   const loaded = [...stats.keys()].length, live = [...stats.keys()].filter((id) => meta.get(id)?.published).length;
@@ -51,7 +54,7 @@ export default async function LeaguePage({ params, searchParams }: { params: { b
         {leagues.length > 1 && <nav className="seg">{leagues.map((l) => <a key={l.slug} href={`/admin/league?league=${l.slug}`} className={l.slug === slug ? 'on' : ''}>{l.name}</a>)}</nav>}
         {games.length === 0 && <p className="text-body text-sm">No games yet. Add the schedule on the right; enter scores here as games finish and the standings update themselves.</p>}
         <div className="flex flex-col gap-2">
-          {games.map((g) => <GameRow key={g.id} brand={brand} g={g} slug={slug} players={players} stats={stats.get(g.id) ?? []} meta={meta.get(g.id) ?? null} />)}
+          {games.map((g) => <GameRow key={g.id} brand={brand} g={g} slug={slug} players={players} stats={stats.get(g.id) ?? []} raw={rawStats.get(g.id) ?? []} fixes={jerseyFixes.filter((f) => f.gameId === g.id)} meta={meta.get(g.id) ?? null} />)}
         </div>
       </section>
       <div className="flex flex-col gap-5">
@@ -174,7 +177,44 @@ export default async function LeaguePage({ params, searchParams }: { params: { b
   );
 }
 
-function GameRow({ brand, g, slug, players, stats, meta }: { brand: string; g: LeagueGame; slug: string; players: LeaguePlayer[]; stats: StatLine[]; meta: GameStatsMeta | null }) {
+/** One team's lines as tagged, each with "who was this, this game". */
+function JerseyFixes({ gid, side, team, lines, roster, fixes }: { gid: number; side: 'home' | 'away'; team: string; lines: StatLine[]; roster: LeaguePlayer[]; fixes: JerseyFix[] }) {
+  const rosterValue = (p: LeaguePlayer) => `r:${(p.number ?? '').replace(/^#/, '')}|${p.name}`;
+  return (
+    <div className="flex flex-col gap-1">
+      <p className="field-label">{team}</p>
+      <input type="hidden" name={`jf_team_${side}`} value={team} /><input type="hidden" name={`jf_count_${side}`} value={lines.length} />
+      {lines.length === 0 && <p className="text-xs text-silver">No player lines for this team.</p>}
+      {lines.map((l, i) => {
+        const worn = wornKey(l.number, l.name);
+        const f = fixes.find((x) => x.worn === worn);
+        const asRoster = f && !f.hidden ? roster.find((p) => (p.number ?? '').replace(/^#/, '') === (f.asNumber ?? '') && p.name === (f.asName ?? '')) : undefined;
+        const pick = !f ? '' : f.hidden ? 'hide' : asRoster ? rosterValue(asRoster) : 'other';
+        const id = `g-${gid}-jf-${side}-${i}`;
+        return (
+          <div key={`${worn}-${i}`} className="grid grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)] items-center gap-2 border-t border-hairline pt-1">
+            <label htmlFor={id} className="truncate text-xs"><span className="mono">{l.number ? `#${l.number}` : 'no #'}</span> {l.name ?? ''} <span className="text-silver">· {l.pts} pts</span></label>
+            <div className="flex flex-col gap-1">
+              <input type="hidden" name={`jf_${side}_${i}_worn`} value={worn} />
+              <select id={id} name={`jf_${side}_${i}_pick`} defaultValue={pick} className="input text-xs">
+                <option value="">As the roster says</option>
+                {roster.map((p) => <option key={p.id} value={rosterValue(p)}>{p.number ? `#${p.number} ` : ''}{p.name}</option>)}
+                <option value="other">Someone else (type below)</option>
+                <option value="hide">Not a player: hide this line</option>
+              </select>
+              <div className="grid grid-cols-[4rem_minmax(0,1fr)] gap-1">
+                <input name={`jf_${side}_${i}_num`} defaultValue={pick === 'other' ? f?.asNumber ?? '' : ''} className="input text-xs" placeholder="#" aria-label={`Number for ${l.name ?? worn} this game`} />
+                <input name={`jf_${side}_${i}_name`} defaultValue={pick === 'other' ? f?.asName ?? '' : ''} className="input text-xs" placeholder="Name, if Someone else" aria-label={`Name for ${l.name ?? worn} this game`} />
+              </div>
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function GameRow({ brand, g, slug, players, stats, raw, fixes, meta }: { brand: string; g: LeagueGame; slug: string; players: LeaguePlayer[]; stats: StatLine[]; raw: StatLine[]; fixes: JerseyFix[]; meta: GameStatsMeta | null }) {
   const [hb, ab] = boxesFor(stats, g.home, g.away);
   const boxNote = (b: typeof hb) => (b.lines.length ? `${b.lines.length} players${b.total ? ' + team totals' : ''}` : b.total ? 'team totals only' : 'not uploaded');
   const rosterOf = (team: string) => players.filter((p) => p.team === team && p.division === g.division);
@@ -214,6 +254,17 @@ function GameRow({ brand, g, slug, players, stats, meta }: { brand: string; g: L
             {stats.length > 0 && <SubmitButton className="btn-ghost btn-sm" formAction={clearBoxScoreAction} pendingLabel="…" doneLabel="Cleared">Clear full stats</SubmitButton>}
             {stats.length > 0 && <PreviewButton brand={brand} path={`/circuit/games/${g.id}`} label="Preview full stats" />}
           </div>
+          {raw.some((l) => !l.isTotal) && (
+            <details className="mt-3" open={fixes.length > 0}>
+              <summary className="cursor-pointer text-xs font-bold">Players in this game{fixes.length > 0 ? ` · ${fixes.length} fix${fixes.length === 1 ? '' : 'es'}` : ''}</summary>
+              <p className="mt-1 text-xs text-silver">The roster decides who wears each number. Change it here for this game only: when a jersey changed, a number was misread, or a line is not a player. Two lines set to the same player are added together. Fixes stay when the stats sync again, and carry into shot maps and highlight reels.</p>
+              <div className="mt-2 grid grid-cols-1 gap-3 lg:grid-cols-2">
+                <JerseyFixes gid={g.id} side="home" team={g.home} lines={raw.filter((l) => l.team === g.home && !l.isTotal)} roster={home} fixes={fixes.filter((f) => f.team === g.home)} />
+                <JerseyFixes gid={g.id} side="away" team={g.away} lines={raw.filter((l) => l.team === g.away && !l.isTotal)} roster={away} fixes={fixes.filter((f) => f.team === g.away)} />
+              </div>
+              <div className="mt-2"><SubmitButton className="btn-gold btn-sm" formAction={saveGameJerseysAction} pendingLabel="Saving…" doneLabel="Saved">Save players for this game</SubmitButton></div>
+            </details>
+          )}
         </details>
       </div>
       <div className="flex flex-col gap-1">
