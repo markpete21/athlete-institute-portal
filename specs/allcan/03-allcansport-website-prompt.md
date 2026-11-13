@@ -523,7 +523,7 @@ Each Live event is tied to its Circuit game by category, teams and start time, w
 - `/circuit/stats` — season leaders per division (points, rebounds, assists, steals, blocks per game; threes made; FG% and FT% with minimum attempts), season highs, and a team table. Per-game boards need half the most games played by anyone.
 - `/circuit/teams/<team>-<division>` — per-game tiles, players table, season shot map, and the game list with Superstat's written insights (what's working, focus areas, suggestions) opening under each game.
 - `/circuit/players/<division>-<team>-<number>` — per-game tiles, season highs, game log, season shot map. Not indexed by search engines (youth players).
-- `/circuit/games/<id>` now also carries both teams' shot maps and the play-by-play by period. Player names in the box score and the schedule preview link to the player page; team names link to the team page. A "Season leaders" link shows beside Standings once any stats are visible.
+- `/circuit/games/<id>` now also carries both teams' shot maps. (The play-by-play list was removed from the page on Nov 13 at the owner's request; the plays are still stored and drive shot maps and reels.) Player names in the box score and the schedule preview link to the player page; team names link to the team page. A "Season leaders" link shows beside Standings once any stats are visible.
 
 **Code:** `lib/site/league-season.ts` (pure season maths, `npm run test:season`), `components/site/league/StatsPages.tsx`, new readers in `lib/site/league-stats.ts` (`gameEvents`, `shotEvents`, `insightsFor`, `visibleSeasonLines`).
 

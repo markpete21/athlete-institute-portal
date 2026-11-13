@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { listGames } from '@/lib/site/league';
-import { gameEvents, gameStatLines, gameStatsMeta, reelsUrls, setReelsUrl } from '@/lib/site/league-stats';
+import { gameEvents, gameStatLines, gameStatsMeta, reelsUrls, setReelsUrl, setStatsPublished } from '@/lib/site/league-stats';
 
 export const dynamic = 'force-dynamic';
 
@@ -10,6 +10,8 @@ export const dynamic = 'force-dynamic';
  * GET  ?brand=allcan&league=circuit            → every game with its stats state
  * GET  ?brand=…&league=…&game=<id>            → that game plus plays and players
  * POST { brand, league, game, reelsUrl|null } → where the game's reels are sold
+ * POST { brand, league, game, unpublish: true } → take a game's stats off the public site
+ *      (publishing stays a staff action in the site editor; this can only hide)
  *
  * Auth: a shared server-to-server secret in x-ecosystem-key (LEAGUE_STATS_KEY,
  * or the general ECOSYSTEM_API_KEY); closed until one is configured. Read-only apart from the
@@ -46,8 +48,12 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   if (!authorized(req)) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  const b = (await req.json().catch(() => ({}))) as { brand?: string; league?: string; game?: number; reelsUrl?: string | null };
+  const b = (await req.json().catch(() => ({}))) as { brand?: string; league?: string; game?: number; reelsUrl?: string | null; unpublish?: boolean };
   if (!SLUG.test(b.brand ?? '') || !SLUG.test(b.league ?? '') || !Number.isInteger(b.game)) return NextResponse.json({ error: 'Bad request' }, { status: 400 });
+  if (b.unpublish === true) {
+    const n = await setStatsPublished(b.brand!, b.league!, b.game!, false, 'system:league-stats-api').catch(() => -1);
+    return n >= 0 ? NextResponse.json({ ok: true, unpublished: n }) : NextResponse.json({ error: 'Could not unpublish' }, { status: 500 });
+  }
   const url = b.reelsUrl == null ? null : String(b.reelsUrl);
   if (url && !/^https:\/\/[a-z0-9.-]+\//i.test(url)) return NextResponse.json({ error: 'Bad link' }, { status: 400 });
   const ok = await setReelsUrl(b.brand!, b.league!, b.game!, url);

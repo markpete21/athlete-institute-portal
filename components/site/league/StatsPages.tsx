@@ -72,39 +72,6 @@ export function ShotChart({ shots, label }: { shots: GameEvent[]; label: string 
   );
 }
 
-const EVENT_LABEL: Record<string, string> = { two_point: 'Two-pointer', three_point: 'Three-pointer', free_throw: 'Free throw', defensive_rebound: 'Defensive rebound', offensive_rebound: 'Offensive rebound', rebound: 'Rebound', turnover: 'Turnover', assist: 'Assist', steal: 'Steal', block: 'Block', foul: 'Foul' };
-const clock = (s: number | null) => (s == null ? '' : `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`);
-
-/** Play-by-play, one collapsible list per period. The time is minutes into that period's footage. */
-export function PlayByPlay({ events, division }: { events: GameEvent[]; division: string }) {
-  if (!events.length) return null;
-  const periods = [...new Set(events.map((e) => e.periodNumber ?? 0))].sort((a, b) => a - b);
-  const pLabel = (n: number) => { const t = events.find((e) => (e.periodNumber ?? 0) === n)?.periodType; return n ? `${t === 'half' ? 'Half' : t === 'quarter' ? 'Quarter' : 'Period'} ${n}` : 'Game'; };
-  return (
-    <section className="sched-day pbp">
-      <div className="sched-head"><h3>Play-by-play</h3><span className="sched-div">{events.length} plays</span></div>
-      {periods.map((n, pi) => (
-        <details key={n} open={pi === 0}>
-          <summary>{pLabel(n)}<span className="sched-chev" aria-hidden="true">▾</span></summary>
-          <ol className="pbp-list">
-            {events.filter((e) => (e.periodNumber ?? 0) === n).map((e) => {
-              const shot = e.type === 'two_point' || e.type === 'three_point' || e.type === 'free_throw';
-              const who = e.number || e.name ? <Link href={playerHref(division, e.team, e.number, e.name)}>{e.number ? `#${e.number} ` : ''}{e.name && !/^#?\d+$/.test(e.name) ? e.name : ''}</Link> : null;
-              return (
-                <li key={e.seq} className={shot && e.success ? 'is-score' : undefined}>
-                  <span className="pbp-t">{clock(e.periodSeconds)}</span>
-                  <span className="pbp-team">{e.team}</span>
-                  <span className="pbp-what">{e.customName || EVENT_LABEL[e.type] || e.type.replace(/_/g, ' ')}{shot ? (e.success ? ' made' : ' missed') : ''}{who && <> · {who}</>}</span>
-                </li>
-              );
-            })}
-          </ol>
-        </details>
-      ))}
-    </section>
-  );
-}
-
 function InsightsBlock({ ins }: { ins: GameInsights }) {
   const s = ins.summary;
   if (!s) return null;

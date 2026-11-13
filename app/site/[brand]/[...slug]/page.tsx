@@ -17,7 +17,7 @@ import { PRIVACY_POLICY } from '@/lib/site/privacy-policy';
 import { listDivisions, recentResults, upcomingGames } from '@/lib/compete/compete';
 import type { Block } from '@/lib/site/blocks';
 import { boxesFor, gameEvents, gameStatLines, gameStatsMeta, hasFullStats, reelsUrls, statLinesByGame, type StatLine, type TeamBox } from '@/lib/site/league-stats';
-import { LeadersPage, PlayByPlay, PlayerStatsPage, ShotChart, TeamStatsPage, playerHref, teamHref } from '@/components/site/league/StatsPages';
+import { LeadersPage, PlayerStatsPage, ShotChart, TeamStatsPage, playerHref, teamHref } from '@/components/site/league/StatsPages';
 import { pct, teamTotals, topLines } from '@/lib/site/boxscore';
 
 export const dynamic = 'force-dynamic';
@@ -799,7 +799,6 @@ async function LeagueGamePage({ ctx, gameId }: { ctx: Ctx; gameId: number }) {
             <div className="chart-pad chart-pair"><ShotChart shots={shotsOf(game.home)} label={game.home} /><ShotChart shots={shotsOf(game.away)} label={game.away} /></div>
           </section>
         )}
-        {events.length > 0 && <div style={{ marginTop: 28 }}><PlayByPlay events={events} division={game.division} /></div>}
         {fromSuperstat && <p className="note" style={{ marginTop: 20 }}><a href="https://superstatsport.com" target="_blank" rel="noopener">Powered by Superstat</a></p>}
         <p style={{ marginTop: 28, display: 'flex', gap: 10, flexWrap: 'wrap' }}>{reelsUrl && <a className="pill pill--red pill--sm" href={reelsUrl}>Get the highlight reel</a>}<Link className="pill pill--line pill--sm" href="/circuit#schedule">Back to the schedule</Link><Link className="pill pill--line pill--sm" href={`/circuit/stats?division=${encodeURIComponent(game.division)}`}>Season leaders</Link></p>
         {reelsUrl && <p className="note" style={{ marginTop: 10 }}>Highlight reels are cut from this game&apos;s plays: a player reel is $10, a team reel is $20. You buy and download them in your Athlete Institute Live account.</p>}
